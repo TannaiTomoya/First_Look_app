@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}新規投稿 - PhotoShare{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- ページタイトル -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-bottom">
+                    <h2 class="h5 mb-0 fw-bold">
+                        <i class="fas fa-plus-square text-primary"></i> 新規投稿
+                    </h2>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('posts.create') }}" enctype="multipart/form-data" id="postForm">
+                        {{ form.hidden_tag() }}
+
+                        <!-- 画像アップロード -->
+                        <div class="mb-4">
+                            {{ form.image.label(class="form-label fw-semibold") }}
+                            
+                            <!-- カスタムファイル選択ボタン -->
+                            <div class="mb-3">
+                                <label for="{{ form.image.id }}" class="btn btn-outline-primary w-100" style="cursor: pointer;">
+                                    <i class="fas fa-upload"></i> 画像を選択
+                                </label>
+                                {{ form.image(class="d-none", id=form.image.id, accept="image/jpeg,image/jpg,image/png,image/gif") }}
+                            </div>
+
+                            <!-- ファイル情報 -->
+                            <div id="fileInfo" class="small text-muted mb-2" style="display: none;">
+                                選択されたファイル: <span id="fileName"></span>
+                            </div>
+
+                            <!-- バリデーションエラー -->
+                            {% if form.image.errors %}
+                                <div class="alert alert-danger">
+                                    {% for error in form.image.errors %}
+                                        <div><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+
+                            <!-- 画像プレビュー -->
+                            <div id="imagePreviewContainer" class="mb-3" style="display: none;">
+                                <p class="small text-muted mb-2">プレビュー:</p>
+                                <div class="position-relative" style="max-width: 500px;">
+                                    <img 
+                                        id="imagePreview" 
+                                        src="" 
+                                        alt="プレビュー" 
+                                        class="img-fluid rounded shadow-sm"
+                                        style="max-height: 500px; width: 100%; object-fit: contain; background-color: #f8f9fa;"
+                                    >
+                                    <button 
+                                        type="button" 
+                                        id="removeImage" 
+                                        class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2"
+                                        title="画像を削除"
+                                    >
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i> 
+                                対応形式: JPEG, PNG, GIF（最大5MB）
+                            </small>
+                        </div>
+
+                        <!-- キャプション -->
+                        <div class="mb-4">
+                            {{ form.caption.label(class="form-label fw-semibold") }}
+                            {{ form.caption(class="form-control" + (" is-invalid" if form.caption.errors else "")) }}
+                            
+                            {% if form.caption.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.caption.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+
+                            <small class="form-text text-muted">
+                                <span id="captionCount">0</span> / 2000文字
+                            </small>
+                        </div>
+
+                        <!-- 投稿ボタン -->
+                        <div class="d-grid gap-2">
+                            {{ form.submit(class="btn btn-primary btn-lg", id="submitBtn", disabled=true) }}
+                            <a href="{{ url_for('posts.explore') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> キャンセル
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ヘルプセクション -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h3 class="h6 fw-bold mb-3">
+                        <i class="fas fa-lightbulb text-warning"></i> 投稿のヒント
+                    </h3>
+                    <ul class="small text-muted mb-0">
+                        <li>高画質な画像を選びましょう</li>
+                        <li>キャプションで写真の説明や気持ちを伝えましょう</li>
+                        <li>ハッシュタグ（#）を使うと検索されやすくなります</li>
+                        <li>投稿後も編集・削除が可能です</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const imageInput = document.getElementById('{{ form.image.id }}');
+    const imagePreview = document.getElementById('imagePreview');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const removeImageBtn = document.getElementById('removeImage');
+    const submitBtn = document.getElementById('submitBtn');
+    const captionTextarea = document.querySelector('textarea[name="caption"]');
+    const captionCount = document.getElementById('captionCount');
+
+    // 画像選択時の処理
+    imageInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        
+        if (file) {
+            // ファイルサイズチェック（5MB）
+            if (file.size > 5 * 1024 * 1024) {
+                alert('ファイルサイズが大きすぎます。5MB以下の画像を選択してください。');
+                resetImageInput();
+                return;
+            }
+
+            // ファイル形式チェック
+            if (!file.type.match(/image\/(jpeg|jpg|png|gif)/)) {
+                alert('JPEG、PNG、GIF形式の画像ファイルを選択してください。');
+                resetImageInput();
+                return;
+            }
+
+            // ファイル情報表示
+            fileName.textContent = file.name;
+            fileInfo.style.display = 'block';
+
+            // 画像プレビュー表示
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                imagePreviewContainer.style.display = 'block';
+                submitBtn.disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // 画像削除ボタン
+    removeImageBtn.addEventListener('click', function() {
+        resetImageInput();
+    });
+
+    // 画像入力をリセット
+    function resetImageInput() {
+        imageInput.value = '';
+        imagePreview.src = '';
+        imagePreviewContainer.style.display = 'none';
+        fileInfo.style.display = 'none';
+        submitBtn.disabled = true;
+    }
+
+    // キャプション文字数カウント
+    if (captionTextarea) {
+        captionTextarea.addEventListener('input', function() {
+            const length = this.value.length;
+            captionCount.textContent = length;
+            
+            // 文字数超過の警告
+            if (length > 2000) {
+                captionCount.classList.add('text-danger');
+                captionCount.classList.remove('text-muted');
+            } else {
+                captionCount.classList.remove('text-danger');
+                captionCount.classList.add('text-muted');
+            }
+        });
+
+        // 初期文字数を表示
+        captionCount.textContent = captionTextarea.value.length;
+    }
+
+    // フォーム送信時の確認
+    document.getElementById('postForm').addEventListener('submit', function(e) {
+        if (!imageInput.files.length) {
+            e.preventDefault();
+            alert('画像を選択してください。');
+            return false;
+        }
+
+        // 送信ボタンを無効化（二重送信防止）
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 投稿中...';
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}プロフィール編集 - PhotoShare{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <!-- 戻るボタン -->
+            <div class="mb-3">
+                <a href="{{ url_for('users.profile', username=current_user.username) }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> プロフィールに戻る
+                </a>
+            </div>
+
+            <!-- プロフィール編集フォーム -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom">
+                    <h2 class="h5 mb-0">
+                        <i class="fas fa-user-edit text-primary"></i> プロフィール編集
+                    </h2>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" enctype="multipart/form-data">
+                        {{ form.hidden_tag() }}
+
+                        <!-- 現在のプロフィール画像 -->
+                        <div class="text-center mb-4">
+                            <img 
+                                src="{{ url_for('static', filename='uploads/profiles/' + current_user.profile_image) }}" 
+                                alt="{{ current_user.username }}"
+                                id="profile-preview"
+                                class="rounded-circle img-fluid mb-3"
+                                style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #667eea;"
+                                onerror="this.src='https://via.placeholder.com/150/667eea/ffffff?text={{ current_user.username[0]|upper }}'"
+                            >
+                            <div class="small text-muted">現在のプロフィール画像</div>
+                        </div>
+
+                        <!-- プロフィール画像アップロード -->
+                        <div class="mb-3">
+                            {{ form.profile_image.label(class="form-label fw-bold") }}
+                            {{ form.profile_image(class="form-control", id="profile-image-input") }}
+                            {% if form.profile_image.description %}
+                            <div class="form-text">{{ form.profile_image.description }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- ユーザー名 -->
+                        <div class="mb-3">
+                            {{ form.username.label(class="form-label fw-bold") }}
+                            {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else "")) }}
+                            {% if form.username.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.username.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- 自己紹介 -->
+                        <div class="mb-4">
+                            {{ form.bio.label(class="form-label fw-bold") }}
+                            {{ form.bio(class="form-control" + (" is-invalid" if form.bio.errors else "")) }}
+                            {% if form.bio.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.bio.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">
+                                <span id="bio-count">{{ form.bio.data|length if form.bio.data else 0 }}</span> / 500文字
+                            </div>
+                        </div>
+
+                        <!-- 送信ボタン -->
+                        <div class="d-grid gap-2">
+                            {{ form.submit(class="btn btn-primary btn-lg") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// プロフィール画像のプレビュー
+document.getElementById('profile-image-input').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById('profile-preview');
+            preview.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// 自己紹介の文字数カウント
+const bioTextarea = document.querySelector('textarea[name="bio"]');
+const bioCount = document.getElementById('bio-count');
+
+if (bioTextarea) {
+    bioTextarea.addEventListener('input', function() {
+        bioCount.textContent = this.value.length;
+    });
+}
+</script>
+{% endblock %}

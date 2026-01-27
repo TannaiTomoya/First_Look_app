@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}ホーム - PhotoShare{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body text-center p-5">
+                <h1 class="display-4 mb-4">
+                    <i class="fas fa-camera-retro text-primary"></i>
+                </h1>
+                <h2 class="h1 fw-bold mb-4">Hello World</h2>
+                <p class="lead text-muted mb-4">
+                    PhotoShareへようこそ！写真で繋がる、新しい世界へ
+                </p>
+                
+                {% if not current_user.is_authenticated %}
+                <div class="d-flex gap-3 justify-content-center">
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-user-plus"></i> 新規登録
+                    </a>
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary btn-lg">
+                        <i class="fas fa-sign-in-alt"></i> ログイン
+                    </a>
+                </div>
+                {% else %}
+                <div class="d-flex gap-3 justify-content-center">
+                    <a href="{{ url_for('posts.explore') }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-compass"></i> 探索する
+                    </a>
+                    <a href="{{ url_for('posts.create') }}" class="btn btn-outline-primary btn-lg">
+                        <i class="fas fa-plus-square"></i> 投稿する
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- 機能紹介 -->
+        <div class="row mt-5">
+            <div class="col-md-4 mb-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-images fa-3x text-primary mb-3"></i>
+                        <h4 class="h5 fw-bold">写真を共有</h4>
+                        <p class="text-muted">お気に入りの写真を投稿して、世界中の人と共有しましょう</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-heart fa-3x text-danger mb-3"></i>
+                        <h4 class="h5 fw-bold">いいね & コメント</h4>
+                        <p class="text-muted">お気に入りの投稿にいいねやコメントで反応しよう</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-users fa-3x text-success mb-3"></i>
+                        <h4 class="h5 fw-bold">フォロー</h4>
+                        <p class="text-muted">気になるユーザーをフォローして、最新の投稿をチェック</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

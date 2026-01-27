@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}新規登録 - PhotoShare{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-5">
+                <!-- ロゴとタイトル -->
+                <div class="text-center mb-4">
+                    <h1 class="display-5 mb-2">
+                        <i class="fas fa-camera-retro text-primary"></i>
+                    </h1>
+                    <h2 class="h3 fw-bold">PhotoShare</h2>
+                    <p class="text-muted">写真で繋がる、新しい世界へ</p>
+                </div>
+
+                <!-- 登録フォーム -->
+                <form method="POST" action="{{ url_for('auth.register') }}" novalidate>
+                    {{ form.hidden_tag() }}
+
+                    <!-- ユーザー名 -->
+                    <div class="mb-3">
+                        {{ form.username.label(class="form-label fw-semibold") }}
+                        {{ form.username(class="form-control form-control-lg" + (" is-invalid" if form.username.errors else ""), placeholder="ユーザー名を入力") }}
+                        {% if form.username.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.username.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            <i class="fas fa-info-circle"></i> 3〜50文字で入力してください
+                        </small>
+                    </div>
+
+                    <!-- メールアドレス -->
+                    <div class="mb-3">
+                        {{ form.email.label(class="form-label fw-semibold") }}
+                        {{ form.email(class="form-control form-control-lg" + (" is-invalid" if form.email.errors else ""), placeholder="メールアドレスを入力", type="email") }}
+                        {% if form.email.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.email.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- パスワード -->
+                    <div class="mb-3">
+                        {{ form.password.label(class="form-label fw-semibold") }}
+                        <div class="input-group">
+                            {{ form.password(class="form-control form-control-lg" + (" is-invalid" if form.password.errors else ""), placeholder="パスワードを入力", id="password") }}
+                            <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                <i class="fas fa-eye" id="toggleIcon"></i>
+                            </button>
+                            {% if form.password.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.password.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <small class="form-text text-muted">
+                            <i class="fas fa-info-circle"></i> 8文字以上で入力してください
+                        </small>
+                    </div>
+
+                    <!-- パスワード確認 -->
+                    <div class="mb-4">
+                        {{ form.confirm_password.label(class="form-label fw-semibold") }}
+                        <div class="input-group">
+                            {{ form.confirm_password(class="form-control form-control-lg" + (" is-invalid" if form.confirm_password.errors else ""), placeholder="パスワードを再入力", id="confirmPassword") }}
+                            <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword">
+                                <i class="fas fa-eye" id="toggleConfirmIcon"></i>
+                            </button>
+                            {% if form.confirm_password.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.confirm_password.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- パスワード強度インジケーター -->
+                    <div class="mb-3">
+                        <div class="progress" style="height: 5px;">
+                            <div class="progress-bar" id="passwordStrength" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <small class="text-muted" id="strengthText"></small>
+                    </div>
+
+                    <!-- 登録ボタン -->
+                    {{ form.submit(class="btn btn-primary btn-lg w-100 mb-3") }}
+
+                    <!-- 利用規約 -->
+                    <p class="text-center text-muted small mb-0">
+                        登録することで、PhotoShareの
+                        <a href="#" class="text-decoration-none">利用規約</a>と
+                        <a href="#" class="text-decoration-none">プライバシーポリシー</a>に同意したことになります。
+                    </p>
+                </form>
+            </div>
+        </div>
+
+        <!-- ログインリンク -->
+        <div class="card shadow-sm border-0 mt-3">
+            <div class="card-body text-center py-3">
+                <p class="mb-0">
+                    既にアカウントをお持ちですか？
+                    <a href="{{ url_for('auth.login') }}" class="text-decoration-none fw-semibold">ログイン</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // パスワード表示切り替え
+    document.getElementById('togglePassword').addEventListener('click', function() {
+        const password = document.getElementById('password');
+        const icon = document.getElementById('toggleIcon');
+        if (password.type === 'password') {
+            password.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            password.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    });
+
+    document.getElementById('toggleConfirmPassword').addEventListener('click', function() {
+        const confirmPassword = document.getElementById('confirmPassword');
+        const icon = document.getElementById('toggleConfirmIcon');
+        if (confirmPassword.type === 'password') {
+            confirmPassword.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            confirmPassword.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    });
+
+    // パスワード強度チェック
+    document.getElementById('password').addEventListener('input', function() {
+        const password = this.value;
+        const strengthBar = document.getElementById('passwordStrength');
+        const strengthText = document.getElementById('strengthText');
+        
+        let strength = 0;
+        let text = '';
+        let colorClass = '';
+
+        if (password.length >= 8) strength += 25;
+        if (password.match(/[a-z]+/)) strength += 25;
+        if (password.match(/[A-Z]+/)) strength += 25;
+        if (password.match(/[0-9]+/)) strength += 12.5;
+        if (password.match(/[$@#&!]+/)) strength += 12.5;
+
+        strengthBar.style.width = strength + '%';
+
+        if (strength === 0) {
+            text = '';
+            colorClass = '';
+        } else if (strength < 50) {
+            text = '弱いパスワード';
+            colorClass = 'bg-danger';
+        } else if (strength < 75) {
+            text = '普通のパスワード';
+            colorClass = 'bg-warning';
+        } else {
+            text = '強いパスワード';
+            colorClass = 'bg-success';
+        }
+
+        strengthBar.className = 'progress-bar ' + colorClass;
+        strengthText.textContent = text;
+    });
+</script>
+{% endblock %}

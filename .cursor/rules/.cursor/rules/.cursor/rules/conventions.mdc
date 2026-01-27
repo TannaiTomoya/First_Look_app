@@ -1,0 +1,108 @@
+---
+alwaysApply: true
+---
+
+# コーディング規約
+
+## 命名規則
+
+### 変数名・関数名
+- **形式**: snake_case
+- **例**: `user_id`, `get_user()`, `create_post()`
+
+### クラス名
+- **形式**: PascalCase
+- **例**: `User`, `PostForm`, `ImageHandler`
+
+### 定数名
+- **形式**: UPPER_SNAKE_CASE
+- **例**: `MAX_FILE_SIZE`, `DEFAULT_PAGE_SIZE`
+
+### ファイル名
+- **形式**: snake_case
+- **例**: `auth_forms.py`, `image_handler.py`
+
+## ファイル構成ルール
+
+### models/
+- **全モデルを `models.py` に定義**（単一ファイル構成）
+- Peeweeでは外部キー参照による循環インポートを避けるため、関連するモデルを同一ファイルに配置する
+- 参考実装: `.cursor/rules/database.mdc` を参照
+
+### routes/
+- 1機能 = 1ファイル
+- ファイル名: 機能名の小文字（例: `auth.py`, `posts.py`）
+
+### forms/
+- 機能ごとにフォームをまとめる
+- ファイル名: 機能名_forms.py（例: `auth_forms.py`, `post_forms.py`）
+
+### templates/
+- 機能ごとにサブディレクトリを作成
+- 例: `templates/auth/`, `templates/posts/`
+
+### static/
+- `css/`: CSSファイル
+- `js/`: JavaScriptファイル
+- `uploads/`: アップロード画像（posts/, profiles/）
+
+### utils/
+- ヘルパー関数・ユーティリティクラス
+
+## インポート順序
+
+1. **標準ライブラリ**
+2. **サードパーティライブラリ**
+3. **ローカルモジュール**
+
+各セクションは空行で区切る
+
+**例**:
+```python
+# 標準ライブラリ
+import os
+from datetime import datetime
+
+# サードパーティライブラリ
+from flask import Flask, render_template
+from peewee import *
+
+# ローカルモジュール
+from models import User, Post
+from utils.image_handler import resize_image
+```
+
+## コメント規則
+
+### docstring
+- 全ての関数とクラスにdocstringを記述
+- 簡潔に、処理内容を説明
+
+**例**:
+```python
+def create_post(user, image, caption):
+    """
+    投稿を作成する
+    
+    Args:
+        user: 投稿者
+        image: 画像ファイル
+        caption: キャプション
+    
+    Returns:
+        作成された投稿オブジェクト
+    """
+    pass
+```
+
+### インラインコメント
+- 複雑なロジックには日本語でコメント
+- TODOコメント: `# TODO: 説明`
+
+## その他の規約
+
+- **PEP 8に準拠**
+- **1行の最大文字数**: 120文字
+- **インデント**: スペース4つ
+- **文字列**: シングルクォートを優先
+- **トレーリングコンマ**: 複数行の最後の要素に付与

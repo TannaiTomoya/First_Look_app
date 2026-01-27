@@ -1,0 +1,164 @@
+---
+alwaysApply: true
+---
+
+# Python基本ルール
+
+## PEP 8準拠
+
+### インデント
+- **スペース4つ**を使用
+- タブは使用しない
+
+### 1行の最大文字数
+- **120文字**を推奨
+- 長い行は適切に分割
+
+### 空行の使い方
+- **トップレベルの関数・クラス間**: 2行
+- **クラス内のメソッド間**: 1行
+
+## 型ヒント
+
+### 基本的な使い方
+
+```python
+def get_user(user_id: int) -> User:
+    """ユーザーIDからユーザーを取得"""
+    return User.get_by_id(user_id)
+
+def create_post(user: User, caption: str) -> Post:
+    """投稿を作成"""
+    return Post.create(user=user, caption=caption)
+```
+
+### Optionalの使用
+
+```python
+from typing import Optional
+
+def find_user(username: str) -> Optional[User]:
+    """ユーザー名からユーザーを検索（見つからない場合はNone）"""
+    try:
+        return User.get(User.username == username)
+    except DoesNotExist:
+        return None
+```
+
+## エラーハンドリング
+
+### 具体的な例外をキャッチ
+
+```python
+# Good
+try:
+    user = User.get_by_id(user_id)
+except DoesNotExist:
+    flash('ユーザーが見つかりません', 'error')
+    return redirect(url_for('index'))
+
+# Bad
+try:
+    user = User.get_by_id(user_id)
+except Exception:  # 汎用的すぎる
+    pass
+```
+
+### エラーメッセージは明確に
+
+```python
+# Good
+raise ValueError(f'無効なユーザーID: {user_id}')
+
+# Bad
+raise ValueError('エラー')
+```
+
+## ベストプラクティス
+
+### リスト内包表記の活用
+
+```python
+# Good
+user_ids = [post.user.id for post in posts]
+
+# Bad
+user_ids = []
+for post in posts:
+    user_ids.append(post.user.id)
+```
+
+### withステートメントの使用
+
+```python
+# Good
+with open('file.txt', 'r') as f:
+    content = f.read()
+
+# Bad
+f = open('file.txt', 'r')
+content = f.read()
+f.close()
+```
+
+### f-stringの使用
+
+```python
+# Good
+message = f'{user.username}さんが投稿しました'
+
+# Bad
+message = user.username + 'さんが投稿しました'
+```
+
+### Noneとの比較
+
+```python
+# Good
+if value is None:
+    pass
+
+# Bad
+if value == None:
+    pass
+```
+
+## Flask特有のルール
+
+### Blueprintの使用
+- 機能ごとにBlueprintを作成
+- `routes/`ディレクトリに配置
+
+### 設定管理
+- `config.py`で設定を管理
+- `app.config`で読み込み
+
+### メッセージ表示
+- `flash()`を使用してユーザーにメッセージを表示
+- カテゴリ: `success`, `error`, `warning`, `info`
+
+### 認証
+- `@login_required`デコレータで保護
+- 投稿者のみが編集・削除できるよう制御
+
+### アプリケーション起動
+- `app.run()`では**port=8000**を指定
+- 例: `app.run(debug=True, port=8000)`
+
+## セキュリティ
+
+### パスワード
+- **必ずハッシュ化**して保存
+- `werkzeug.security`の`generate_password_hash`を使用
+
+### SQLインジェクション対策
+- **ORMを使用**（PeeWee）
+- 生のSQLは避ける
+
+### XSS対策
+- **Jinjaの自動エスケープ**を活用
+- ユーザー入力を直接HTMLに出力しない
+
+### CSRF保護
+- **Flask-WTF**を使用
+- 全てのフォームにCSRFトークンを含める

@@ -1,0 +1,319 @@
+---
+alwaysApply: false
+---
+
+# データベース設計
+
+## データベース概要
+- **DBMS**: SQLite（開発環境）
+- **ORM**: PeeWee
+- **文字コード**: UTF-8
+
+---
+
+## テーブル一覧
+
+| テーブル名 | 説明 |
+|-----------|------|
+| users | ユーザー情報 |
+| posts | 投稿情報 |
+| likes | いいね情報 |
+| comments | コメント情報 |
+| follows | フォロー関係 |
+
+---
+
+## ER図
+
+```
+users (1) ──< (N) posts
+  │                │
+  │                ├──< (N) likes (N) >── (1) users
+  │                │
+  │                ├──< (N) comments (N) >── (1) users
+  │                
+  │
+  └──< (N) follows (N) >── (1) users
+       (follower_id)          (followed_id)
+```
+
+---
+
+## テーブル詳細設計
+
+### 1. users テーブル
+
+#### 概要
+ユーザーアカウント情報を管理
+
+#### カラム定義
+
+| カラム名 | データ型 | 制約 | デフォルト値 | 説明 |
+|---------|---------|------|------------|------|
+| id | Integer | PRIMARY KEY | AUTO INCREMENT | ユーザーID |
+| username | String(50) | UNIQUE, NOT NULL | - | ユーザー名 |
+| email | String(120) | UNIQUE, NOT NULL | - | メールアドレス |
+| password_hash | String(255) | NOT NULL | - | パスワードハッシュ |
+| profile_image | String(255) | - | 'default.jpg' | プロフィール画像ファイル名 |
+| bio | Text | - | NULL | 自己紹介文 |
+| created_at | DateTime | NOT NULL | CURRENT_TIMESTAMP | 作成日時 |
+
+#### インデックス
+- `idx_username` ON username
+- `idx_email` ON email
+
+#### PeeWeeモデル実装例
+
+```python
+from peewee import *
+from flask_login import UserMixin
+from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
+
+# データベースインスタンス
+db = SqliteDatabase('instance/photoapp.db')
+
+class BaseModel(Model):
+    class Meta:
+        database = db
+
+class User(BaseModel, UserMixin):
+    id = AutoField(primary_key=True)
+    username = CharField(max_length=50, unique=True)
+    email = CharField(max_length=120, unique=True)
+    password_hash = CharField(max_length=255)
+    profile_image = CharField(max_length=255, default='default.jpg')
+    bio = TextField(null=True)
+    created_at = DateTimeField(default=datetime.now)
+    
+    class Meta:
+        table_name = 'users'
+        indexes = (
+            (('username',), True),
+            (('email',), True),
+        )
+    
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+    
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+    
+    def __repr__(self):
+        return f'<User {self.username}>'
+```
+
+---
+
+### 2. posts テーブル
+
+#### 概要
+写真投稿情報を管理
+
+#### カラム定義
+
+| カラム名 | データ型 | 制約 | デフォルト値 | 説明 |
+|---------|---------|------|------------|------|
+| id | Integer | PRIMARY KEY | AUTO INCREMENT | 投稿ID |
+| image_file | String(255) | NOT NULL | - | 画像ファイル名 |
+| caption | Text | - | NULL | キャプション（説明文） |
+| user_id | Integer | FOREIGN KEY, NOT NULL | - | 投稿者ID（users.id） |
+| created_at | DateTime | NOT NULL | CURRENT_TIMESTAMP | 投稿日時 |
+
+#### インデックス
+- `idx_user_id` ON user_id
+- `idx_created_at` ON created_at DESC
+
+#### 外部キー制約
+- `user_id` REFERENCES `users(id)` ON DELETE CASCADE
+
+#### PeeWeeモデル実装例
+
+```python
+class Post(BaseModel):
+    id = AutoField(primary_key=True)
+    image_file = CharField(max_length=255)
+    caption = TextField(null=True)
+    user = ForeignKeyField(User, backref='posts', on_delete='CASCADE')
+    created_at = DateTimeField(default=datetime.now)
+    
+    class Meta:
+        table_name = 'posts'
+        indexes = (
+            (('user',), False),
+            (('created_at',), False),
+        )
+    
+    def like_count(self):
+        return self.likes.count()
+    
+    def is_liked_by(self, user):
+        return Like.select().where(
+            (Like.post == self) & (Like.user == user)
+        ).exists()
+    
+    def __repr__(self):
+        return f'<Post {self.id} by {self.user.username}>'
+```
+
+---
+
+### 3. likes テーブル
+
+#### 概要
+投稿へのいいね情報を管理
+
+#### カラム定義
+
+| カラム名 | データ型 | 制約 | デフォルト値 | 説明 |
+|---------|---------|------|------------|------|
+| id | Integer | PRIMARY KEY | AUTO INCREMENT | いいねID |
+| user_id | Integer | FOREIGN KEY, NOT NULL | - | いいねしたユーザーID |
+| post_id | Integer | FOREIGN KEY, NOT NULL | - | いいねされた投稿ID |
+| created_at | DateTime | NOT NULL | CURRENT_TIMESTAMP | いいね日時 |
+
+#### ユニーク制約
+- UNIQUE(user_id, post_id) - 1ユーザーは1投稿に1いいねのみ
+
+#### インデックス
+- `idx_post_id` ON post_id
+- `idx_user_post` ON (user_id, post_id)
+
+#### 外部キー制約
+- `user_id` REFERENCES `users(id)` ON DELETE CASCADE
+- `post_id` REFERENCES `posts(id)` ON DELETE CASCADE
+
+#### PeeWeeモデル実装例
+
+```python
+class Like(BaseModel):
+    id = AutoField(primary_key=True)
+    user = ForeignKeyField(User, backref='likes', on_delete='CASCADE')
+    post = ForeignKeyField(Post, backref='likes', on_delete='CASCADE')
+    created_at = DateTimeField(default=datetime.now)
+    
+    class Meta:
+        table_name = 'likes'
+        indexes = (
+            (('user', 'post'), True),  # unique index
+            (('post',), False),
+        )
+    
+    def __repr__(self):
+        return f'<Like user={self.user.id} post={self.post.id}>'
+```
+
+---
+
+### 4. comments テーブル
+
+#### 概要
+投稿へのコメント情報を管理
+
+#### カラム定義
+
+| カラム名 | データ型 | 制約 | デフォルト値 | 説明 |
+|---------|---------|------|------------|------|
+| id | Integer | PRIMARY KEY | AUTO INCREMENT | コメントID |
+| content | Text | NOT NULL | - | コメント内容 |
+| user_id | Integer | FOREIGN KEY, NOT NULL | - | コメントしたユーザーID |
+| post_id | Integer | FOREIGN KEY, NOT NULL | - | コメント先の投稿ID |
+| created_at | DateTime | NOT NULL | CURRENT_TIMESTAMP | コメント日時 |
+
+#### インデックス
+- `idx_post_id` ON post_id
+- `idx_created_at` ON created_at ASC
+
+#### 外部キー制約
+- `user_id` REFERENCES `users(id)` ON DELETE CASCADE
+- `post_id` REFERENCES `posts(id)` ON DELETE CASCADE
+
+#### PeeWeeモデル実装例
+
+```python
+class Comment(BaseModel):
+    id = AutoField(primary_key=True)
+    content = TextField()
+    user = ForeignKeyField(User, backref='comments', on_delete='CASCADE')
+    post = ForeignKeyField(Post, backref='comments', on_delete='CASCADE')
+    created_at = DateTimeField(default=datetime.now)
+    
+    class Meta:
+        table_name = 'comments'
+        indexes = (
+            (('post',), False),
+            (('created_at',), False),
+        )
+    
+    def __repr__(self):
+        return f'<Comment {self.id} on Post {self.post.id}>'
+```
+
+---
+
+### 5. follows テーブル
+
+#### 概要
+ユーザー間のフォロー関係を管理
+
+#### カラム定義
+
+| カラム名 | データ型 | 制約 | デフォルト値 | 説明 |
+|---------|---------|------|------------|------|
+| id | Integer | PRIMARY KEY | AUTO INCREMENT | フォローID |
+| follower_id | Integer | FOREIGN KEY, NOT NULL | - | フォローする側のユーザーID |
+| followed_id | Integer | FOREIGN KEY, NOT NULL | - | フォローされる側のユーザーID |
+| created_at | DateTime | NOT NULL | CURRENT_TIMESTAMP | フォロー日時 |
+
+#### ユニーク制約
+- UNIQUE(follower_id, followed_id) - 重複フォロー防止
+
+#### インデックス
+- `idx_follower_id` ON follower_id
+- `idx_followed_id` ON followed_id
+
+#### 外部キー制約
+- `follower_id` REFERENCES `users(id)` ON DELETE CASCADE
+- `followed_id` REFERENCES `users(id)` ON DELETE CASCADE
+
+#### PeeWeeモデル実装例
+
+```python
+class Follow(BaseModel):
+    id = AutoField(primary_key=True)
+    follower = ForeignKeyField(User, backref='following', on_delete='CASCADE')
+    followed = ForeignKeyField(User, backref='followers', on_delete='CASCADE')
+    created_at = DateTimeField(default=datetime.now)
+    
+    class Meta:
+        table_name = 'follows'
+        indexes = (
+            (('follower', 'followed'), True),  # unique index
+            (('follower',), False),
+            (('followed',), False),
+        )
+    
+    def __repr__(self):
+        return f'<Follow {self.follower.username} -> {self.followed.username}>'
+```
+
+---
+
+## よく使うクエリ例
+
+### タイムライン取得（フォロー中のみ）
+
+```python
+# フォロー中のユーザーの投稿のみ取得
+following_users = Follow.select(Follow.followed).where(Follow.follower == current_user)
+posts = Post.select().where(
+    (Post.user.in_(following_users)) | (Post.user == current_user)
+).order_by(Post.created_at.desc())
+```
+
+### 探索タブ（全投稿）
+
+```python
+# 全ユーザーの投稿を取得
+posts = Post.select().order_by(Post.created_at.desc())
+```
