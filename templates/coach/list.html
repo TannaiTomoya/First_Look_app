@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}コーチ一覧 - FirstLook{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">コーチ一覧</h1>
+    
+    <!-- 検索フォーム -->
+    <form method="GET" action="{{ url_for('coach.list_coaches') }}" class="mb-4">
+        <div class="row">
+            <div class="col-md-6">
+                <input type="text" class="form-control" name="area" placeholder="エリアで検索" value="{{ area }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary">検索</button>
+            </div>
+        </div>
+    </form>
+    
+    <!-- コーチカード -->
+    <div class="row">
+        {% for coach_profile in coaches %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="row g-0">
+                    <!-- 画像列 -->
+                    <div class="col-md-4">
+                        <img src="{{ url_for('static', filename='uploads/profiles/' + (coach_profile.user_obj.profile_image or 'default.jpg')) }}" 
+                             class="img-fluid rounded-start h-100" 
+                             alt="{{ coach_profile.user_obj.username }}"
+                             style="object-fit: cover; min-height: 250px;">
+                    </div>
+                    
+                    <!-- 情報列 -->
+                    <div class="col-md-8">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ coach_profile.user_obj.username }}</h5>
+                            <p class="card-text">{{ coach_profile.bio[:100] if coach_profile.bio else '自己紹介がありません' }}...</p>
+                            <p class="text-muted mb-2">
+                                <i class="fas fa-map-marker-alt"></i> {{ coach_profile.area or 'エリア未設定' }}
+                            </p>
+                            <p class="text-muted mb-2">
+                                <i class="fas fa-yen-sign"></i> {{ coach_profile.price_range or '価格未設定' }}
+                            </p>
+                            {% if coach_profile.expertise %}
+                            <p class="text-muted mb-2">
+                                <i class="fas fa-star"></i> {{ coach_profile.expertise }}
+                            </p>
+                            {% endif %}
+                            <a href="{{ url_for('coach.detail', coach_id=coach_profile.id) }}" class="btn btn-primary btn-sm">
+                                詳細を見る
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    {% if not coaches %}
+    <p class="text-muted">該当するコーチが見つかりませんでした。</p>
+    {% endif %}
+</div>
+{% endblock %}

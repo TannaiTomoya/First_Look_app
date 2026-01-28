@@ -9,7 +9,7 @@ project.mdc準拠の画像処理機能:
 """
 import os
 import uuid
-from PIL import Image
+from PIL import Image, ImageOps
 
 # 許可する画像拡張子
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -22,6 +22,8 @@ PROFILE_IMAGE_SIZE = (200, 200)  # プロフィール画像のサイズ
 UPLOAD_FOLDER = 'static/uploads'
 POST_UPLOAD_FOLDER = 'static/uploads/posts'
 PROFILE_UPLOAD_FOLDER = 'static/uploads/profiles'
+BEFORE_AFTER_UPLOAD_FOLDER = 'static/uploads/before_after'
+CHAT_UPLOAD_FOLDER = 'static/uploads/chat'
 
 
 def allowed_file(filename):
@@ -103,11 +105,11 @@ def save_image(file, image_type='post', maintain_aspect=True):
 
     Args:
         file (FileStorage): アップロードされたファイル
-        image_type (str): 画像タイプ ('post' or 'profile')
+        image_type (str): 画像タイプ ('post', 'profile', 'before_after')
         maintain_aspect (bool): アスペクト比を維持するか
 
     Returns:
-        str: 保存されたファイル名（相対パス）
+        str: 保存されたファイル名（ファイル名のみ）
         None: エラーの場合
 
     Raises:
@@ -119,6 +121,7 @@ def save_image(file, image_type='post', maintain_aspect=True):
     # ディレクトリの作成
     os.makedirs(POST_UPLOAD_FOLDER, exist_ok=True)
     os.makedirs(PROFILE_UPLOAD_FOLDER, exist_ok=True)
+    os.makedirs(BEFORE_AFTER_UPLOAD_FOLDER, exist_ok=True)
 
     # ファイル名を生成
     filename = generate_unique_filename(file.filename)
@@ -128,6 +131,9 @@ def save_image(file, image_type='post', maintain_aspect=True):
         upload_folder = PROFILE_UPLOAD_FOLDER
         max_size = PROFILE_IMAGE_SIZE
         maintain_aspect = False  # プロフィール画像は正方形
+    elif image_type == 'before_after':
+        upload_folder = BEFORE_AFTER_UPLOAD_FOLDER
+        max_size = POST_IMAGE_SIZE
     else:
         upload_folder = POST_UPLOAD_FOLDER
         max_size = POST_IMAGE_SIZE
@@ -137,6 +143,13 @@ def save_image(file, image_type='post', maintain_aspect=True):
     try:
         # 画像を開く
         image = Image.open(file)
+        
+        # EXIF情報に基づいて画像を回転（スマホ写真の向き修正）
+        try:
+            image = ImageOps.exif_transpose(image)
+        except Exception:
+            # EXIF情報がない場合はそのまま
+            pass
 
         # RGBAをRGBに変換（JPEGで保存できるように）
         if image.mode in ('RGBA', 'LA', 'P'):
@@ -153,8 +166,8 @@ def save_image(file, image_type='post', maintain_aspect=True):
         # 画像を保存
         image.save(filepath, quality=95, optimize=True)
 
-        # 相対パスを返す（static/からの相対パス）
-        return os.path.join('uploads', image_type + 's', filename)
+        # ファイル名のみを返す（DBにはファイル名のみ保存）
+        return filename
 
     except Exception as e:
         # エラーが発生した場合、ファイルが存在すれば削除
@@ -255,3 +268,63 @@ def validate_image_size(file, max_size_mb=5):
         raise ValueError(f'ファイルサイズが大きすぎます（最大{max_size_mb}MB）')
 
     return True
+
+
+def save_chat_image(file):
+    """
+    チャット画像を保存
+
+    Args:
+        file (FileStorage): アップロードされたファイル
+
+    Returns:
+        str: 保存されたファイル名（ファイル名のみ）
+        None: エラーの場合
+
+    Raises:
+        ValueError: ファイルが許可されていない形式の場合
+    """
+    if not file or not allowed_file(file.filename):
+        raise ValueError('許可されていないファイル形式です')
+
+    # ディレクトリの作成
+    os.makedirs(CHAT_UPLOAD_FOLDER, exist_ok=True)
+
+    # ファイル名を生成
+    filename = generate_unique_filename(file.filename)
+    filepath = os.path.join(CHAT_UPLOAD_FOLDER, filename)
+
+    try:
+        # 画像を開く
+        image = Image.open(file)
+        
+        # EXIF情報に基づいて画像を回転（スマホ写真の向き修正）
+        try:
+            image = ImageOps.exif_transpose(image)
+        except Exception:
+            # EXIF情報がない場合はそのまま
+            pass
+
+        # RGBAをRGBに変換（JPEGで保存できるように）
+        if image.mode in ('RGBA', 'LA', 'P'):
+            # 透明背景を白に変換
+            background = Image.new('RGB', image.size, (255, 255, 255))
+            if image.mode == 'P':
+                image = image.convert('RGBA')
+            background.paste(image, mask=image.split()[-1] if image.mode in ('RGBA', 'LA') else None)
+            image = background
+
+        # チャット画像は800x800pxまで、アスペクト比維持
+        image = resize_image(image, POST_IMAGE_SIZE, maintain_aspect=True)
+
+        # 画像を保存
+        image.save(filepath, quality=95, optimize=True)
+
+        # ファイル名のみを返す
+        return filename
+
+    except Exception as e:
+        # エラーが発生した場合、ファイルが存在すれば削除
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        raise ValueError(f'画像の保存中にエラーが発生しました: {str(e)}')

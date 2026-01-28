@@ -1,10 +1,10 @@
 """
-データベースモデルパッケージ
+データベースモデルパッケージ - FirstLook
 """
 from peewee import SqliteDatabase, Model
 
 # データベースインスタンス
-db = SqliteDatabase('instance/photoapp.db')
+db = SqliteDatabase('instance/firstlook.db')
 
 class BaseModel(Model):
     """全モデルの基底クラス"""
@@ -13,22 +13,24 @@ class BaseModel(Model):
 
 # モデルのインポート（DeferredForeignKeyを使用しているため順序は自由）
 from models.user import User
-from models.post import Post
-from models.like import Like
-from models.comment import Comment
-from models.follow import Follow
-
-# ヘルパー関数のインポート
-from models.post import get_timeline_posts, get_explore_posts
+from models.coach import Coach, Menu
+from models.impression import DesiredFace, SkinCheck
+from models.booking import Booking
+from models.chat import Chat, Message
+from models.daily_check import DailyCheck, Photo, BeforeAfterPost
 
 __all__ = [
     'db',
     'BaseModel',
     'User',
-    'Post',
-    'Like',
-    'Comment',
-    'Follow',
-    'get_timeline_posts',
-    'get_explore_posts',
+    'Coach',
+    'Menu',
+    'DesiredFace',
+    'SkinCheck',
+    'Booking',
+    'Chat',
+    'Message',
+    'DailyCheck',
+    'Photo',
+    'BeforeAfterPost',
 ]

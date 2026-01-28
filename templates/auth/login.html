@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}ログイン - PhotoShare{% endblock %}
+{% block title %}ログイン - FirstLook{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
@@ -10,10 +10,10 @@
                 <!-- ロゴとタイトル -->
                 <div class="text-center mb-4">
                     <h1 class="display-5 mb-2">
-                        <i class="fas fa-camera-retro text-primary"></i>
+                        <i class="fas fa-user-tie text-primary"></i>
                     </h1>
-                    <h2 class="h3 fw-bold">PhotoShare</h2>
-                    <p class="text-muted">写真で繋がる、新しい世界へ</p>
+                    <h2 class="h3 fw-bold">FirstLook</h2>
+                    <p class="text-muted">失敗できない場面の前に、第一印象を整える</p>
                 </div>
 
                 <!-- ログインフォーム -->
@@ -79,19 +79,6 @@
                     アカウントをお持ちでないですか？
                     <a href="{{ url_for('auth.register') }}" class="text-decoration-none fw-semibold">新規登録</a>
                 </p>
-            </div>
-        </div>
-
-        <!-- アプリダウンロード（オプション） -->
-        <div class="text-center mt-4">
-            <p class="text-muted small mb-2">アプリをダウンロード</p>
-            <div class="d-flex justify-content-center gap-2">
-                <a href="#" class="text-decoration-none">
-                    <img src="https://via.placeholder.com/120x40/667eea/ffffff?text=App+Store" alt="App Store" class="img-fluid" style="max-height: 40px;">
-                </a>
-                <a href="#" class="text-decoration-none">
-                    <img src="https://via.placeholder.com/120x40/667eea/ffffff?text=Google+Play" alt="Google Play" class="img-fluid" style="max-height: 40px;">
-                </a>
             </div>
         </div>
     </div>

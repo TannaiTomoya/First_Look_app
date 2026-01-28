@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}コーチダッシュボード - FirstLook{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">コーチダッシュボード</h1>
+    
+    <!-- 統計情報 -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">メニュー数</h5>
+                    <p class="display-4">{{ menus.count() }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">予約数</h5>
+                    <p class="display-4">{{ booking_count }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">対応エリア</h5>
+                    <p class="h5">{{ coach_profile.area or '未設定' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- アクション -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <a href="{{ url_for('coach.edit_profile') }}" class="btn btn-primary me-2">
+                <i class="fas fa-edit"></i> プロフィール編集
+            </a>
+            <a href="{{ url_for('coach.create_menu') }}" class="btn btn-success">
+                <i class="fas fa-plus"></i> 新しいメニュー作成
+            </a>
+        </div>
+    </div>
+    
+    <!-- メニュー一覧 -->
+    <h2 class="mb-3">メニュー一覧</h2>
+    {% if menus %}
+    <div class="row">
+        {% for menu in menus %}
+        <div class="col-md-6 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ menu.title }}</h5>
+                    <p class="card-text">{{ menu.description[:100] }}...</p>
+                    <p class="text-muted">
+                        <strong>価格:</strong> ¥{{ "{:,}".format(menu.price) }}<br>
+                        <strong>所要時間:</strong> {{ menu.duration }}分
+                    </p>
+                    <a href="{{ url_for('coach.edit_menu', menu_id=menu.id) }}" class="btn btn-sm btn-outline-primary">
+                        編集
+                    </a>
+                    <form action="{{ url_for('coach.delete_menu', menu_id=menu.id) }}" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('本当に削除しますか？')">
+                            削除
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted">メニューがありません。新しいメニューを作成してください。</p>
+    {% endif %}
+</div>
+{% endblock %}

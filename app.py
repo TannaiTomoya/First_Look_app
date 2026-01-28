@@ -3,10 +3,20 @@ from flask_login import LoginManager, current_user
 from flask_wtf.csrf import CSRFProtect
 from models import db
 from models.user import User
+from typing import Optional
 
 # Flaskアプリケーションの初期化
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dev-secret-key-change-in-production'
+
+# Flask-Login 1.0.0 セキュリティ設定
+app.config['SESSION_COOKIE_SECURE'] = False  # 開発環境はHTTP、本番はTrue
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30分（秒単位）
+app.config['REMEMBER_COOKIE_SECURE'] = False  # 開発環境はHTTP、本番はTrue
+app.config['REMEMBER_COOKIE_HTTPONLY'] = True
+app.config['REMEMBER_COOKIE_DURATION'] = 2592000  # 30日（秒単位）
 
 # CSRF保護の初期化
 csrf = CSRFProtect(app)
@@ -17,12 +27,25 @@ login_manager.init_app(app)
 login_manager.login_view = 'auth.login'
 login_manager.login_message = 'ログインが必要です'
 login_manager.login_message_category = 'warning'
+# Flask-Login 1.0.0: セッション保護の強化
+login_manager.session_protection = 'strong'  # 'basic', 'strong', or None
 
 
 @login_manager.user_loader
-def load_user(user_id):
-    """ユーザーローダー"""
-    return User.select().where(User.id == int(user_id)).first()
+def load_user(user_id: str) -> Optional[User]:
+    """
+    ユーザーローダー（Flask-Login 1.0.0対応）
+    
+    Args:
+        user_id: ユーザーID（文字列）
+    
+    Returns:
+        User: ユーザーオブジェクト、見つからない場合はNone
+    """
+    try:
+        return User.select().where(User.id == int(user_id)).first()
+    except (ValueError, TypeError):
+        return None
 
 # データベース接続の初期化
 @app.before_request
@@ -47,61 +70,33 @@ def close_connection(exception):
 
 # Blueprintの登録
 from routes.auth import auth
-from routes.posts import posts
-from routes.api import api
 from routes.users import users
-from routes.search import search
+from routes.coach import coach
+from routes.client import client
+from routes.booking import booking
+from routes.chat import chat_bp
+from routes.before_after import before_after
 
 app.register_blueprint(auth)
-app.register_blueprint(posts)
-app.register_blueprint(api)
 app.register_blueprint(users)
-app.register_blueprint(search)
+app.register_blueprint(coach)
+app.register_blueprint(client)
+app.register_blueprint(booking)
+app.register_blueprint(chat_bp)
+app.register_blueprint(before_after)
 
 # ルート定義
 @app.route('/')
 def index():
     """
-    ホームフィード - フォロー中のユーザーと自分の投稿を表示
-    未ログインの場合はランディングページを表示
+    ホーム - FirstLookランディングページ
+    ログイン済みの場合は各ロールのダッシュボードへ誘導
     """
-    # 未ログインの場合はランディングページを表示
-    if not current_user.is_authenticated:
-        return render_template('index.html')
-    
-    # ログイン中の場合はホームフィードを表示
-    from models.post import get_timeline_posts
-    
-    # ページネーション設定
-    page = request.args.get('page', 1, type=int)
-    per_page = 12  # 1ページあたりの投稿数（グリッド表示用）
-    
-    # フォロー中のユーザーと自分の投稿を取得
-    timeline_posts = get_timeline_posts(current_user)
-    total_posts = timeline_posts.count()
-    
-    # ページネーション処理
-    posts_paginated = timeline_posts.paginate(page, per_page)
-    
-    # ページ情報
-    has_prev = page > 1
-    has_next = page * per_page < total_posts
-    prev_page = page - 1 if has_prev else None
-    next_page = page + 1 if has_next else None
-    
-    return render_template(
-        'posts/index.html',
-        posts=posts_paginated,
-        page=page,
-        has_prev=has_prev,
-        has_next=has_next,
-        prev_page=prev_page,
-        next_page=next_page
-    )
+    return render_template('index.html')
 
 if __name__ == '__main__':
     # データベース初期化確認
-    print("アプリケーション起動中...")
+    print("FirstLook アプリケーション起動中...")
     print(f"データベース: {db.database}")
     
     # 開発サーバー起動

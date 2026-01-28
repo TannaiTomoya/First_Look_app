@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """
-データベース管理スクリプト
+データベース管理スクリプト - FirstLook
 
-database.mdc仕様に基づいたデータベース初期化・管理ツール
+FirstLook要件定義書に基づいたデータベース初期化・管理ツール
 
 使用方法:
     python db_manager.py init      - データベース初期化
@@ -19,7 +19,10 @@ import sys
 from datetime import datetime
 
 # modelsパッケージから必要なものをインポート
-from models import db, User, Post, Like, Comment, Follow
+from models import (
+    db, User, Coach, Menu, DesiredFace, SkinCheck,
+    Booking, Chat, Message, DailyCheck, Photo, BeforeAfterPost
+)
 
 def init_db():
     """データベースを初期化（接続とテーブル作成）"""
@@ -31,7 +34,12 @@ def init_db():
     db.connect()
     
     print("  - テーブル作成")
-    db.create_tables([User, Post, Like, Comment, Follow], safe=True)
+    # 依存関係を考慮した順序でテーブル作成（FirstLook専用）
+    tables = [
+        User, Coach, Menu, DesiredFace, SkinCheck,
+        Booking, Chat, Message, DailyCheck, Photo, BeforeAfterPost
+    ]
+    db.create_tables(tables, safe=True)
     
     print("✓ データベース初期化完了")
     return db
@@ -53,7 +61,12 @@ def create_tables():
     db.connect()
     
     print("テーブルを作成中...")
-    db.create_tables([User, Post, Like, Comment, Follow], safe=True)
+    # 依存関係を考慮した順序でテーブル作成（FirstLook専用）
+    tables = [
+        User, Coach, Menu, DesiredFace, SkinCheck,
+        Booking, Chat, Message, DailyCheck, Photo, BeforeAfterPost
+    ]
+    db.create_tables(tables, safe=True)
     
     print("✓ テーブル作成完了")
     db.close()
@@ -64,7 +77,12 @@ def drop_tables():
     db.connect()
     
     print("テーブルを削除中...")
-    db.drop_tables([User, Post, Like, Comment, Follow], safe=True)
+    # 依存関係の逆順で削除（FirstLook専用）
+    tables = [
+        BeforeAfterPost, Photo, DailyCheck, Message, Chat,
+        Booking, SkinCheck, DesiredFace, Menu, Coach, User
+    ]
+    db.drop_tables(tables, safe=True)
     
     print("✓ テーブル削除完了")
     db.close()
@@ -87,10 +105,16 @@ def show_tables():
     
     print("\n=== レコード数 ===")
     print(f"  users: {User.select().count()}")
-    print(f"  posts: {Post.select().count()}")
-    print(f"  likes: {Like.select().count()}")
-    print(f"  comments: {Comment.select().count()}")
-    print(f"  follows: {Follow.select().count()}")
+    print(f"  coaches: {Coach.select().count()}")
+    print(f"  menus: {Menu.select().count()}")
+    print(f"  desired_faces: {DesiredFace.select().count()}")
+    print(f"  skin_checks: {SkinCheck.select().count()}")
+    print(f"  bookings: {Booking.select().count()}")
+    print(f"  chats: {Chat.select().count()}")
+    print(f"  messages: {Message.select().count()}")
+    print(f"  daily_checks: {DailyCheck.select().count()}")
+    print(f"  photos: {Photo.select().count()}")
+    print(f"  before_after_posts: {BeforeAfterPost.select().count()}")
     
     db.close()
 
@@ -118,37 +142,29 @@ def show_database_info():
     # レコード統計
     print("\n【データ統計】")
     user_count = User.select().count()
-    post_count = Post.select().count()
-    like_count = Like.select().count()
-    comment_count = Comment.select().count()
-    follow_count = Follow.select().count()
+    coach_count = Coach.select().count()
+    booking_count = Booking.select().count()
+    before_after_count = BeforeAfterPost.select().count()
     
     print(f"  ユーザー数: {user_count}")
-    print(f"  投稿数: {post_count}")
-    print(f"  いいね数: {like_count}")
-    print(f"  コメント数: {comment_count}")
-    print(f"  フォロー関係数: {follow_count}")
+    print(f"  コーチ数: {coach_count}")
+    print(f"  予約数: {booking_count}")
+    print(f"  Before/After投稿数: {before_after_count}")
     
     # アクティブユーザー情報
     if user_count > 0:
         print("\n【ユーザー一覧】")
         for user in User.select().order_by(User.created_at.desc()).limit(10):
-            user_posts = Post.select().where(Post.user == user).count()
-            user_likes = Like.select().where(Like.user == user).count()
-            print(f"  - {user.username} ({user.email})")
-            print(f"    投稿: {user_posts}件 | いいね: {user_likes}件")
+            role_label = "コーチ" if user.role == 'coach' else "クライアント"
+            print(f"  - {user.username} ({user.email}) - {role_label}")
     
-    # 最新投稿
-    if post_count > 0:
-        print("\n【最新投稿】")
-        for post in Post.select().order_by(Post.created_at.desc()).limit(5):
-            # DeferredForeignKeyのため、user_idから直接Userを取得
+    # 最新Before/After投稿
+    if before_after_count > 0:
+        print("\n【最新Before/After投稿】")
+        for post in BeforeAfterPost.select().order_by(BeforeAfterPost.created_at.desc()).limit(5):
             user = User.get_by_id(post.user)
-            post_likes = Like.select().where(Like.post == post).count()
-            post_comments = Comment.select().where(Comment.post == post).count()
             caption = post.caption[:30] + "..." if post.caption and len(post.caption) > 30 else post.caption
             print(f"  - @{user.username}: {caption or '(キャプションなし)'}")
-            print(f"    いいね: {post_likes} | コメント: {post_comments}")
     
     print("\n" + "="*50 + "\n")
     db.close()
@@ -161,75 +177,159 @@ def seed_data():
     
     # ユーザー作成
     from werkzeug.security import generate_password_hash
+    from datetime import datetime, timedelta
     
-    user1 = User.create(
-        username='tanaka',
-        email='tanaka@example.com',
+    # クライアント作成
+    client1 = User.create(
+        username='tanaka_client',
+        email='client1@example.com',
         password_hash=generate_password_hash('password123'),
         profile_image='default.jpg',
-        bio='こんにちは！写真が好きです。'
+        bio='来週大事な面接があります',
+        role='client'
     )
     
-    user2 = User.create(
-        username='suzuki',
-        email='suzuki@example.com',
+    client2 = User.create(
+        username='yamada_client',
+        email='client2@example.com',
         password_hash=generate_password_hash('password123'),
         profile_image='default.jpg',
-        bio='旅行の写真をシェアしています。'
+        bio='婚活パーティーに参加予定',
+        role='client'
     )
     
-    user3 = User.create(
-        username='sato',
-        email='sato@example.com',
+    # コーチ作成
+    coach1_user = User.create(
+        username='suzuki_coach',
+        email='coach1@example.com',
         password_hash=generate_password_hash('password123'),
         profile_image='default.jpg',
-        bio='カメラ初心者です！'
+        bio='第一印象コンサルタント',
+        role='coach'
     )
     
-    print(f"✓ {User.select().count()}人のユーザーを作成")
-    
-    # 投稿作成
-    post1 = Post.create(
-        user=user1,
-        image_file='photo1.jpg',
-        caption='今日の夕焼けが綺麗でした'
+    coach2_user = User.create(
+        username='sato_coach',
+        email='coach2@example.com',
+        password_hash=generate_password_hash('password123'),
+        profile_image='default.jpg',
+        bio='メイクアップアーティスト',
+        role='coach'
     )
     
-    post2 = Post.create(
-        user=user2,
-        image_file='photo2.jpg',
-        caption='京都旅行 #travel'
+    print(f"✓ {User.select().count()}人のユーザーを作成（Client: 2人, Coach: 2人）")
+    
+    # コーチプロフィール作成
+    coach1 = Coach.create(
+        user=coach1_user,
+        bio='10年以上のキャリアを持つ第一印象コンサルタント。ビジネスシーンに特化。',
+        expertise='眉整え、表情指導、ビジネスマナー',
+        area='東京都内',
+        price_range='¥5,000-¥15,000'
     )
     
-    post3 = Post.create(
-        user=user1,
-        image_file='photo3.jpg',
-        caption='朝のコーヒー☕'
+    coach2 = Coach.create(
+        user=coach2_user,
+        bio='メイクアップアーティストとして活動。婚活・デート向けが得意。',
+        expertise='メイク、スキンケア、ファッション',
+        area='大阪府内',
+        price_range='¥8,000-¥20,000'
     )
     
-    print(f"✓ {Post.select().count()}件の投稿を作成")
+    print(f"✓ {Coach.select().count()}人のコーチプロフィールを作成")
     
-    # いいね作成
-    Like.create(user=user2, post=post1)
-    Like.create(user=user3, post=post1)
-    Like.create(user=user1, post=post2)
+    # メニュー作成
+    menu1 = Menu.create(
+        coach=coach1,
+        title='面接対策プラン',
+        description='面接前の印象チェック。眉・表情・姿勢を改善します。',
+        price=8000,
+        duration=60
+    )
     
-    print(f"✓ {Like.select().count()}件のいいねを作成")
+    menu2 = Menu.create(
+        coach=coach1,
+        title='ビジネス商談プラン',
+        description='商談前の準備。清潔感と信頼感のある印象作り。',
+        price=12000,
+        duration=90
+    )
     
-    # コメント作成
-    Comment.create(user=user2, post=post1, content='素敵な写真ですね！')
-    Comment.create(user=user3, post=post1, content='いいね👍')
-    Comment.create(user=user1, post=post2, content='京都行きたい！')
+    menu3 = Menu.create(
+        coach=coach2,
+        title='婚活メイクプラン',
+        description='婚活パーティー向けのナチュラルメイク指導。',
+        price=10000,
+        duration=90
+    )
     
-    print(f"✓ {Comment.select().count()}件のコメントを作成")
+    menu4 = Menu.create(
+        coach=coach2,
+        title='デート前クイックプラン',
+        description='デート前30分の集中ケア。',
+        price=5000,
+        duration=30
+    )
     
-    # フォロー関係作成
-    Follow.create(follower=user1, followed=user2)
-    Follow.create(follower=user1, followed=user3)
-    Follow.create(follower=user2, followed=user1)
-    Follow.create(follower=user3, followed=user1)
+    print(f"✓ {Menu.select().count()}件のメニューを作成")
     
-    print(f"✓ {Follow.select().count()}件のフォロー関係を作成")
+    # 印象カード作成
+    faces = [
+        ('知的', 'images/impressions/intelligent_face.jpg', '知的で信頼できる印象'),
+        ('親しみやすい', 'images/impressions/friendly_face.jpg', '親しみやすく話しかけやすい印象'),
+        ('清潔感', 'images/impressions/clean_face.jpg', '清潔感があり好印象'),
+        ('自信', 'images/impressions/confident_face.jpg', '自信に満ちた印象'),
+        ('優しい', 'images/impressions/gentle_face.jpg', '優しく温かい印象'),
+    ]
+    
+    for label, image, desc in faces:
+        DesiredFace.create(label=label, image_url=image, description=desc)
+    
+    print(f"✓ {DesiredFace.select().count()}件の印象カードを作成")
+    
+    # 肌診断作成
+    SkinCheck.create(
+        user=client1,
+        skin_type='combination',
+        concerns='pores,tone'
+    )
+    
+    SkinCheck.create(
+        user=client2,
+        skin_type='dry',
+        concerns='dark_spots,acne'
+    )
+    
+    print(f"✓ {SkinCheck.select().count()}件の肌診断を作成")
+    
+    # 予約作成
+    booking1 = Booking.create(
+        client=client1,
+        menu=menu1,
+        booking_datetime=datetime.now() + timedelta(days=3),
+        status='confirmed',
+        notes='よろしくお願いします'
+    )
+    
+    # チャット自動生成
+    chat1 = Chat.create(booking=booking1)
+    
+    # メッセージ作成
+    Message.create(
+        chat=chat1,
+        sender=client1,
+        content='来週の面接に向けて、よろしくお願いします！'
+    )
+    
+    Message.create(
+        chat=chat1,
+        sender=coach1_user,
+        content='承知しました！しっかりサポートさせていただきます。'
+    )
+    
+    print(f"✓ {Booking.select().count()}件の予約を作成")
+    print(f"✓ {Chat.select().count()}件のチャットを作成")
+    print(f"✓ {Message.select().count()}件のメッセージを作成")
     
     print("\n✓ テストデータ投入完了")
     db.close()
@@ -247,7 +347,7 @@ def print_help():
     print()
     print("  create    - テーブル作成")
     print("              全てのテーブルを作成します")
-    print("              (users, posts, likes, comments, follows)")
+    print("              (users, posts)")
     print()
     print("  drop      - テーブル削除")
     print("              警告: 全てのデータが削除されます")
@@ -259,7 +359,7 @@ def print_help():
     print("              テーブル名とレコード数を表示します")
     print()
     print("  seed      - テストデータ投入")
-    print("              サンプルユーザー・投稿・いいね等を作成します")
+    print("              サンプルユーザー・投稿を作成します")
     print()
     print("  info      - データベース詳細情報")
     print("              データベースの詳細な統計情報を表示します")

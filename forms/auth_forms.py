@@ -2,7 +2,7 @@
 認証フォーム
 """
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, SelectField
 from wtforms.validators import (
     DataRequired,
     Email,
@@ -46,6 +46,12 @@ class RegisterForm(FlaskForm):
             DataRequired(message='確認用パスワードは必須です'),
             EqualTo('password', message='パスワードが一致しません')
         ]
+    )
+
+    role = SelectField(
+        'ロール',
+        choices=[('client', 'クライアント'), ('coach', 'コーチ')],
+        validators=[DataRequired(message='ロールを選択してください')]
     )
 
     submit = SubmitField('登録')

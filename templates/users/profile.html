@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ user.username }} - PhotoShare{% endblock %}
+{% block title %}{{ user.username }} - FirstLook{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -25,26 +25,13 @@
                         <div class="col-md-9">
                             <div class="d-flex align-items-center mb-3">
                                 <h2 class="h3 mb-0 me-3">{{ user.username }}</h2>
+                                <span class="badge bg-secondary">{{ '🎓 コーチ' if user.is_coach() else '👤 クライアント' }}</span>
                                 
                                 <!-- 自分のプロフィールの場合：編集ボタン -->
                                 {% if current_user.id == user.id %}
-                                <a href="{{ url_for('users.edit', username=user.username) }}" class="btn btn-outline-primary btn-sm">
+                                <a href="{{ url_for('users.edit', username=user.username) }}" class="btn btn-outline-primary btn-sm ms-auto">
                                     <i class="fas fa-edit"></i> プロフィール編集
                                 </a>
-                                {% else %}
-                                <!-- 他人のプロフィールの場合：フォローボタン -->
-                                <form method="POST" action="{% if is_following %}{{ url_for('users.unfollow', username=user.username) }}{% else %}{{ url_for('users.follow', username=user.username) }}{% endif %}" class="d-inline">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    {% if is_following %}
-                                    <button type="submit" class="btn btn-outline-secondary btn-sm">
-                                        <i class="fas fa-user-minus"></i> フォロー中
-                                    </button>
-                                    {% else %}
-                                    <button type="submit" class="btn btn-primary btn-sm">
-                                        <i class="fas fa-user-plus"></i> フォロー
-                                    </button>
-                                    {% endif %}
-                                </form>
                                 {% endif %}
                             </div>
 
@@ -52,20 +39,14 @@
                             <div class="d-flex gap-4 mb-3">
                                 <div>
                                     <span class="fw-bold">{{ post_count }}</span>
-                                    <span class="text-muted">投稿</span>
+                                    <span class="text-muted">Before/After投稿</span>
                                 </div>
+                                {% if user.is_client() %}
                                 <div>
-                                    <a href="{{ url_for('users.followers', username=user.username) }}" class="text-decoration-none text-dark">
-                                        <span class="fw-bold">{{ followers_count }}</span>
-                                        <span class="text-muted">フォロワー</span>
-                                    </a>
+                                    <span class="fw-bold">{{ booking_count }}</span>
+                                    <span class="text-muted">予約</span>
                                 </div>
-                                <div>
-                                    <a href="{{ url_for('users.following', username=user.username) }}" class="text-decoration-none text-dark">
-                                        <span class="fw-bold">{{ following_count }}</span>
-                                        <span class="text-muted">フォロー中</span>
-                                    </a>
-                                </div>
+                                {% endif %}
                             </div>
 
                             <!-- 自己紹介 -->
@@ -84,38 +65,50 @@
                 <ul class="nav nav-tabs border-0">
                     <li class="nav-item">
                         <a class="nav-link active" href="#">
-                            <i class="fas fa-th"></i> 投稿
+                            <i class="fas fa-images"></i> Before/After投稿
                         </a>
                     </li>
                 </ul>
             </div>
 
-            <!-- 投稿一覧 -->
-            {% if posts %}
+            <!-- Before/After投稿一覧 -->
+            {% if before_after_posts %}
             <div class="row g-3">
-                {% for post in posts %}
-                <div class="col-6 col-md-4">
-                    <a href="{{ url_for('posts.detail', post_id=post.id) }}" class="text-decoration-none">
-                        <div class="photo-grid-item">
-                            <img 
-                                src="{{ url_for('static', filename=post.image_file) }}" 
-                                alt="{{ post.caption[:50] if post.caption else 'Photo' }}"
-                                class="img-fluid w-100"
-                                style="aspect-ratio: 1/1; object-fit: cover;"
-                            >
-                            <!-- ホバー時のオーバーレイ -->
-                            <div class="photo-grid-overlay">
-                                <div class="d-flex justify-content-center align-items-center h-100 text-white">
-                                    <div class="me-3">
-                                        <i class="fas fa-heart"></i>
-                                        <span class="ms-1">{{ post.like_count() }}</span>
+                {% for post in before_after_posts %}
+                <div class="col-12 col-md-6 col-lg-4">
+                    <a href="{{ url_for('before_after.detail', post_id=post.id) }}" class="text-decoration-none">
+                        <div class="card h-100 photo-grid-item">
+                            <div class="row g-0">
+                                <div class="col-6">
+                                    <img 
+                                        src="{{ url_for('static', filename='uploads/before_after/' + post.before_photo.file_path) }}" 
+                                        alt="Before"
+                                        class="img-fluid w-100"
+                                        style="aspect-ratio: 1/1; object-fit: cover;"
+                                    >
+                                    <div class="position-absolute top-0 start-0 m-2">
+                                        <span class="badge bg-danger">Before</span>
                                     </div>
-                                    <div>
-                                        <i class="fas fa-comment"></i>
-                                        <span class="ms-1">{{ post.comments.count() }}</span>
+                                </div>
+                                <div class="col-6">
+                                    <img 
+                                        src="{{ url_for('static', filename='uploads/before_after/' + post.after_photo.file_path) }}" 
+                                        alt="After"
+                                        class="img-fluid w-100"
+                                        style="aspect-ratio: 1/1; object-fit: cover;"
+                                    >
+                                    <div class="position-absolute top-0 end-0 m-2">
+                                        <span class="badge bg-success">After</span>
                                     </div>
                                 </div>
                             </div>
+                            {% if post.caption %}
+                            <div class="card-body">
+                                <p class="card-text small text-muted mb-0">
+                                    {{ post.caption[:80] }}{% if post.caption|length > 80 %}...{% endif %}
+                                </p>
+                            </div>
+                            {% endif %}
                         </div>
                     </a>
                 </div>
@@ -124,12 +117,12 @@
             {% else %}
             <!-- 投稿がない場合 -->
             <div class="text-center py-5">
-                <i class="fas fa-camera fa-4x text-muted mb-3"></i>
-                <h3 class="h5 text-muted">まだ投稿がありません</h3>
+                <i class="fas fa-images fa-4x text-muted mb-3"></i>
+                <h3 class="h5 text-muted">まだBefore/After投稿がありません</h3>
                 {% if current_user.id == user.id %}
-                <p class="text-muted mb-4">最初の投稿をしてみましょう！</p>
-                <a href="{{ url_for('posts.create') }}" class="btn btn-primary">
-                    <i class="fas fa-plus-square"></i> 投稿を作成
+                <p class="text-muted mb-4">施術結果を記録してみましょう！</p>
+                <a href="{{ url_for('before_after.create') }}" class="btn btn-primary">
+                    <i class="fas fa-plus-square"></i> Before/After投稿を作成
                 </a>
                 {% endif %}
             </div>

@@ -43,21 +43,39 @@ python app.py
 ```
 FirstLook_app/
 ├── app.py                 # Flaskアプリケーションのエントリーポイント
-├── models.py              # データベースモデル（PeeWee）
-├── db_manager.py          # データベース管理スクリプト
-├── templates/             # HTMLテンプレート
-│   └── index.html        # ホーム画面
+├── models/               # データベースモデル（PeeWee）
+│   ├── user.py           # ユーザーモデル
+│   ├── coach.py          # コーチ・メニューモデル
+│   ├── impression.py     # 印象カード・肌診断モデル
+│   ├── booking.py        # 予約モデル
+│   ├── chat.py           # チャット・メッセージモデル
+│   └── daily_check.py    # 当日チェック・Before/After投稿モデル
+├── routes/               # ルート定義
+│   ├── auth.py           # 認証
+│   ├── client.py         # クライアント機能
+│   ├── coach.py          # コーチ管理
+│   ├── booking.py        # 予約
+│   ├── chat.py           # チャット
+│   ├── before_after.py   # Before/After投稿
+│   └── users.py          # ユーザープロフィール
+├── forms/                # WTForms
+├── templates/            # HTMLテンプレート
 ├── static/               # 静的ファイル
-│   └── css/
-│       └── style.css     # スタイルシート
-├── instance/              # データベースファイル
-│   └── photoapp.db       # SQLiteデータベース
-├── requirements.txt       # Python依存関係
-├── requirements.md        # 要件定義書
+│   └── uploads/          # アップロード画像
+│       ├── profiles/     # プロフィール画像
+│       ├── posts/        # 投稿画像
+│       └── before_after/ # Before/After画像
+├── utils/                # ユーティリティ
+│   └── image_handler.py  # 画像処理
+├── instance/             # データベースファイル
+│   └── firstlook.db      # SQLiteデータベース
+├── db_manager.py         # データベース管理スクリプト
+├── requirements.txt      # Python依存関係
+├── requirements.md       # 要件定義書
 ├── features.md           # 機能一覧
-├── routes.md             # ルーティング設計
-├── screens.md            # 画面一覧
-└── user_stories.md       # ユーザーストーリー
+├── routes.md            # ルーティング設計
+├── screens.md           # 画面一覧
+└── user_stories.md      # ユーザーストーリー
 ```
 
 ## MVP機能（最小実装）
@@ -93,15 +111,23 @@ python db_manager.py seed
 python db_manager.py info
 ```
 
-## データベーススキーマ
+## データベーススキーマ（FirstLook専用）
 
-- **users**: ユーザー情報
-- **posts**: 投稿情報
-- **likes**: いいね情報
-- **comments**: コメント情報
-- **follows**: フォロー関係
+### 11テーブル構成
 
-詳細は `.cursor/rules/database.mdc` を参照
+1. **users** - ユーザー情報（role, desired_face含む）
+2. **coaches** - コーチプロフィール
+3. **menus** - コーチのメニュー
+4. **desired_faces** - 印象カード
+5. **skin_checks** - 肌診断
+6. **bookings** - 予約情報
+7. **chats** - 1対1チャットルーム
+8. **messages** - チャットメッセージ
+9. **daily_checks** - 当日5分チェック
+10. **photos** - 画像ファイル管理（汎用）
+11. **before_after_posts** - Before/After投稿
+
+詳細は `DATABASE_REDESIGN_COMPLETE.md` を参照
 
 ## 技術スタック
 

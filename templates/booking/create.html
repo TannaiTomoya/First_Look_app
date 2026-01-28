@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}予約作成 - FirstLook{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">予約作成</h1>
+    
+    <!-- メニュー情報 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4>{{ menu.title }}</h4>
+            <p>{{ menu.description }}</p>
+            <p>
+                <strong>コーチ:</strong> {{ coach_user.username }}<br>
+                <strong>価格:</strong> ¥{{ "{:,}".format(menu.price) }}<br>
+                <strong>所要時間:</strong> {{ menu.duration }}分
+            </p>
+        </div>
+    </div>
+    
+    <!-- 予約フォーム -->
+    <form method="POST" action="{{ url_for('booking.create', menu_id=menu.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="mb-3">
+            <label for="booking_date" class="form-label">予約日</label>
+            <input type="date" class="form-control" id="booking_date" name="booking_date" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="booking_time" class="form-label">予約時刻</label>
+            <input type="time" class="form-control" id="booking_time" name="booking_time" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="notes" class="form-label">備考（任意）</label>
+            <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="特別な要望などがあればご記入ください"></textarea>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">予約を確定する</button>
+        <a href="{{ url_for('coach.detail', coach_id=coach_profile.id) }}" class="btn btn-secondary">戻る</a>
+    </form>
+</div>
+{% endblock %}

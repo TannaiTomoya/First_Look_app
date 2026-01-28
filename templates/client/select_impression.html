@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}印象カード選択 - FirstLook{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">なりたい印象を選択</h1>
+    <p class="text-muted mb-4">どのような印象になりたいですか？カードを選択してください。</p>
+    
+    <form method="POST" action="{{ url_for('client.select_impression') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="row">
+            {% for face in faces %}
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                    {% if face.image_url %}
+                    <img src="{{ url_for('static', filename=face.image_url) }}" 
+                         class="card-img-top" 
+                         alt="{{ face.label }}"
+                         style="height: 250px; object-fit: cover;">
+                    {% endif %}
+                    <div class="card-body text-center">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="desired_face_id" 
+                                   id="face{{ face.id }}" value="{{ face.id }}" required>
+                            <label class="form-check-label w-100" for="face{{ face.id }}">
+                                <h5 class="card-title mt-2">{{ face.label }}</h5>
+                                <p class="card-text text-muted small">{{ face.description or '' }}</p>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">選択を保存</button>
+            <a href="{{ url_for('client.dashboard') }}" class="btn btn-secondary">戻る</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

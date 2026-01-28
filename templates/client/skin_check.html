@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}肌診断 - FirstLook{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">肌診断</h1>
+    
+    {% if latest_check %}
+    <div class="alert alert-info mb-4">
+        <strong>最新の診断:</strong><br>
+        肌質: {{ latest_check.skin_type }}<br>
+        悩み: {{ latest_check.concerns }}<br>
+        記録日: {{ latest_check.created_at.strftime('%Y年%m月%d日') }}
+    </div>
+    {% endif %}
+    
+    <form method="POST" action="{{ url_for('client.skin_check') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="mb-4">
+            <label class="form-label"><strong>肌質を選択してください</strong></label>
+            <div class="row">
+                <!-- 乾燥肌 -->
+                <div class="col-md-3 mb-3">
+                    <div class="card h-100 shadow-sm">
+                        <img src="{{ url_for('static', filename='images/skin_types/dry_skin.jpg') }}" 
+                             class="card-img-top" 
+                             alt="乾燥肌"
+                             style="height: 200px; object-fit: cover;">
+                        <div class="card-body text-center">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="skin_type" 
+                                       id="dry" value="dry" required>
+                                <label class="form-check-label w-100" for="dry">
+                                    <h5 class="card-title">乾燥肌</h5>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 脂性肌 -->
+                <div class="col-md-3 mb-3">
+                    <div class="card h-100 shadow-sm">
+                        <img src="{{ url_for('static', filename='images/skin_types/oily_skin.jpg') }}" 
+                             class="card-img-top" 
+                             alt="脂性肌"
+                             style="height: 200px; object-fit: cover;">
+                        <div class="card-body text-center">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="skin_type" 
+                                       id="oily" value="oily">
+                                <label class="form-check-label w-100" for="oily">
+                                    <h5 class="card-title">脂性肌</h5>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 混合肌 -->
+                <div class="col-md-3 mb-3">
+                    <div class="card h-100 shadow-sm">
+                        <img src="{{ url_for('static', filename='images/skin_types/combination_skin.jpg') }}" 
+                             class="card-img-top" 
+                             alt="混合肌"
+                             style="height: 200px; object-fit: cover;">
+                        <div class="card-body text-center">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="skin_type" 
+                                       id="combination" value="combination">
+                                <label class="form-check-label w-100" for="combination">
+                                    <h5 class="card-title">混合肌</h5>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 普通肌 -->
+                <div class="col-md-3 mb-3">
+                    <div class="card h-100 shadow-sm">
+                        <img src="{{ url_for('static', filename='images/skin_types/normal_skin.jpg') }}" 
+                             class="card-img-top" 
+                             alt="普通肌"
+                             style="height: 200px; object-fit: cover;">
+                        <div class="card-body text-center">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="skin_type" 
+                                       id="normal" value="normal">
+                                <label class="form-check-label w-100" for="normal">
+                                    <h5 class="card-title">普通肌</h5>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-4">
+            <label class="form-label"><strong>現在の悩みを選択してください（複数選択可）</strong></label>
+            <div class="row">
+                <!-- 毛穴の開き -->
+                <div class="col-md-3 mb-3">
+                    <div class="card h-100 shadow-sm">
+                        <img src="{{ url_for('static', filename='images/skin_concerns/pores.jpg') }}" 
+                             class="card-img-top" 
+                             alt="毛穴の開き"
+                             style="height: 180px; object-fit: cover;">
+                        <div class="card-body text-center">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" 
+                                       name="concerns" id="pores" value="pores">
+                                <label class="form-check-label w-100" for="pores">
+                                    <h6 class="card-title">毛穴の開き</h6>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 黒ずみ -->
+                <div class="col-md-3 mb-3">
+                    <div class="card h-100 shadow-sm">
+                        <img src="{{ url_for('static', filename='images/skin_concerns/dark_spots.jpg') }}" 
+                             class="card-img-top" 
+                             alt="黒ずみ"
+                             style="height: 180px; object-fit: cover;">
+                        <div class="card-body text-center">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" 
+                                       name="concerns" id="dark_spots" value="dark_spots">
+                                <label class="form-check-label w-100" for="dark_spots">
+                                    <h6 class="card-title">黒ずみ</h6>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 肌トーンの不均一 -->
+                <div class="col-md-3 mb-3">
+                    <div class="card h-100 shadow-sm">
+                        <img src="{{ url_for('static', filename='images/skin_concerns/tone.jpg') }}" 
+                             class="card-img-top" 
+                             alt="肌トーンの不均一"
+                             style="height: 180px; object-fit: cover;">
+                        <div class="card-body text-center">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" 
+                                       name="concerns" id="tone" value="tone">
+                                <label class="form-check-label w-100" for="tone">
+                                    <h6 class="card-title">肌トーンの不均一</h6>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ニキビケア -->
+                <div class="col-md-3 mb-3">
+                    <div class="card h-100 shadow-sm">
+                        <img src="{{ url_for('static', filename='images/skin_concerns/acne.jpg') }}" 
+                             class="card-img-top" 
+                             alt="ニキビケア"
+                             style="height: 180px; object-fit: cover;">
+                        <div class="card-body text-center">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" 
+                                       name="concerns" id="acne" value="acne">
+                                <label class="form-check-label w-100" for="acne">
+                                    <h6 class="card-title">ニキビケア</h6>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">保存</button>
+        <a href="{{ url_for('client.dashboard') }}" class="btn btn-secondary">戻る</a>
+    </form>
+</div>
+{% endblock %}

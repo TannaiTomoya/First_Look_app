@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}メニュー編集 - FirstLook{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">メニュー編集</h1>
+    
+    <form method="POST" action="{{ url_for('coach.edit_menu', menu_id=menu.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="mb-3">
+            <label for="title" class="form-label">メニュータイトル</label>
+            <input type="text" class="form-control" id="title" name="title" value="{{ menu.title }}" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="description" class="form-label">メニュー内容</label>
+            <textarea class="form-control" id="description" name="description" rows="4">{{ menu.description or '' }}</textarea>
+        </div>
+        
+        <div class="mb-3">
+            <label for="price" class="form-label">価格（円）</label>
+            <input type="number" class="form-control" id="price" name="price" value="{{ menu.price }}" min="0" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="duration" class="form-label">所要時間（分）</label>
+            <input type="number" class="form-control" id="duration" name="duration" value="{{ menu.duration }}" min="0" required>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">保存</button>
+        <a href="{{ url_for('coach.dashboard') }}" class="btn btn-secondary">キャンセル</a>
+    </form>
+</div>
+{% endblock %}

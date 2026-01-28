@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}プロフィール編集 - FirstLook{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">プロフィール編集</h1>
+    
+    <form method="POST" action="{{ url_for('coach.edit_profile') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="mb-3">
+            <label for="user_bio" class="form-label">自己紹介（ユーザー用）</label>
+            <textarea class="form-control" id="user_bio" name="user_bio" rows="3">{{ current_user.bio or '' }}</textarea>
+        </div>
+        
+        <div class="mb-3">
+            <label for="bio" class="form-label">コーチプロフィール</label>
+            <textarea class="form-control" id="bio" name="bio" rows="5" required>{{ coach_profile.bio or '' }}</textarea>
+            <small class="form-text text-muted">あなたの経歴や実績を記載してください</small>
+        </div>
+        
+        <div class="mb-3">
+            <label for="expertise" class="form-label">得意分野</label>
+            <textarea class="form-control" id="expertise" name="expertise" rows="2">{{ coach_profile.expertise or '' }}</textarea>
+            <small class="form-text text-muted">例: 眉整え、表情指導、ビジネスマナー</small>
+        </div>
+        
+        <div class="mb-3">
+            <label for="area" class="form-label">対応エリア</label>
+            <input type="text" class="form-control" id="area" name="area" value="{{ coach_profile.area or '' }}">
+            <small class="form-text text-muted">例: 東京都内、大阪府内</small>
+        </div>
+        
+        <div class="mb-3">
+            <label for="price_range" class="form-label">価格帯</label>
+            <input type="text" class="form-control" id="price_range" name="price_range" value="{{ coach_profile.price_range or '' }}">
+            <small class="form-text text-muted">例: ¥5,000-¥15,000</small>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">保存</button>
+        <a href="{{ url_for('coach.dashboard') }}" class="btn btn-secondary">キャンセル</a>
+    </form>
+</div>
+{% endblock %}

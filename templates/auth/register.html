@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}新規登録 - PhotoShare{% endblock %}
+{% block title %}新規登録 - FirstLook{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
@@ -10,10 +10,10 @@
                 <!-- ロゴとタイトル -->
                 <div class="text-center mb-4">
                     <h1 class="display-5 mb-2">
-                        <i class="fas fa-camera-retro text-primary"></i>
+                        <i class="fas fa-user-tie text-primary"></i>
                     </h1>
-                    <h2 class="h3 fw-bold">PhotoShare</h2>
-                    <p class="text-muted">写真で繋がる、新しい世界へ</p>
+                    <h2 class="h3 fw-bold">FirstLook</h2>
+                    <p class="text-muted">失敗できない場面の前に、第一印象を整える</p>
                 </div>
 
                 <!-- 登録フォーム -->
@@ -71,7 +71,7 @@
                     </div>
 
                     <!-- パスワード確認 -->
-                    <div class="mb-4">
+                    <div class="mb-3">
                         {{ form.confirm_password.label(class="form-label fw-semibold") }}
                         <div class="input-group">
                             {{ form.confirm_password(class="form-control form-control-lg" + (" is-invalid" if form.confirm_password.errors else ""), placeholder="パスワードを再入力", id="confirmPassword") }}
@@ -96,12 +96,28 @@
                         <small class="text-muted" id="strengthText"></small>
                     </div>
 
+                    <!-- ロール選択 -->
+                    <div class="mb-4">
+                        {{ form.role.label(class="form-label fw-semibold") }}
+                        {{ form.role(class="form-select form-select-lg" + (" is-invalid" if form.role.errors else "")) }}
+                        {% if form.role.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.role.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            <i class="fas fa-info-circle"></i> クライアント: サービスを受ける / コーチ: サービスを提供する
+                        </small>
+                    </div>
+
                     <!-- 登録ボタン -->
                     {{ form.submit(class="btn btn-primary btn-lg w-100 mb-3") }}
 
                     <!-- 利用規約 -->
                     <p class="text-center text-muted small mb-0">
-                        登録することで、PhotoShareの
+                        登録することで、FirstLookの
                         <a href="#" class="text-decoration-none">利用規約</a>と
                         <a href="#" class="text-decoration-none">プライバシーポリシー</a>に同意したことになります。
                     </p>

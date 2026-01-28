@@ -1,0 +1,915 @@
+{% extends "base.html" %}
+
+{% block title %}当日5分チェック - FirstLook{% endblock %}
+
+{% block content %}
+<style>
+/* カスタムスタイル */
+.check-item-card {
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    min-height: 400px;
+    border: 2px solid #e9ecef;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+.check-item-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.check-item-card.active {
+    border: 2px solid #0d6efd;
+    background: linear-gradient(135deg, #e7f3ff 0%, #f0f8ff 100%);
+    box-shadow: 0 8px 25px rgba(13, 110, 253, 0.2);
+    min-height: 600px;
+}
+
+.check-item-card.completed {
+    border: 2px solid #198754;
+    background: linear-gradient(135deg, #d1f4e0 0%, #e8f8f0 100%);
+}
+
+.check-item-card.skipped {
+    opacity: 0.6;
+    border-color: #6c757d;
+}
+
+.check-icon {
+    font-size: 2.5rem;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+}
+
+.check-item-card.active .check-icon {
+    color: #0d6efd;
+    animation: bounce 1s ease-in-out;
+}
+
+.check-item-card.completed .check-icon {
+    color: #198754;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.timer-display {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #0d6efd;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.timer-display.warning {
+    color: #ffc107;
+    animation: pulse 1s infinite;
+}
+
+.timer-display.completed {
+    color: #198754;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.progress {
+    height: 8px;
+    border-radius: 10px;
+    overflow: hidden;
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    transition: width 0.5s ease;
+}
+
+.btn-group .btn {
+    font-size: 0.875rem;
+    padding: 0.5rem;
+}
+
+.skip-btn {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.btn-pulse {
+    animation: btnPulse 1.5s infinite;
+}
+
+@keyframes btnPulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.7);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 15px rgba(13, 110, 253, 0);
+    }
+}
+
+.toast-notification {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    min-width: 300px;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateX(-50%) translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
+}
+
+/* カメラプレビュー - 大きく表示 */
+.camera-preview {
+    margin-top: 1rem;
+    position: relative;
+    width: 100%;
+    min-height: 300px;
+}
+
+.camera-preview video {
+    width: 100%;
+    max-height: 400px;
+    border-radius: 15px;
+    object-fit: cover;
+    border: 3px solid #0d6efd;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+}
+
+/* アクティブカードのカメラはさらに大きく */
+.check-item-card.active .camera-preview video {
+    max-height: 500px;
+}
+
+/* カメラトグルボタンを絶対配置（右上） */
+.camera-toggle-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: none;
+    font-size: 0.75rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+}
+
+.camera-toggle-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    transform: scale(1.05);
+}
+
+/* ヒント表示 - カメラ内にオーバーレイ */
+.hint-overlay {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 450px;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.hint-overlay .hint-content {
+    background: linear-gradient(135deg, rgba(13, 110, 253, 0.95) 0%, rgba(13, 110, 253, 0.85) 100%);
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    border-left: 4px solid #ffc107;
+    text-align: left;
+}
+
+.hint-overlay .hint-content i {
+    margin-right: 0.5rem;
+    color: #ffc107;
+    font-size: 1.1rem;
+}
+
+@keyframes slideInHint {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+@keyframes slideOutHint {
+    from {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+}
+
+.hint-overlay.show {
+    animation: slideInHint 0.5s ease;
+}
+
+.hint-overlay.hide {
+    animation: slideOutHint 0.5s ease;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    .check-item-card {
+        min-height: 350px;
+    }
+    .check-item-card.active {
+        min-height: 650px;
+    }
+    .check-icon {
+        font-size: 2rem;
+    }
+    .timer-display {
+        font-size: 1.5rem;
+    }
+    .camera-preview video {
+        max-height: 300px;
+    }
+    .hint-overlay {
+        width: 95%;
+        bottom: 10px;
+    }
+    .hint-overlay .hint-content {
+        font-size: 0.85rem;
+        padding: 0.6rem 0.8rem;
+    }
+}
+</style>
+
+<div class="container-fluid mt-4 px-4">
+    <div class="text-center mb-4">
+        <h1 class="mb-2">当日5分チェック</h1>
+        <p class="text-muted">
+            <i class="fas fa-camera"></i> カメラで確認しながらチェックできます｜
+            <i class="fas fa-lightbulb"></i> タイマー中にヒントが表示されます
+        </p>
+    </div>
+    
+    <!-- チェック完了表示 -->
+    {% if check_saved %}
+    <div class="alert alert-success alert-dismissible fade show mb-4 shadow" role="alert">
+        <h4 class="alert-heading text-center">
+            <i class="fas fa-check-circle"></i> チェック完了！
+        </h4>
+        <hr>
+        <div class="row text-center mb-3">
+            <div class="col">
+                <i class="fas fa-angle-right fa-3x {% if today_check.eyebrow_ok == 1 %}text-success{% else %}text-muted{% endif %}"></i>
+                <p class="mb-0 mt-2"><small>眉</small></p>
+            </div>
+            <div class="col">
+                <i class="fas fa-eye fa-3x {% if today_check.eye_ok == 1 %}text-success{% else %}text-muted{% endif %}"></i>
+                <p class="mb-0 mt-2"><small>目</small></p>
+            </div>
+            <div class="col">
+                <i class="fas fa-head-side-mask fa-3x {% if today_check.nose_ok == 1 %}text-success{% else %}text-muted{% endif %}"></i>
+                <p class="mb-0 mt-2"><small>鼻</small></p>
+            </div>
+            <div class="col">
+                <i class="fas fa-tint fa-3x {% if today_check.skin_ok == 1 %}text-success{% else %}text-muted{% endif %}"></i>
+                <p class="mb-0 mt-2"><small>肌</small></p>
+            </div>
+            <div class="col">
+                <i class="fas fa-smile fa-3x {% if today_check.lip_ok == 1 %}text-success{% else %}text-muted{% endif %}"></i>
+                <p class="mb-0 mt-2"><small>口</small></p>
+            </div>
+        </div>
+        {% if today_check.notes %}
+        <div class="alert alert-light mb-0">
+            <strong><i class="fas fa-sticky-note"></i> メモ:</strong>
+            <p class="mb-0 mt-2">{{ today_check.notes }}</p>
+        </div>
+        {% endif %}
+        <hr>
+        <div class="text-center">
+            <a href="{{ url_for('client.dashboard') }}" class="btn btn-success btn-lg">
+                <i class="fas fa-home"></i> ダッシュボードへ戻る
+            </a>
+        </div>
+    </div>
+    {% endif %}
+    
+    <form method="POST" action="{{ url_for('client.daily_check') }}" id="checkForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        
+        <!-- チェック項目（横並び） -->
+        <div class="row g-3 mb-4">
+            <!-- 1. 眉 -->
+            <div class="col-lg col-md-4 col-sm-6">
+                <div class="card check-item-card h-100" id="eyebrow_card">
+                    <div class="card-body text-center p-3">
+                        <div class="check-icon">
+                            <i class="fas fa-angle-right"></i>
+                        </div>
+                        <h5 class="card-title mb-1">眉</h5>
+                        <small class="text-muted d-block mb-2">ボサボサ?</small>
+                        
+                        <div class="progress mb-2">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" 
+                                 id="eyebrow_progress" style="width: 100%"></div>
+                        </div>
+                        
+                        <div id="eyebrow_timer" class="timer-display mb-2">
+                            <i class="fas fa-clock"></i> 60
+                        </div>
+                        
+                        <!-- カメラプレビュー -->
+                        <div class="camera-preview" id="eyebrow_camera" style="display: none;">
+                            <video id="eyebrow_video" autoplay playsinline muted></video>
+                            
+                            <!-- カメラON/OFFボタン（右上に配置） -->
+                            <button type="button" class="camera-toggle-btn" 
+                                    onclick="toggleCamera('eyebrow')">
+                                <i class="fas fa-camera-slash"></i> OFF
+                            </button>
+                            
+                            <!-- ヒント表示（カメラ画面内にオーバーレイ） -->
+                            <div class="hint-overlay" id="eyebrow_hint" style="display: none;">
+                                <div class="hint-content">
+                                    <i class="fas fa-lightbulb"></i>
+                                    <span id="eyebrow_hint_text"></span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center mb-2">
+                            <input type="radio" class="btn-check" name="eyebrow_ok" id="eyebrow_ok" value="1"
+                                   {% if today_check and today_check.eyebrow_ok == 1 %}checked{% endif %}>
+                            <label class="btn btn-outline-success w-100" for="eyebrow_ok">
+                                <i class="fas fa-check"></i> OK
+                            </label>
+                        </div>
+                        
+                        <button type="button" class="btn btn-sm btn-outline-secondary skip-btn" 
+                                onclick="skipTimer('eyebrow')" id="eyebrow_skip">
+                            <i class="fas fa-forward"></i> スキップ
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 2. 目 -->
+            <div class="col-lg col-md-4 col-sm-6">
+                <div class="card check-item-card h-100" id="eye_card">
+                    <div class="card-body text-center p-3">
+                        <div class="check-icon">
+                            <i class="fas fa-eye"></i>
+                        </div>
+                        <h5 class="card-title mb-1">目</h5>
+                        <small class="text-muted d-block mb-2">クマは?</small>
+                        
+                        <div class="progress mb-2">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" 
+                                 id="eye_progress" style="width: 100%"></div>
+                        </div>
+                        
+                        <div id="eye_timer" class="timer-display mb-2">
+                            <i class="fas fa-clock"></i> 60
+                        </div>
+                        
+                        <div class="camera-preview" id="eye_camera" style="display: none;">
+                            <video id="eye_video" autoplay playsinline muted></video>
+                            
+                            <button type="button" class="camera-toggle-btn" 
+                                    onclick="toggleCamera('eye')">
+                                <i class="fas fa-camera-slash"></i> OFF
+                            </button>
+                            
+                            <div class="hint-overlay" id="eye_hint" style="display: none;">
+                                <div class="hint-content">
+                                    <i class="fas fa-lightbulb"></i>
+                                    <span id="eye_hint_text"></span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center mb-2">
+                            <input type="radio" class="btn-check" name="eye_ok" id="eye_ok" value="1"
+                                   {% if today_check and today_check.eye_ok == 1 %}checked{% endif %}>
+                            <label class="btn btn-outline-success w-100" for="eye_ok">
+                                <i class="fas fa-check"></i> OK
+                            </label>
+                        </div>
+                        
+                        <button type="button" class="btn btn-sm btn-outline-secondary skip-btn" 
+                                onclick="skipTimer('eye')" id="eye_skip">
+                            <i class="fas fa-forward"></i> スキップ
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 3. 鼻 -->
+            <div class="col-lg col-md-4 col-sm-6">
+                <div class="card check-item-card h-100" id="nose_card">
+                    <div class="card-body text-center p-3">
+                        <div class="check-icon">
+                            <i class="fas fa-head-side-mask"></i>
+                        </div>
+                        <h5 class="card-title mb-1">鼻</h5>
+                        <small class="text-muted d-block mb-2">鼻毛は?</small>
+                        
+                        <div class="progress mb-2">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" 
+                                 id="nose_progress" style="width: 100%"></div>
+                        </div>
+                        
+                        <div id="nose_timer" class="timer-display mb-2">
+                            <i class="fas fa-clock"></i> 60
+                        </div>
+                        
+                        <div class="camera-preview" id="nose_camera" style="display: none;">
+                            <video id="nose_video" autoplay playsinline muted></video>
+                            
+                            <button type="button" class="camera-toggle-btn" 
+                                    onclick="toggleCamera('nose')">
+                                <i class="fas fa-camera-slash"></i> OFF
+                            </button>
+                            
+                            <div class="hint-overlay" id="nose_hint" style="display: none;">
+                                <div class="hint-content">
+                                    <i class="fas fa-lightbulb"></i>
+                                    <span id="nose_hint_text"></span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center mb-2">
+                            <input type="radio" class="btn-check" name="nose_ok" id="nose_ok" value="1"
+                                   {% if today_check and today_check.nose_ok == 1 %}checked{% endif %}>
+                            <label class="btn btn-outline-success w-100" for="nose_ok">
+                                <i class="fas fa-check"></i> OK
+                            </label>
+                        </div>
+                        
+                        <button type="button" class="btn btn-sm btn-outline-secondary skip-btn" 
+                                onclick="skipTimer('nose')" id="nose_skip">
+                            <i class="fas fa-forward"></i> スキップ
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 4. 肌 -->
+            <div class="col-lg col-md-4 col-sm-6">
+                <div class="card check-item-card h-100" id="skin_card">
+                    <div class="card-body text-center p-3">
+                        <div class="check-icon">
+                            <i class="fas fa-tint"></i>
+                        </div>
+                        <h5 class="card-title mb-1">肌</h5>
+                        <small class="text-muted d-block mb-2">乾燥?</small>
+                        
+                        <div class="progress mb-2">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" 
+                                 id="skin_progress" style="width: 100%"></div>
+                        </div>
+                        
+                        <div id="skin_timer" class="timer-display mb-2">
+                            <i class="fas fa-clock"></i> 60
+                        </div>
+                        
+                        <div class="camera-preview" id="skin_camera" style="display: none;">
+                            <video id="skin_video" autoplay playsinline muted></video>
+                            
+                            <button type="button" class="camera-toggle-btn" 
+                                    onclick="toggleCamera('skin')">
+                                <i class="fas fa-camera-slash"></i> OFF
+                            </button>
+                            
+                            <div class="hint-overlay" id="skin_hint" style="display: none;">
+                                <div class="hint-content">
+                                    <i class="fas fa-lightbulb"></i>
+                                    <span id="skin_hint_text"></span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center mb-2">
+                            <input type="radio" class="btn-check" name="skin_ok" id="skin_ok" value="1"
+                                   {% if today_check and today_check.skin_ok == 1 %}checked{% endif %}>
+                            <label class="btn btn-outline-success w-100" for="skin_ok">
+                                <i class="fas fa-check"></i> OK
+                            </label>
+                        </div>
+                        
+                        <button type="button" class="btn btn-sm btn-outline-secondary skip-btn" 
+                                onclick="skipTimer('skin')" id="skin_skip">
+                            <i class="fas fa-forward"></i> スキップ
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 5. 口 -->
+            <div class="col-lg col-md-4 col-sm-6">
+                <div class="card check-item-card h-100" id="lip_card">
+                    <div class="card-body text-center p-3">
+                        <div class="check-icon">
+                            <i class="fas fa-smile"></i>
+                        </div>
+                        <h5 class="card-title mb-1">口</h5>
+                        <small class="text-muted d-block mb-2">唇は?</small>
+                        
+                        <div class="progress mb-2">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" 
+                                 id="lip_progress" style="width: 100%"></div>
+                        </div>
+                        
+                        <div id="lip_timer" class="timer-display mb-2">
+                            <i class="fas fa-clock"></i> 60
+                        </div>
+                        
+                        <div class="camera-preview" id="lip_camera" style="display: none;">
+                            <video id="lip_video" autoplay playsinline muted></video>
+                            
+                            <button type="button" class="camera-toggle-btn" 
+                                    onclick="toggleCamera('lip')">
+                                <i class="fas fa-camera-slash"></i> OFF
+                            </button>
+                            
+                            <div class="hint-overlay" id="lip_hint" style="display: none;">
+                                <div class="hint-content">
+                                    <i class="fas fa-lightbulb"></i>
+                                    <span id="lip_hint_text"></span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center mb-2">
+                            <input type="radio" class="btn-check" name="lip_ok" id="lip_ok" value="1"
+                                   {% if today_check and today_check.lip_ok == 1 %}checked{% endif %}>
+                            <label class="btn btn-outline-success w-100" for="lip_ok">
+                                <i class="fas fa-check"></i> OK
+                            </label>
+                        </div>
+                        
+                        <button type="button" class="btn btn-sm btn-outline-secondary skip-btn" 
+                                onclick="skipTimer('lip')" id="lip_skip">
+                            <i class="fas fa-forward"></i> スキップ
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- メモ欄 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <label for="notes" class="form-label">
+                            <i class="fas fa-sticky-note"></i> メモ（任意）
+                        </label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                  placeholder="気になったことや改善したい点をメモしましょう">{% if today_check %}{{ today_check.notes or '' }}{% endif %}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 保存ボタン -->
+        <div class="text-center mb-4">
+            <button type="submit" class="btn btn-primary btn-lg" id="saveButton">
+                <i class="fas fa-save"></i> チェック結果を保存
+            </button>
+            <a href="{{ url_for('client.dashboard') }}" class="btn btn-secondary btn-lg">
+                <i class="fas fa-arrow-left"></i> 戻る
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+// タイマー管理オブジェクト
+const timers = {
+    eyebrow: { seconds: 60, interval: null, started: false, hintsShown: { 45: false, 30: false, 15: false } },
+    eye: { seconds: 60, interval: null, started: false, hintsShown: { 45: false, 30: false, 15: false } },
+    nose: { seconds: 60, interval: null, started: false, hintsShown: { 45: false, 30: false, 15: false } },
+    skin: { seconds: 60, interval: null, started: false, hintsShown: { 45: false, 30: false, 15: false } },
+    lip: { seconds: 60, interval: null, started: false, hintsShown: { 45: false, 30: false, 15: false } }
+};
+
+// カメラ管理オブジェクト
+const cameras = {
+    eyebrow: { stream: null, enabled: false },
+    eye: { stream: null, enabled: false },
+    nose: { stream: null, enabled: false },
+    skin: { stream: null, enabled: false },
+    lip: { stream: null, enabled: false }
+};
+
+// ヒントデータ
+const hints = {
+    eyebrow: {
+        45: '眉毛の形と太さを確認しましょう。左右対称かチェック！',
+        30: '眉間や眉頭に余分な毛がないか確認！',
+        15: '眉尻まで整っているか最終チェック！'
+    },
+    eye: {
+        45: '目の下のクマや目元の疲れをチェックしましょう',
+        30: 'まつ毛の状態と目やにがないか確認！',
+        15: '目元全体の印象を最終確認！'
+    },
+    nose: {
+        45: '鼻毛が出ていないか正面から確認しましょう',
+        30: '左右の鼻の穴も忘れずにチェック！',
+        15: '斜めからも確認して最終チェック！'
+    },
+    skin: {
+        45: '肌の乾燥具合と全体の状態を確認しましょう',
+        30: 'テカリや毛穴の状態もチェック！',
+        15: '額、頬、顎のTゾーンを最終確認！'
+    },
+    lip: {
+        45: '唇の乾燥と縦ジワを確認しましょう',
+        30: '口角の状態と唇の色をチェック！',
+        15: '保湿が必要か最終判断！'
+    }
+};
+
+// 項目の順序
+const itemOrder = ['eyebrow', 'eye', 'nose', 'skin', 'lip'];
+
+// 項目名マッピング
+const itemNames = {
+    'eyebrow': '眉',
+    'eye': '目',
+    'nose': '鼻',
+    'skin': '肌',
+    'lip': '口'
+};
+
+// カメラ起動関数
+async function startCamera(itemName) {
+    const videoElement = document.getElementById(`${itemName}_video`);
+    const cameraDiv = document.getElementById(`${itemName}_camera`);
+    
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                facingMode: 'user'
+            }
+        });
+        
+        videoElement.srcObject = stream;
+        cameras[itemName].stream = stream;
+        cameras[itemName].enabled = true;
+        cameraDiv.style.display = 'block';
+        
+        console.log(`${itemName} カメラ起動成功`);
+    } catch (error) {
+        console.error('カメラアクセスエラー:', error);
+        showNotification('カメラへのアクセスが拒否されました。設定を確認してください。', 'warning');
+    }
+}
+
+// カメラ停止関数
+function stopCamera(itemName) {
+    const camera = cameras[itemName];
+    const videoElement = document.getElementById(`${itemName}_video`);
+    const cameraDiv = document.getElementById(`${itemName}_camera`);
+    
+    if (camera.stream) {
+        camera.stream.getTracks().forEach(track => track.stop());
+        videoElement.srcObject = null;
+        camera.stream = null;
+        camera.enabled = false;
+        cameraDiv.style.display = 'none';
+        console.log(`${itemName} カメラ停止`);
+    }
+}
+
+// カメラON/OFF切り替え
+function toggleCamera(itemName) {
+    if (cameras[itemName].enabled) {
+        stopCamera(itemName);
+    } else {
+        startCamera(itemName);
+    }
+}
+
+// ヒント表示関数
+function showHint(itemName, seconds) {
+    const hintDiv = document.getElementById(`${itemName}_hint`);
+    const hintText = document.getElementById(`${itemName}_hint_text`);
+    
+    if (hints[itemName] && hints[itemName][seconds]) {
+        hintText.textContent = hints[itemName][seconds];
+        hintDiv.style.display = 'block';
+        hintDiv.classList.add('show');
+        hintDiv.classList.remove('hide');
+        
+        // 5秒後に自動で非表示
+        setTimeout(() => {
+            hintDiv.classList.add('hide');
+            hintDiv.classList.remove('show');
+            setTimeout(() => {
+                hintDiv.style.display = 'none';
+            }, 500);
+        }, 5000);
+    }
+}
+
+// ヒント非表示関数
+function hideHint(itemName) {
+    const hintDiv = document.getElementById(`${itemName}_hint`);
+    hintDiv.style.display = 'none';
+}
+
+// タイマー開始関数
+function startTimer(itemName) {
+    const timer = timers[itemName];
+    
+    if (timer.started) return;
+    
+    timer.started = true;
+    const displayElement = document.getElementById(`${itemName}_timer`);
+    const progressBar = document.getElementById(`${itemName}_progress`);
+    const card = document.getElementById(`${itemName}_card`);
+    const totalSeconds = 60;
+    
+    card.classList.add('active');
+    
+    // カメラを起動
+    startCamera(itemName);
+    
+    timer.interval = setInterval(() => {
+        timer.seconds--;
+        
+        const percentage = (timer.seconds / totalSeconds) * 100;
+        progressBar.style.width = percentage + '%';
+        
+        // ヒント表示（範囲チェック + フラグ管理で確実に表示）
+        if (timer.seconds <= 45 && timer.seconds > 43 && !timer.hintsShown[45]) {
+            console.log(`💡 ${itemNames[itemName]} - ヒント1表示: 45秒`);
+            showHint(itemName, 45);
+            timer.hintsShown[45] = true;
+        }
+        if (timer.seconds <= 30 && timer.seconds > 28 && !timer.hintsShown[30]) {
+            console.log(`💡 ${itemNames[itemName]} - ヒント2表示: 30秒`);
+            showHint(itemName, 30);
+            timer.hintsShown[30] = true;
+        }
+        if (timer.seconds <= 15 && timer.seconds > 13 && !timer.hintsShown[15]) {
+            console.log(`💡 ${itemNames[itemName]} - ヒント3表示: 15秒`);
+            showHint(itemName, 15);
+            timer.hintsShown[15] = true;
+        }
+        
+        displayElement.innerHTML = `<i class="fas fa-hourglass-half"></i> ${timer.seconds}`;
+        
+        if (timer.seconds > 10) {
+            displayElement.className = 'timer-display';
+            progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-info';
+        } else if (timer.seconds > 0) {
+            displayElement.className = 'timer-display warning';
+            progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-warning';
+        } else {
+            clearInterval(timer.interval);
+            displayElement.innerHTML = '<i class="fas fa-check-circle"></i> 完了';
+            displayElement.className = 'timer-display completed';
+            progressBar.className = 'progress-bar bg-success';
+            progressBar.style.width = '100%';
+            
+            card.classList.remove('active');
+            card.classList.add('completed');
+            
+            // カメラを停止
+            stopCamera(itemName);
+            hideHint(itemName);
+            
+            // 次の項目へ移動
+            moveToNextItem(itemName);
+        }
+    }, 1000);
+}
+
+// 次の項目へ移動
+function moveToNextItem(currentItem) {
+    const currentIndex = itemOrder.indexOf(currentItem);
+    
+    if (currentIndex < itemOrder.length - 1) {
+        const nextItem = itemOrder[currentIndex + 1];
+        const nextCard = document.getElementById(`${nextItem}_card`);
+        
+        nextCard.classList.add('active');
+        nextCard.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+        });
+        
+        showNotification(`次は「${itemNames[nextItem]}」をチェック！`, 'info');
+    } else {
+        showNotification('全てのチェックが完了しました！ 🎉', 'success');
+        document.getElementById('saveButton').classList.add('btn-pulse');
+    }
+}
+
+// スキップ機能
+function skipTimer(itemName) {
+    const timer = timers[itemName];
+    const displayElement = document.getElementById(`${itemName}_timer`);
+    const progressBar = document.getElementById(`${itemName}_progress`);
+    const skipButton = document.getElementById(`${itemName}_skip`);
+    const card = document.getElementById(`${itemName}_card`);
+    
+    if (timer.interval) {
+        clearInterval(timer.interval);
+    }
+    
+    timer.seconds = 0;
+    timer.started = true;
+    
+    displayElement.innerHTML = '<i class="fas fa-forward"></i> スキップ';
+    displayElement.className = 'timer-display text-secondary';
+    
+    progressBar.style.width = '0%';
+    progressBar.className = 'progress-bar bg-secondary';
+    
+    skipButton.disabled = true;
+    skipButton.innerHTML = '<i class="fas fa-check"></i> スキップ済み';
+    
+    card.classList.remove('active');
+    card.classList.add('skipped');
+    
+    stopCamera(itemName);
+    hideHint(itemName);
+    
+    moveToNextItem(itemName);
+}
+
+// 通知表示
+function showNotification(message, type = 'info') {
+    const bgColors = {
+        'info': 'alert-info',
+        'success': 'alert-success',
+        'warning': 'alert-warning',
+        'danger': 'alert-danger'
+    };
+    
+    const toast = document.createElement('div');
+    toast.className = `alert ${bgColors[type]} toast-notification shadow-lg`;
+    toast.innerHTML = `
+        <i class="fas fa-info-circle"></i> ${message}
+        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 4000);
+}
+
+// ページ読み込み時にイベントリスナーを設定
+document.addEventListener('DOMContentLoaded', function() {
+    itemOrder.forEach(item => {
+        document.querySelectorAll(`input[name="${item}_ok"]`).forEach(radio => {
+            radio.addEventListener('change', () => startTimer(item));
+        });
+    });
+});
+
+// ページを離れる時にカメラを停止
+window.addEventListener('beforeunload', () => {
+    Object.keys(cameras).forEach(item => {
+        stopCamera(item);
+    });
+});
+</script>
+{% endblock %}

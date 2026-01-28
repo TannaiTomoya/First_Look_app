@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}予約詳細 - FirstLook{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">予約詳細</h1>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4>{{ booking.menu_obj.title }}</h4>
+            <p class="mb-2">
+                <strong>コーチ:</strong> {{ booking.coach_user.username }}<br>
+                <strong>クライアント:</strong> {{ booking.client_user.username }}<br>
+                <strong>予約日時:</strong> {{ booking.booking_datetime.strftime('%Y年%m月%d日 %H:%M') }}<br>
+                <strong>所要時間:</strong> {{ booking.menu_obj.duration }}分<br>
+                <strong>価格:</strong> ¥{{ "{:,}".format(booking.menu_obj.price) }}<br>
+                <strong>ステータス:</strong> 
+                {% if booking.status == 'pending' %}
+                    <span class="badge bg-warning">確認待ち</span>
+                {% elif booking.status == 'confirmed' %}
+                    <span class="badge bg-success">確定</span>
+                {% elif booking.status == 'completed' %}
+                    <span class="badge bg-secondary">完了</span>
+                {% elif booking.status == 'cancelled' %}
+                    <span class="badge bg-danger">キャンセル</span>
+                {% endif %}
+            </p>
+            
+            {% if booking.notes %}
+            <p class="mb-2"><strong>備考:</strong><br>{{ booking.notes }}</p>
+            {% endif %}
+            
+            <!-- アクションボタン -->
+            <div class="mt-3">
+                {% if current_user.is_coach() and booking.status == 'pending' %}
+                <form action="{{ url_for('booking.confirm', booking_id=booking.id) }}" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-success">予約を確定する</button>
+                </form>
+                {% endif %}
+                
+                {% if current_user.is_coach() and booking.status == 'confirmed' %}
+                <form action="{{ url_for('booking.complete', booking_id=booking.id) }}" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-primary">セッションを完了する</button>
+                </form>
+                {% endif %}
+                
+                {% if booking.status not in ['completed', 'cancelled'] %}
+                <form action="{{ url_for('booking.cancel', booking_id=booking.id) }}" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('本当にキャンセルしますか？')">
+                        キャンセル
+                    </button>
+                </form>
+                {% endif %}
+                
+                {% if chat %}
+                <a href="{{ url_for('chat.detail', chat_id=chat.id) }}" class="btn btn-info">
+                    <i class="fas fa-comments"></i> チャットを開く
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <a href="{% if current_user.is_client() %}{{ url_for('client.dashboard') }}{% else %}{{ url_for('coach.dashboard') }}{% endif %}" class="btn btn-secondary">
+        ダッシュボードに戻る
+    </a>
+</div>
+{% endblock %}

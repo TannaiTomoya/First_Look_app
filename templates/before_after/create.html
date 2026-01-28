@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Before/After投稿作成 - FirstLook{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Before/After投稿作成</h1>
+    
+    <form method="POST" action="{{ url_for('before_after.create') }}" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="mb-3">Before写真</h5>
+                <div class="mb-3">
+                    <label for="before_image" class="form-label">Before画像1（必須）</label>
+                    <input type="file" class="form-control" id="before_image" name="before_image" accept="image/*" required>
+                    <small class="form-text text-muted">施術前の写真1</small>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="before_image_2" class="form-label">Before画像2（任意）</label>
+                    <input type="file" class="form-control" id="before_image_2" name="before_image_2" accept="image/*">
+                    <small class="form-text text-muted">施術前の写真2</small>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <h5 class="mb-3">After写真</h5>
+                <div class="mb-3">
+                    <label for="after_image" class="form-label">After画像1（必須）</label>
+                    <input type="file" class="form-control" id="after_image" name="after_image" accept="image/*" required>
+                    <small class="form-text text-muted">施術後の写真1</small>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="after_image_2" class="form-label">After画像2（任意）</label>
+                    <input type="file" class="form-control" id="after_image_2" name="after_image_2" accept="image/*">
+                    <small class="form-text text-muted">施術後の写真2</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <label for="caption" class="form-label">キャプション（任意）</label>
+            <textarea class="form-control" id="caption" name="caption" rows="3" placeholder="変化や感想を記入してください"></textarea>
+        </div>
+        
+        <div class="mb-3">
+            <label for="desired_face_id" class="form-label">印象カード（任意）</label>
+            <select class="form-select" id="desired_face_id" name="desired_face_id">
+                <option value="">選択しない</option>
+                {% for face in faces %}
+                <option value="{{ face.id }}">{{ face.label }}</option>
+                {% endfor %}
+            </select>
+            <small class="form-text text-muted">目指した印象があれば選択してください</small>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">投稿する</button>
+        <a href="{{ url_for('before_after.list_posts') }}" class="btn btn-secondary">キャンセル</a>
+    </form>
+</div>
+{% endblock %}

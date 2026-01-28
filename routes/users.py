@@ -1,12 +1,12 @@
 """
-ユーザー関連ルート
+ユーザー関連ルート - FirstLook
 """
 from flask import Blueprint, render_template, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
 from forms.profile_forms import ProfileEditForm
 from models.user import User
-from models.post import Post
-from models.follow import Follow
+from models.daily_check import BeforeAfterPost
+from models.booking import Booking
 from utils.image_handler import save_image
 
 users = Blueprint('users', __name__, url_prefix='/users')
@@ -24,27 +24,22 @@ def profile(username):
         flash('ユーザーが見つかりません', 'danger')
         return redirect(url_for('index'))
     
-    # 投稿一覧を取得（新着順）
-    posts = Post.select().where(Post.user == user).order_by(Post.created_at.desc())
+    # Before/After投稿一覧を取得（新着順）
+    before_after_posts = BeforeAfterPost.select().where(
+        BeforeAfterPost.user == user
+    ).order_by(BeforeAfterPost.created_at.desc())
     
-    # 統計情報
-    post_count = user.post_count()
-    following_count = user.following_count()
-    followers_count = user.followers_count()
-    
-    # フォロー状態（自分以外の場合）
-    is_following = False
-    if current_user.id != user.id:
-        is_following = current_user.is_following(user)
+    # 予約数（クライアントの場合）
+    booking_count = 0
+    if user.is_client():
+        booking_count = Booking.select().where(Booking.client == user).count()
     
     return render_template(
         'users/profile.html',
         user=user,
-        posts=posts,
-        post_count=post_count,
-        following_count=following_count,
-        followers_count=followers_count,
-        is_following=is_following
+        before_after_posts=before_after_posts,
+        post_count=before_after_posts.count(),
+        booking_count=booking_count
     )
 
 
@@ -95,106 +90,3 @@ def edit(username):
         form.bio.data = current_user.bio
     
     return render_template('users/edit.html', form=form)
-
-
-@users.route('/<username>/follow', methods=['POST'])
-@login_required
-def follow(username):
-    """
-    ユーザーをフォロー
-    """
-    # フォロー対象ユーザーを取得
-    user = User.select().where(User.username == username).first()
-    if not user:
-        flash('ユーザーが見つかりません', 'danger')
-        return redirect(url_for('index'))
-    
-    # 自分自身はフォローできない
-    if current_user.id == user.id:
-        flash('自分自身をフォローすることはできません', 'warning')
-        return redirect(url_for('users.profile', username=username))
-    
-    # 既にフォロー済みかチェック
-    existing_follow = Follow.select().where(
-        (Follow.follower == current_user) & (Follow.followed == user)
-    ).first()
-    
-    if existing_follow:
-        flash('既にフォローしています', 'info')
-    else:
-        # フォローを作成
-        Follow.create(follower=current_user, followed=user)
-        flash(f'{user.username} をフォローしました', 'success')
-    
-    return redirect(url_for('users.profile', username=username))
-
-
-@users.route('/<username>/unfollow', methods=['POST'])
-@login_required
-def unfollow(username):
-    """
-    ユーザーのフォローを解除
-    """
-    # フォロー対象ユーザーを取得
-    user = User.select().where(User.username == username).first()
-    if not user:
-        flash('ユーザーが見つかりません', 'danger')
-        return redirect(url_for('index'))
-    
-    # フォロー関係を取得
-    follow = Follow.select().where(
-        (Follow.follower == current_user) & (Follow.followed == user)
-    ).first()
-    
-    if follow:
-        # フォローを削除
-        follow.delete_instance()
-        flash(f'{user.username} のフォローを解除しました', 'info')
-    else:
-        flash('フォローしていません', 'warning')
-    
-    return redirect(url_for('users.profile', username=username))
-
-
-@users.route('/<username>/following')
-@login_required
-def following(username):
-    """
-    フォロー中リスト表示
-    """
-    # ユーザーを取得
-    user = User.select().where(User.username == username).first()
-    if not user:
-        flash('ユーザーが見つかりません', 'danger')
-        return redirect(url_for('index'))
-    
-    # フォロー中のユーザーリストを取得
-    following_list = Follow.select().where(Follow.follower == user).order_by(Follow.created_at.desc())
-    
-    return render_template(
-        'users/following.html',
-        user=user,
-        following_list=following_list
-    )
-
-
-@users.route('/<username>/followers')
-@login_required
-def followers(username):
-    """
-    フォロワーリスト表示
-    """
-    # ユーザーを取得
-    user = User.select().where(User.username == username).first()
-    if not user:
-        flash('ユーザーが見つかりません', 'danger')
-        return redirect(url_for('index'))
-    
-    # フォロワーリストを取得
-    followers_list = Follow.select().where(Follow.followed == user).order_by(Follow.created_at.desc())
-    
-    return render_template(
-        'users/followers.html',
-        user=user,
-        followers_list=followers_list
-    )

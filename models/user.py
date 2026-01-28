@@ -1,7 +1,7 @@
 """
 ユーザーモデル
 """
-from peewee import AutoField, CharField, TextField, DateTimeField
+from peewee import AutoField, CharField, TextField, DateTimeField, IntegerField, DeferredForeignKey
 from flask_login import UserMixin
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -16,43 +16,42 @@ class User(BaseModel, UserMixin):
     password_hash = CharField(max_length=255)
     profile_image = CharField(max_length=255, default='default.jpg')
     bio = TextField(null=True)
+    role = CharField(max_length=20, default='client')  # 'client' or 'coach'
+    desired_face = DeferredForeignKey('DesiredFace', null=True, backref='users', on_delete='SET NULL')  # 選択中の印象カード
     created_at = DateTimeField(default=datetime.now)
-    
+    updated_at = DateTimeField(default=datetime.now)
+
     class Meta:
         table_name = 'users'
         indexes = (
             (('username',), True),
             (('email',), True),
         )
-    
+
     def set_password(self, password):
         """パスワードをハッシュ化して保存"""
         self.password_hash = generate_password_hash(password)
-    
+
     def check_password(self, password):
         """パスワードの検証"""
         return check_password_hash(self.password_hash, password)
+
+    def before_after_post_count(self):
+        """Before/After投稿数を取得"""
+        return self.before_after_posts.count()
     
-    def post_count(self):
-        """投稿数を取得"""
-        return self.posts.count()
+    def is_client(self):
+        """クライアントかどうか"""
+        return self.role == 'client'
     
-    def following_count(self):
-        """フォロー中の数を取得"""
-        from models.follow import Follow
-        return Follow.select().where(Follow.follower == self).count()
+    def is_coach(self):
+        """コーチかどうか"""
+        return self.role == 'coach'
     
-    def followers_count(self):
-        """フォロワー数を取得"""
-        from models.follow import Follow
-        return Follow.select().where(Follow.followed == self).count()
-    
-    def is_following(self, user):
-        """指定ユーザーをフォロー中かチェック"""
-        from models.follow import Follow
-        return Follow.select().where(
-            (Follow.follower == self) & (Follow.followed == user)
-        ).exists()
-    
+    def save(self, *args, **kwargs):
+        """保存時にupdated_atを更新"""
+        self.updated_at = datetime.now()
+        return super(User, self).save(*args, **kwargs)
+
     def __repr__(self):
         return f'<User {self.username}>'
