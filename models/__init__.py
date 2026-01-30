@@ -18,6 +18,7 @@ from models.impression import DesiredFace, SkinCheck
 from models.booking import Booking
 from models.chat import Chat, Message
 from models.daily_check import DailyCheck, Photo, BeforeAfterPost
+from models.face_template import FaceTemplate, FacePart, FaceComposition
 
 __all__ = [
     'db',
@@ -33,4 +34,7 @@ __all__ = [
     'DailyCheck',
     'Photo',
     'BeforeAfterPost',
+    'FaceTemplate',
+    'FacePart',
+    'FaceComposition',
 ]

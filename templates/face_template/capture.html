@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% block title %}顔写真を撮影 - FirstLook{% endblock %}
+
+{% block head %}
+<!-- CamanJS（自動美肌処理用） -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/camanjs/4.1.2/caman.full.min.js"></script>
+
+<!-- 顔ガイドアニメーション用CSS -->
+<style>
+@keyframes pulse {
+    0%, 100% { 
+        opacity: 0.6; 
+        transform: scale(1); 
+    }
+    50% { 
+        opacity: 0.9; 
+        transform: scale(1.02); 
+    }
+}
+
+@keyframes glow {
+    0%, 100% { 
+        filter: drop-shadow(0 0 5px #00d4ff); 
+    }
+    50% { 
+        filter: drop-shadow(0 0 15px #00d4ff); 
+    }
+}
+
+.face-guide-animated ellipse {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+#faceGuide {
+    animation: glow 2s ease-in-out infinite;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4 text-center"><i class="fas fa-camera"></i> 顔写真を撮影</h1>
+    
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card">
+                <div class="card-body">
+                    <p class="text-muted mb-3">
+                        正面を向いて、明るい場所で撮影してください。この写真にメイクパーツを合成します。
+                    </p>
+                    
+                    <!-- カメラプレビュー -->
+                    <div class="text-center mb-3" style="position: relative; display: inline-block;">
+                        <video id="video" width="100%" style="max-width: 500px; border-radius: 8px; display: none;" autoplay></video>
+                        
+                        <!-- 顔ガイドSVG -->
+                        <svg id="faceGuide" class="face-guide-animated" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none;">
+                            <!-- 顔の輪郭ガイド（楕円）- 3%下に調整 -->
+                            <ellipse cx="50%" cy="48%" rx="35%" ry="42%" 
+                                     fill="none" 
+                                     stroke="#00d4ff" 
+                                     stroke-width="3" 
+                                     stroke-dasharray="10,5"
+                                     opacity="0.8"/>
+                            
+                            <!-- 目のラインガイド - 2%下に調整 -->
+                            <line x1="20%" y1="40%" x2="80%" y2="40%" 
+                                  stroke="white" stroke-width="2" stroke-dasharray="5,3" opacity="0.6"/>
+                            <circle cx="35%" cy="40%" r="3" fill="white" opacity="0.8"/>
+                            <circle cx="65%" cy="40%" r="3" fill="white" opacity="0.8"/>
+                            <text x="17%" y="39%" fill="white" font-size="12" opacity="0.8" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">目</text>
+                            
+                            <!-- 鼻のガイド - 2%下に調整 -->
+                            <line x1="50%" y1="44%" x2="50%" y2="54%" 
+                                  stroke="white" stroke-width="2" stroke-dasharray="5,3" opacity="0.6"/>
+                            <circle cx="50%" cy="49%" r="3" fill="white" opacity="0.8"/>
+                            <text x="53%" y="50%" fill="white" font-size="12" opacity="0.8" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">鼻</text>
+                            
+                            <!-- 口のガイド - 2%下に調整 -->
+                            <line x1="35%" y1="60%" x2="65%" y2="60%" 
+                                  stroke="white" stroke-width="2" stroke-dasharray="5,3" opacity="0.6"/>
+                            <circle cx="50%" cy="60%" r="3" fill="white" opacity="0.8"/>
+                            <text x="67%" y="61%" fill="white" font-size="12" opacity="0.8" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">口</text>
+                            
+                            <!-- 説明テキスト -->
+                            <text x="50%" y="88%" 
+                                  text-anchor="middle" 
+                                  fill="white" 
+                                  font-size="16" 
+                                  font-weight="bold"
+                                  style="text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">
+                                顔を枠に合わせてください
+                            </text>
+                        </svg>
+                        
+                        <canvas id="canvas" width="500" height="500" style="max-width: 100%; border-radius: 8px; display: none;"></canvas>
+                    </div>
+                    
+                    <!-- 操作ボタン -->
+                    <div class="text-center">
+                        <button id="startCamera" class="btn btn-primary btn-lg">
+                            <i class="fas fa-video"></i> カメラを起動
+                        </button>
+                        <button id="capture" class="btn btn-success btn-lg" style="display: none;">
+                            <i class="fas fa-camera"></i> 撮影する
+                        </button>
+                        <button id="retake" class="btn btn-warning btn-lg" style="display: none;">
+                            <i class="fas fa-redo"></i> 撮り直す
+                        </button>
+                        <button id="saveImage" class="btn btn-primary btn-lg" style="display: none;">
+                            <i class="fas fa-arrow-right"></i> この写真で進む
+                        </button>
+                    </div>
+                    
+                    <div id="loadingMessage" class="text-center mt-3" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">保存中...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-3">
+                <a href="{{ url_for('client.dashboard') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> キャンセル
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const startCameraBtn = document.getElementById('startCamera');
+const captureBtn = document.getElementById('capture');
+const retakeBtn = document.getElementById('retake');
+const saveImageBtn = document.getElementById('saveImage');
+const loadingMessage = document.getElementById('loadingMessage');
+
+let stream = null;
+let isBeautyProcessing = false;
+
+// AI自動美肌処理
+function applyAutoBeautyFilter() {
+    if (typeof Caman === 'undefined') {
+        console.warn('CamanJSが読み込まれていません。美肌処理をスキップします。');
+        saveImageBtn.style.display = 'inline-block';
+        return;
+    }
+    
+    isBeautyProcessing = true;
+    console.log('✓ AI美肌処理を開始...');
+    
+    // ローディング表示
+    const processingMsg = document.createElement('div');
+    processingMsg.id = 'processingMsg';
+    processingMsg.className = 'alert alert-info mt-3';
+    processingMsg.innerHTML = '<i class="fas fa-magic"></i> AI美肌処理中...';
+    canvas.parentElement.appendChild(processingMsg);
+    
+    // CamanJSで美肌処理（自動で最適な設定を適用）
+    Caman(canvas, function() {
+        // 1. 軽いぼかしで肌を滑らかに（軽減）
+        this.stackBlur(0.5);
+        
+        // 2. 明るさを少し上げて健康的な印象に
+        this.brightness(5);
+        
+        // 3. 鮮やかさを控えめに上げて血色を良く
+        this.vibrance(15);
+        
+        // 4. コントラストを微調整
+        this.contrast(3);
+        
+        // レンダリング完了後の処理
+        this.render(() => {
+            isBeautyProcessing = false;
+            console.log('✓ AI美肌処理完了！');
+            
+            // ローディングメッセージを削除
+            const msg = document.getElementById('processingMsg');
+            if (msg) msg.remove();
+            
+            // 保存ボタンを表示
+            saveImageBtn.style.display = 'inline-block';
+        });
+    });
+}
+
+// カメラ起動
+startCameraBtn.addEventListener('click', async () => {
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: 'user', width: 500, height: 500 } 
+        });
+        video.srcObject = stream;
+        video.style.display = 'block';
+        document.getElementById('faceGuide').style.display = 'block'; // ガイド表示
+        startCameraBtn.style.display = 'none';
+        captureBtn.style.display = 'inline-block';
+    } catch (err) {
+        alert('カメラの起動に失敗しました。カメラの権限を許可してください。');
+        console.error(err);
+    }
+});
+
+// 撮影
+captureBtn.addEventListener('click', () => {
+    // ガイドを非表示
+    document.getElementById('faceGuide').style.display = 'none';
+    
+    // Canvasに描画
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // 表示切り替え
+    video.style.display = 'none';
+    canvas.style.display = 'block';
+    captureBtn.style.display = 'none';
+    retakeBtn.style.display = 'inline-block';
+    
+    // カメラ停止
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+    }
+    
+    // AI自動美肌処理を適用
+    applyAutoBeautyFilter();
+});
+
+// 撮り直し
+retakeBtn.addEventListener('click', async () => {
+    // 完全なクリーンアップ処理
+    
+    // 1. Canvasをクリア
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // 2. 古い処理メッセージを削除
+    const oldMsg = document.getElementById('processingMsg');
+    if (oldMsg) {
+        oldMsg.remove();
+        console.log('✓ 古い処理メッセージを削除');
+    }
+    
+    // 3. CamanJSのキャッシュをクリア
+    if (typeof Caman !== 'undefined' && Caman.remPixelData) {
+        try {
+            Caman.remPixelData(canvas);
+            console.log('✓ CamanJSキャッシュをクリア');
+        } catch (e) {
+            console.log('CamanJSキャッシュクリアをスキップ');
+        }
+    }
+    
+    // 4. 状態フラグをリセット
+    isBeautyProcessing = false;
+    
+    // 5. UI要素を非表示
+    canvas.style.display = 'none';
+    retakeBtn.style.display = 'none';
+    saveImageBtn.style.display = 'none';
+    
+    // 6. カメラ再起動
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: 'user', width: 500, height: 500 } 
+        });
+        video.srcObject = stream;
+        video.style.display = 'block';
+        document.getElementById('faceGuide').style.display = 'block'; // ガイド再表示
+        captureBtn.style.display = 'inline-block';
+        console.log('✓ カメラを再起動しました');
+    } catch (err) {
+        alert('カメラの再起動に失敗しました。');
+        console.error(err);
+        // エラー時はスタートボタンを表示
+        startCameraBtn.style.display = 'inline-block';
+    }
+});
+
+// 保存
+saveImageBtn.addEventListener('click', async () => {
+    loadingMessage.style.display = 'block';
+    saveImageBtn.disabled = true;
+    
+    // CanvasをBlobに変換
+    canvas.toBlob(async (blob) => {
+        const formData = new FormData();
+        formData.append('image', blob, 'face.png');
+        
+        // CSRFトークンをFormDataに追加
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        formData.append('csrf_token', csrfToken);
+        
+        try {
+            const response = await fetch('{{ url_for("face_template.save_base_image") }}', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                window.location.href = data.redirect_url;
+            } else {
+                alert('保存に失敗しました: ' + (data.error || '不明なエラー'));
+                loadingMessage.style.display = 'none';
+                saveImageBtn.disabled = false;
+            }
+        } catch (err) {
+            alert('保存に失敗しました: ' + err.message);
+            console.error(err);
+            loadingMessage.style.display = 'none';
+            saveImageBtn.disabled = false;
+        }
+    }, 'image/png');
+});
+</script>
+{% endblock %}

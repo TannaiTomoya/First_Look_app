@@ -62,11 +62,11 @@
     <!-- なりたい顔のイメージ作成ボタン -->
     <div class="row mb-4">
         <div class="col-12 text-center">
-            <a href="#" class="btn btn-primary btn-lg disabled">
-                <i class="fas fa-magic"></i> なりたい顔のイメージを作成する（準備中）
+            <a href="{{ url_for('face_template.capture') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-magic"></i> なりたい顔のイメージを作成する
             </a>
             <p class="text-muted mt-2 small">
-                眉・鼻のパーツを組み合わせて、理想の顔イメージを作成できます
+                顔写真を撮影し、眉・鼻のパーツを組み合わせて理想の顔イメージを作成できます
             </p>
         </div>
     </div>

@@ -81,6 +81,7 @@ from routes.client import client
 from routes.booking import booking
 from routes.chat import chat_bp
 from routes.before_after import before_after
+from routes.face_template import face_template
 
 app.register_blueprint(auth)
 app.register_blueprint(users)
@@ -89,6 +90,7 @@ app.register_blueprint(client)
 app.register_blueprint(booking)
 app.register_blueprint(chat_bp)
 app.register_blueprint(before_after)
+app.register_blueprint(face_template)
 
 # ルート定義
 @app.route('/')

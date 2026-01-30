@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}顔パーツ一覧 - FirstLook{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">顔パーツ一覧</h1>
+    
+    <p class="lead">眉・鼻のパーツを確認できます。</p>
+    
+    <!-- 眉パーツ -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0"><i class="fas fa-eyebrow"></i> 眉パーツ</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for eyebrow in eyebrows %}
+                <div class="col-md-4 col-6 mb-4">
+                    <div class="card">
+                        <img src="{{ url_for('static', filename=eyebrow.image_url) }}" 
+                             class="card-img-top" 
+                             alt="{{ eyebrow.label }}"
+                             style="height: 200px; object-fit: cover;">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">{{ eyebrow.label }}</h5>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- 鼻パーツ -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0"><i class="fas fa-nose"></i> 鼻パーツ</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for nose in noses %}
+                <div class="col-md-4 col-6 mb-4">
+                    <div class="card">
+                        <img src="{{ url_for('static', filename=nose.image_url) }}" 
+                             class="card-img-top" 
+                             alt="{{ nose.label }}"
+                             style="height: 200px; object-fit: cover;">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">{{ nose.label }}</h5>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="text-center">
+        <a href="{{ url_for('client.dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> ダッシュボードに戻る
+        </a>
+    </div>
+</div>
+{% endblock %}
