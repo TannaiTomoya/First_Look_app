@@ -210,3 +210,96 @@ def delete_message(message_id):
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@chat_bp.route('/<int:chat_id>/send-dashboard-data', methods=['POST'])
+@login_required
+def send_dashboard_data(chat_id):
+    """ダッシュボードから肌質・印象データを送信"""
+    from models.impression import SkinCheck, DesiredFace
+    
+    # チャットの存在確認
+    chat_obj = Chat.select().where(Chat.id == chat_id).first()
+    if not chat_obj:
+        flash('チャットが見つかりません', 'danger')
+        return redirect(url_for('client.dashboard'))
+    
+    # 権限確認（クライアントのみ、自分のチャットのみ）
+    booking = Booking.get_by_id(chat_obj.booking)
+    if booking.client != current_user.id:
+        flash('このチャットにアクセスする権限がありません', 'danger')
+        return redirect(url_for('client.dashboard'))
+    
+    try:
+        # 肌質・肌悩みデータを取得
+        skin_type_map = {
+            'dry': '乾燥肌',
+            'oily': '脂性肌',
+            'combination': '混合肌',
+            'normal': '普通肌'
+        }
+        
+        concerns_map = {
+            'pores': '毛穴の開き',
+            'dark_spots': '黒ずみ',
+            'tone': '肌トーンの不均一',
+            'acne': 'ニキビケア'
+        }
+        
+        latest_skin_check = SkinCheck.select().where(
+            SkinCheck.user == current_user
+        ).order_by(SkinCheck.created_at.desc()).first()
+        
+        # 印象カードを取得
+        selected_impression = None
+        if current_user.desired_face:
+            if isinstance(current_user.desired_face, int):
+                selected_impression = DesiredFace.get_by_id(current_user.desired_face)
+            else:
+                selected_impression = current_user.desired_face
+        
+        # メッセージを整形
+        message_parts = []
+        
+        if latest_skin_check:
+            message_parts.append("【最新の肌診断結果】")
+            message_parts.append(f"肌質: {skin_type_map.get(latest_skin_check.skin_type, latest_skin_check.skin_type)}")
+            
+            if latest_skin_check.concerns:
+                concerns_labels = []
+                for concern_key in latest_skin_check.concerns.split(','):
+                    concern_key = concern_key.strip()
+                    if concern_key in concerns_map:
+                        concerns_labels.append(concerns_map[concern_key])
+                
+                if concerns_labels:
+                    message_parts.append(f"悩み: {', '.join(concerns_labels)}")
+            
+            message_parts.append(f"記録日: {latest_skin_check.created_at.strftime('%Y年%m月%d日')}")
+        
+        if selected_impression:
+            message_parts.append("")  # 空行
+            message_parts.append("【なりたい印象】")
+            message_parts.append(f"{selected_impression.label}")
+            if selected_impression.description:
+                message_parts.append(f"説明: {selected_impression.description}")
+        
+        message_text = "\n".join(message_parts)
+        
+        if not message_text:
+            flash('送信するデータがありません', 'warning')
+            return redirect(url_for('client.dashboard'))
+        
+        # メッセージを作成
+        Message.create(
+            chat=chat_obj,
+            sender=current_user,
+            content=message_text
+        )
+        
+        flash('データをコーチに送信しました', 'success')
+        return redirect(url_for('chat.detail', chat_id=chat_id))
+    
+    except Exception as e:
+        flash(f'送信中にエラーが発生しました: {str(e)}', 'danger')
+        return redirect(url_for('client.dashboard'))

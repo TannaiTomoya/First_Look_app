@@ -35,18 +35,21 @@
             <div class="mt-3">
                 {% if current_user.is_coach() and booking.status == 'pending' %}
                 <form action="{{ url_for('booking.confirm', booking_id=booking.id) }}" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit" class="btn btn-success">予約を確定する</button>
                 </form>
                 {% endif %}
                 
                 {% if current_user.is_coach() and booking.status == 'confirmed' %}
                 <form action="{{ url_for('booking.complete', booking_id=booking.id) }}" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit" class="btn btn-primary">セッションを完了する</button>
                 </form>
                 {% endif %}
                 
                 {% if booking.status not in ['completed', 'cancelled'] %}
                 <form action="{{ url_for('booking.cancel', booking_id=booking.id) }}" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit" class="btn btn-danger" onclick="return confirm('本当にキャンセルしますか？')">
                         キャンセル
                     </button>

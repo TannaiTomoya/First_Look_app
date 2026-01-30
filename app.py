@@ -18,6 +18,11 @@ app.config['REMEMBER_COOKIE_SECURE'] = False  # 開発環境はHTTP、本番はT
 app.config['REMEMBER_COOKIE_HTTPONLY'] = True
 app.config['REMEMBER_COOKIE_DURATION'] = 2592000  # 30日（秒単位）
 
+# CSRF保護の設定
+app.config['WTF_CSRF_TIME_LIMIT'] = None  # CSRFトークンの有効期限を無効化（セッション期限に従う）
+app.config['WTF_CSRF_SSL_STRICT'] = False  # 開発環境用（本番ではTrue）
+app.config['WTF_CSRF_ENABLED'] = True  # CSRF保護を有効化
+
 # CSRF保護の初期化
 csrf = CSRFProtect(app)
 

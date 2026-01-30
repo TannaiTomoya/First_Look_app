@@ -6,8 +6,31 @@
 <div class="container mt-4">
     <h1 class="mb-4">プロフィール編集</h1>
     
-    <form method="POST" action="{{ url_for('coach.edit_profile') }}">
+    <form method="POST" action="{{ url_for('coach.edit_profile') }}" enctype="multipart/form-data">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        
+        <!-- プロフィール写真 -->
+        <div class="mb-4">
+            <label class="form-label"><strong>プロフィール写真</strong></label>
+            
+            <!-- 現在の写真プレビュー -->
+            <div class="mb-3 text-center">
+                {% if current_user.profile_image and current_user.profile_image != 'default.jpg' %}
+                <img id="preview-image" src="{{ url_for('static', filename='uploads/profiles/' + current_user.profile_image) }}" 
+                     alt="現在の写真" 
+                     style="width: 200px; height: 200px; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                {% else %}
+                <img id="preview-image" src="{{ url_for('static', filename='images/default.jpg') }}" 
+                     alt="デフォルト写真" 
+                     style="width: 200px; height: 200px; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                {% endif %}
+            </div>
+            
+            <!-- ファイル選択 -->
+            <input type="file" class="form-control" id="profile_image" name="profile_image" accept="image/*">
+            <small class="form-text text-muted">JPEG, PNG, GIF形式（最大5MB）</small>
+        </div>
+        
         <div class="mb-3">
             <label for="user_bio" class="form-label">自己紹介（ユーザー用）</label>
             <textarea class="form-control" id="user_bio" name="user_bio" rows="3">{{ current_user.bio or '' }}</textarea>
@@ -41,4 +64,33 @@
         <a href="{{ url_for('coach.dashboard') }}" class="btn btn-secondary">キャンセル</a>
     </form>
 </div>
+
+<script>
+// 画像選択時のプレビュー表示
+document.getElementById('profile_image').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        // ファイルサイズチェック（5MB）
+        if (file.size > 5 * 1024 * 1024) {
+            alert('ファイルサイズが大きすぎます（最大5MB）');
+            this.value = '';
+            return;
+        }
+        
+        // 画像形式チェック
+        if (!file.type.match('image.*')) {
+            alert('画像ファイルを選択してください');
+            this.value = '';
+            return;
+        }
+        
+        // プレビュー表示
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('preview-image').src = e.target.result;
+        }
+        reader.readAsDataURL(file);
+    }
+});
+</script>
 {% endblock %}

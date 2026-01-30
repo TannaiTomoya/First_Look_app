@@ -137,7 +137,7 @@
     }
 }
 
-/* カメラプレビュー - 大きく表示 */
+/* カメラプレビュー - 正方形で大きく表示 */
 .camera-preview {
     margin-top: 1rem;
     position: relative;
@@ -147,7 +147,8 @@
 
 .camera-preview video {
     width: 100%;
-    max-height: 400px;
+    aspect-ratio: 1 / 1;  /* 正方形 */
+    max-height: 500px;
     border-radius: 15px;
     object-fit: cover;
     border: 3px solid #0d6efd;
@@ -156,7 +157,7 @@
 
 /* アクティブカードのカメラはさらに大きく */
 .check-item-card.active .camera-preview video {
-    max-height: 500px;
+    max-height: 600px;
 }
 
 /* カメラトグルボタンを絶対配置（右上） */
@@ -324,10 +325,64 @@
     <form method="POST" action="{{ url_for('client.daily_check') }}" id="checkForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         
-        <!-- チェック項目（横並び） -->
+        <!-- 最上段：肌・ヘアスタイル（1カラム・フル幅） -->
+        <div class="row g-3 mb-4">
+            <!-- 1. 肌・ヘアスタイル -->
+            <div class="col-12">
+                <div class="card check-item-card h-100" id="skin_card">
+                    <div class="card-body text-center p-3">
+                        <div class="check-icon">
+                            <i class="fas fa-tint"></i>
+                        </div>
+                        <h5 class="card-title mb-1">肌・ヘアスタイル</h5>
+                        <small class="text-muted d-block mb-2">乾燥? 髪型OK?</small>
+                        
+                        <div class="progress mb-2">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" 
+                                 id="skin_progress" style="width: 100%"></div>
+                        </div>
+                        
+                        <div id="skin_timer" class="timer-display mb-2">
+                            <i class="fas fa-clock"></i> 60
+                        </div>
+                        
+                        <div class="camera-preview" id="skin_camera" style="display: none;">
+                            <video id="skin_video" autoplay playsinline muted></video>
+                            
+                            <button type="button" class="camera-toggle-btn" 
+                                    onclick="toggleCamera('skin')">
+                                <i class="fas fa-camera-slash"></i> OFF
+                            </button>
+                            
+                            <div class="hint-overlay" id="skin_hint" style="display: none;">
+                                <div class="hint-content">
+                                    <i class="fas fa-lightbulb"></i>
+                                    <span id="skin_hint_text"></span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center mb-2">
+                            <input type="radio" class="btn-check" name="skin_ok" id="skin_ok" value="1"
+                                   {% if today_check and today_check.skin_ok == 1 %}checked{% endif %}>
+                            <label class="btn btn-outline-success w-100" for="skin_ok">
+                                <i class="fas fa-check"></i> OK
+                            </label>
+                        </div>
+                        
+                        <button type="button" class="btn btn-sm btn-outline-secondary skip-btn" 
+                                onclick="skipTimer('skin')" id="skin_skip">
+                            <i class="fas fa-forward"></i> スキップ
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 上段：眉と目（2カラム） -->
         <div class="row g-3 mb-4">
             <!-- 1. 眉 -->
-            <div class="col-lg col-md-4 col-sm-6">
+            <div class="col-md-6">
                 <div class="card check-item-card h-100" id="eyebrow_card">
                     <div class="card-body text-center p-3">
                         <div class="check-icon">
@@ -381,7 +436,7 @@
             </div>
             
             <!-- 2. 目 -->
-            <div class="col-lg col-md-4 col-sm-6">
+            <div class="col-md-6">
                 <div class="card check-item-card h-100" id="eye_card">
                     <div class="card-body text-center p-3">
                         <div class="check-icon">
@@ -430,9 +485,12 @@
                     </div>
                 </div>
             </div>
-            
+        </div>
+        
+        <!-- 中段：鼻と口（2カラム） -->
+        <div class="row g-3 mb-4">
             <!-- 3. 鼻 -->
-            <div class="col-lg col-md-4 col-sm-6">
+            <div class="col-md-6">
                 <div class="card check-item-card h-100" id="nose_card">
                     <div class="card-body text-center p-3">
                         <div class="check-icon">
@@ -482,59 +540,8 @@
                 </div>
             </div>
             
-            <!-- 4. 肌 -->
-            <div class="col-lg col-md-4 col-sm-6">
-                <div class="card check-item-card h-100" id="skin_card">
-                    <div class="card-body text-center p-3">
-                        <div class="check-icon">
-                            <i class="fas fa-tint"></i>
-                        </div>
-                        <h5 class="card-title mb-1">肌</h5>
-                        <small class="text-muted d-block mb-2">乾燥?</small>
-                        
-                        <div class="progress mb-2">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" 
-                                 id="skin_progress" style="width: 100%"></div>
-                        </div>
-                        
-                        <div id="skin_timer" class="timer-display mb-2">
-                            <i class="fas fa-clock"></i> 60
-                        </div>
-                        
-                        <div class="camera-preview" id="skin_camera" style="display: none;">
-                            <video id="skin_video" autoplay playsinline muted></video>
-                            
-                            <button type="button" class="camera-toggle-btn" 
-                                    onclick="toggleCamera('skin')">
-                                <i class="fas fa-camera-slash"></i> OFF
-                            </button>
-                            
-                            <div class="hint-overlay" id="skin_hint" style="display: none;">
-                                <div class="hint-content">
-                                    <i class="fas fa-lightbulb"></i>
-                                    <span id="skin_hint_text"></span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="text-center mb-2">
-                            <input type="radio" class="btn-check" name="skin_ok" id="skin_ok" value="1"
-                                   {% if today_check and today_check.skin_ok == 1 %}checked{% endif %}>
-                            <label class="btn btn-outline-success w-100" for="skin_ok">
-                                <i class="fas fa-check"></i> OK
-                            </label>
-                        </div>
-                        
-                        <button type="button" class="btn btn-sm btn-outline-secondary skip-btn" 
-                                onclick="skipTimer('skin')" id="skin_skip">
-                            <i class="fas fa-forward"></i> スキップ
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
             <!-- 5. 口 -->
-            <div class="col-lg col-md-4 col-sm-6">
+            <div class="col-md-6">
                 <div class="card check-item-card h-100" id="lip_card">
                     <div class="card-body text-center p-3">
                         <div class="check-icon">
@@ -649,9 +656,9 @@ const hints = {
         15: '斜めからも確認して最終チェック！'
     },
     skin: {
-        45: '肌の乾燥具合と全体の状態を確認しましょう',
-        30: 'テカリや毛穴の状態もチェック！',
-        15: '額、頬、顎のTゾーンを最終確認！'
+        45: '第一印象チェック！顔全体の清潔感と髪のシルエット',
+        30: '肌：Tゾーンのテカリ、毛穴の目立ち / 髪：寝癖、前髪の流れ',
+        15: '仕上げ確認！分け目・もみあげ・襟足・フェイスライン'
     },
     lip: {
         45: '唇の乾燥と縦ジワを確認しましょう',
@@ -661,14 +668,14 @@ const hints = {
 };
 
 // 項目の順序
-const itemOrder = ['eyebrow', 'eye', 'nose', 'skin', 'lip'];
+const itemOrder = ['skin', 'eyebrow', 'eye', 'nose', 'lip'];
 
 // 項目名マッピング
 const itemNames = {
     'eyebrow': '眉',
     'eye': '目',
     'nose': '鼻',
-    'skin': '肌',
+    'skin': '肌・ヘアスタイル',
     'lip': '口'
 };
 

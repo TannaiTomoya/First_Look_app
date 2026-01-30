@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
 from forms.profile_forms import ProfileEditForm
 from models.user import User
-from models.daily_check import BeforeAfterPost
+from models.daily_check import BeforeAfterPost, Photo
 from models.booking import Booking
 from utils.image_handler import save_image
 
@@ -25,9 +25,30 @@ def profile(username):
         return redirect(url_for('index'))
     
     # Before/After投稿一覧を取得（新着順）
-    before_after_posts = BeforeAfterPost.select().where(
+    before_after_posts_raw = BeforeAfterPost.select().where(
         BeforeAfterPost.user == user
     ).order_by(BeforeAfterPost.created_at.desc())
+    
+    # DeferredForeignKey対応: 各投稿の関連データを明示的に取得
+    before_after_posts = []
+    for post in before_after_posts_raw:
+        # Photoオブジェクトを取得（1枚目）
+        before_photo = Photo.get_by_id(post.before_photo)
+        after_photo = Photo.get_by_id(post.after_photo)
+        
+        post.before_photo = before_photo
+        post.after_photo = after_photo
+        
+        # 2枚目の写真も取得（存在する場合）
+        if post.before_photo_2:
+            before_photo_2 = Photo.get_by_id(post.before_photo_2)
+            post.before_photo_2 = before_photo_2
+        
+        if post.after_photo_2:
+            after_photo_2 = Photo.get_by_id(post.after_photo_2)
+            post.after_photo_2 = after_photo_2
+        
+        before_after_posts.append(post)
     
     # 予約数（クライアントの場合）
     booking_count = 0
@@ -38,7 +59,7 @@ def profile(username):
         'users/profile.html',
         user=user,
         before_after_posts=before_after_posts,
-        post_count=before_after_posts.count(),
+        post_count=len(before_after_posts),
         booking_count=booking_count
     )
 

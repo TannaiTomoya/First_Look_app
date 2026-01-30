@@ -105,13 +105,35 @@ def dashboard():
         (DailyCheck.check_date == date.today())
     ).first()
     
+    # アクティブなチャット一覧を取得（予約に紐づく）
+    from models.chat import Chat
+    active_chats_raw = Chat.select().join(
+        Booking,
+        on=(Chat.booking == Booking.id)
+    ).where(
+        Booking.client == current_user.id
+    ).order_by(Chat.created_at.desc())
+    
+    # チャット情報を整形
+    active_chats = []
+    for chat in active_chats_raw:
+        booking = Booking.get_by_id(chat.booking)
+        menu = Menu.get_by_id(booking.menu)
+        coach = Coach.get_by_id(menu.coach)
+        coach_user = User.get_by_id(coach.user)
+        
+        chat.coach_name = coach_user.username
+        chat.booking_id = booking.id
+        active_chats.append(chat)
+    
     return render_template(
         'client/dashboard.html',
         selected_impression=selected_impression,
         latest_skin_check=latest_skin_check,
         skin_check_data=skin_check_data,
         bookings=bookings,
-        today_check=today_check
+        today_check=today_check,
+        active_chats=active_chats
     )
 
 

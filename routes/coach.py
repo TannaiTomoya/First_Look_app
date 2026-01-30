@@ -34,8 +34,10 @@ def dashboard():
         (Menu.coach == coach_profile) & (Menu.is_active == 1)
     ).order_by(Menu.created_at.desc())
     
-    # 予約件数
+    # 予約件数と最近の予約
     from models.booking import Booking
+    from models.user import User
+    
     booking_count = Booking.select().join(
         Menu,
         on=(Booking.menu == Menu.id)
@@ -43,11 +45,31 @@ def dashboard():
         Menu.coach == coach_profile
     ).count()
     
+    # 最近の予約（直近10件）
+    recent_bookings_raw = Booking.select().join(
+        Menu,
+        on=(Booking.menu == Menu.id)
+    ).where(
+        Menu.coach == coach_profile
+    ).order_by(Booking.created_at.desc()).limit(10)
+    
+    # DeferredForeignKey対応: 各予約の関連データを明示的に取得
+    recent_bookings = []
+    for booking in recent_bookings_raw:
+        menu_obj = Menu.get_by_id(booking.menu)
+        client_user = User.get_by_id(booking.client)
+        
+        booking.menu_obj = menu_obj
+        booking.client_user = client_user
+        
+        recent_bookings.append(booking)
+    
     return render_template(
         'coach/dashboard.html',
         coach_profile=coach_profile,
         menus=menus,
-        booking_count=booking_count
+        booking_count=booking_count,
+        recent_bookings=recent_bookings
     )
 
 
@@ -59,6 +81,14 @@ def edit_profile():
     
     if request.method == 'POST':
         try:
+            # プロフィール写真の処理
+            profile_image = request.files.get('profile_image')
+            if profile_image and profile_image.filename:
+                from utils.image_handler import save_image
+                # 画像を保存
+                filename = save_image(profile_image, 'profiles')
+                current_user.profile_image = filename
+            
             # プロフィール更新
             coach_profile.bio = request.form.get('bio', '')
             coach_profile.expertise = request.form.get('expertise', '')

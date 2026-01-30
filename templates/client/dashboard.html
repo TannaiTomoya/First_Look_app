@@ -9,18 +9,23 @@
     <!-- クイックアクション -->
     <div class="row mb-4">
         <div class="col-md-12">
-            <a href="{{ url_for('coach.list_coaches') }}" class="btn btn-primary me-2">
-                <i class="fas fa-search"></i> コーチを探す
+            <a href="{{ url_for('coach.list_coaches') }}" class="btn btn-primary me-2 mb-2" title="コーチを探す">
+                <i class="fas fa-search"></i> コーチ検索
             </a>
-            <a href="{{ url_for('client.select_impression') }}" class="btn btn-outline-primary me-2">
-                <i class="fas fa-smile"></i> なりたい印象を選択
+            <a href="{{ url_for('client.select_impression') }}" class="btn btn-outline-primary me-2 mb-2" title="なりたい印象を選択">
+                <i class="fas fa-smile"></i> なりたい印象
             </a>
-            <a href="{{ url_for('client.skin_check') }}" class="btn btn-outline-primary me-2">
-                <i class="fas fa-check-circle"></i> 最新の肌質・肌悩み
+            <a href="{{ url_for('client.skin_check') }}" class="btn btn-outline-primary me-2 mb-2" title="最新の肌質・肌悩み">
+                <i class="fas fa-check-circle"></i> 肌診断
             </a>
-            <a href="{{ url_for('client.daily_check') }}" class="btn btn-outline-success">
-                <i class="fas fa-clipboard-check"></i> 今日のチェック
+            <a href="{{ url_for('client.daily_check') }}" class="btn btn-outline-success me-2 mb-2" title="当日5分チェック">
+                <i class="fas fa-clipboard-check"></i> 5分チェック
             </a>
+            {% if active_chats and (skin_check_data or selected_impression) %}
+            <button class="btn btn-outline-success mb-2" data-bs-toggle="modal" data-bs-target="#sendDataModal" title="肌質・印象をコーチに送信">
+                <i class="fas fa-paper-plane"></i> コーチに送信
+            </button>
+            {% endif %}
         </div>
     </div>
     
@@ -54,6 +59,18 @@
     <p class="text-muted">予約がありません。</p>
     {% endif %}
     
+    <!-- なりたい顔のイメージ作成ボタン -->
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <a href="#" class="btn btn-primary btn-lg disabled">
+                <i class="fas fa-magic"></i> なりたい顔のイメージを作成する（準備中）
+            </a>
+            <p class="text-muted mt-2 small">
+                眉・鼻のパーツを組み合わせて、理想の顔イメージを作成できます
+            </p>
+        </div>
+    </div>
+    
     <!-- 上段2カラムレイアウト：最新の肌質・肌悩み & なりたい印象 -->
     <div class="row mb-5">
         <!-- 左列：最新の肌質・肌悩み -->
@@ -61,15 +78,14 @@
             {% if skin_check_data %}
             <h2 class="mb-3">最新の肌質・肌悩み</h2>
             <div class="card shadow-sm h-100">
-                <div class="card-body d-flex flex-column">
+                <div class="card-body d-flex flex-column px-3 pt-5 pb-4">
                     <!-- 肌質 -->
                     {% if skin_check_data.skin_type %}
                     <div class="mb-4">
-                        <h5 class="mb-3"><strong>肌質</strong></h5>
                         <div class="text-center mb-3">
                             <img src="{{ url_for('static', filename=skin_check_data.skin_type.image) }}" 
                                  alt="{{ skin_check_data.skin_type.label }}"
-                                 style="width: 150px; height: 150px; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                 style="width: 200px; height: 200px; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                             <h4 class="mt-3 mb-0">{{ skin_check_data.skin_type.label }}</h4>
                         </div>
                     </div>
@@ -78,22 +94,14 @@
                     <!-- 悩み -->
                     {% if skin_check_data.concerns %}
                     <div class="mb-3">
-                        <h5 class="mb-3"><strong>悩み</strong></h5>
-                        <div class="row">
-                            {% for concern in skin_check_data.concerns %}
-                            <div class="col-6 mb-3">
-                                <div class="card shadow-sm">
-                                    <img src="{{ url_for('static', filename=concern.image) }}" 
-                                         class="card-img-top" 
-                                         alt="{{ concern.label }}"
-                                         style="height: 100px; object-fit: cover;">
-                                    <div class="card-body text-center p-2">
-                                        <small class="mb-0">{{ concern.label }}</small>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endfor %}
+                        {% for concern in skin_check_data.concerns %}
+                        <div class="text-center mb-3">
+                            <img src="{{ url_for('static', filename=concern.image) }}" 
+                                 alt="{{ concern.label }}"
+                                 style="width: 200px; height: 200px; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <h4 class="mt-3 mb-0">{{ concern.label }}</h4>
                         </div>
+                        {% endfor %}
                     </div>
                     {% endif %}
                     
@@ -115,22 +123,18 @@
             {% if selected_impression %}
             <h2 class="mb-3">なりたい印象を選択</h2>
             <div class="card shadow-sm h-100">
-                <div class="card-body d-flex flex-column">
-                    <div class="text-center mb-3">
+                <div class="card-body d-flex flex-column justify-content-center align-items-center px-3 py-4">
+                    <div class="text-center">
                         {% if selected_impression.image_url %}
                         <img src="{{ url_for('static', filename=selected_impression.image_url) }}" 
                              alt="{{ selected_impression.label }}"
-                             style="width: 200px; height: 200px; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                             style="width: 300px; height: 300px; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);">
                         {% endif %}
-                    </div>
-                    <div class="text-center mb-3">
-                        <h3 class="mb-2">{{ selected_impression.label }}</h3>
+                        <h3 class="mt-4 mb-2">{{ selected_impression.label }}</h3>
                         {% if selected_impression.description %}
-                        <p class="text-muted mb-0">{{ selected_impression.description }}</p>
+                        <p class="text-muted mb-3 small">{{ selected_impression.description }}</p>
                         {% endif %}
-                    </div>
-                    <div class="mt-auto">
-                        <a href="{{ url_for('client.select_impression') }}" class="btn btn-outline-primary w-100">
+                        <a href="{{ url_for('client.select_impression') }}" class="btn btn-outline-primary">
                             <i class="fas fa-edit"></i> 印象を変更する
                         </a>
                     </div>
@@ -231,4 +235,41 @@
     </div>
     {% endif %}
 </div>
+
+<!-- モーダル：送信先チャット選択 -->
+{% if active_chats %}
+<div class="modal fade" id="sendDataModal" tabindex="-1" aria-labelledby="sendDataModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="sendDataModalLabel">
+                    <i class="fas fa-paper-plane"></i> 送信先のコーチを選択
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">
+                    <i class="fas fa-info-circle"></i> 肌診断結果となりたい印象をコーチに送信します
+                </p>
+                {% for chat in active_chats %}
+                <form action="{{ url_for('chat.send_dashboard_data', chat_id=chat.id) }}" method="POST" class="mb-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-outline-primary w-100 d-flex justify-content-between align-items-center">
+                        <span>
+                            <i class="fas fa-user"></i> {{ chat.coach_name }}
+                        </span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </form>
+                {% endfor %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> キャンセル
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
