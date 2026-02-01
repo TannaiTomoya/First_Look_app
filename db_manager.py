@@ -232,6 +232,7 @@ def seed_data():
         profile_image="default.jpg",
         bio="来週大事な面接があります",
         role="client",
+        gender="male"
     )
 
     client2 = User.create(
@@ -241,6 +242,7 @@ def seed_data():
         profile_image="default.jpg",
         bio="婚活パーティーに参加予定",
         role="client",
+        gender="female"
     )
 
     # コーチ作成
@@ -251,6 +253,7 @@ def seed_data():
         profile_image="default.jpg",
         bio="第一印象コンサルタント",
         role="coach",
+        gender="male"
     )
 
     coach2_user = User.create(
@@ -260,6 +263,7 @@ def seed_data():
         profile_image="default.jpg",
         bio="メイクアップアーティスト",
         role="coach",
+        gender="female"
     )
 
     print(f"✓ {User.select().count()}人のユーザーを作成（Client: 2人, Coach: 2人）")

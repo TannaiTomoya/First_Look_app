@@ -4,22 +4,151 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h1 class="mb-4">ダッシュボード</h1>
+    <h1 class="mb-4">
+        <i class="fas fa-home"></i> ダッシュボード
+        <small class="text-muted fs-6">ようこそ、{{ current_user.username }}さん</small>
+    </h1>
+    
+    <!-- 当日チェックへの導線（目立つカード） -->
+    <div class="row mb-4">
+        <div class="col-12">
+            {% if today_check %}
+                <!-- チェック完了済み -->
+                <div class="card border-success shadow-lg">
+                    <div class="card-body text-center py-4" style="background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);">
+                        <h2 class="mb-3">
+                            <i class="fas fa-check-circle text-success"></i> 今日のチェック完了！
+                        </h2>
+                        <p class="lead mb-3">
+                            お疲れ様です！今日の{% if current_user.gender == 'female' %}10分{% else %}5分{% endif %}チェックは完了しています
+                        </p>
+                        <div class="row text-center mb-3">
+                            <div class="col">
+                                <div class="mb-2 position-relative d-inline-block">
+                                    <i class="fas fa-tint fa-3x {% if today_check.skin_ok == 1 %}text-success{% else %}text-secondary{% endif %}"></i>
+                                    {% if today_check.skin_ok == 1 %}
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success">
+                                        <i class="fas fa-check"></i>
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <p><small>肌・髪</small></p>
+                            </div>
+                            <div class="col">
+                                <div class="mb-2 position-relative d-inline-block">
+                                    <i class="fas fa-angle-right fa-3x {% if today_check.eyebrow_ok == 1 %}text-success{% else %}text-secondary{% endif %}"></i>
+                                    {% if today_check.eyebrow_ok == 1 %}
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success">
+                                        <i class="fas fa-check"></i>
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <p><small>眉</small></p>
+                            </div>
+                            <div class="col">
+                                <div class="mb-2 position-relative d-inline-block">
+                                    <i class="fas fa-eye fa-3x {% if today_check.eye_ok == 1 %}text-success{% else %}text-secondary{% endif %}"></i>
+                                    {% if today_check.eye_ok == 1 %}
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success">
+                                        <i class="fas fa-check"></i>
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <p><small>目</small></p>
+                            </div>
+                            <div class="col">
+                                <div class="mb-2 position-relative d-inline-block">
+                                    <i class="fas fa-head-side-mask fa-3x {% if today_check.nose_ok == 1 %}text-success{% else %}text-secondary{% endif %}"></i>
+                                    {% if today_check.nose_ok == 1 %}
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success">
+                                        <i class="fas fa-check"></i>
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <p><small>鼻</small></p>
+                            </div>
+                            <div class="col">
+                                <div class="mb-2 position-relative d-inline-block">
+                                    <i class="fas fa-smile fa-3x {% if today_check.lip_ok == 1 %}text-success{% else %}text-secondary{% endif %}"></i>
+                                    {% if today_check.lip_ok == 1 %}
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success">
+                                        <i class="fas fa-check"></i>
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <p><small>口</small></p>
+                            </div>
+                        </div>
+                        <a href="{{ url_for('client.daily_check') }}" class="btn btn-success btn-lg">
+                            <i class="fas fa-edit"></i> チェック内容を見直す
+                        </a>
+                    </div>
+                </div>
+            {% else %}
+                <!-- チェック未完了 - 目立つCTA -->
+                <div class="card border-primary shadow-lg" style="border-width: 3px;">
+                    <div class="card-body text-center py-5" style="background: linear-gradient(135deg, #e7f3ff 0%, #cfe9ff 100%);">
+                        <h2 class="mb-3">
+                            <i class="fas fa-clock text-primary"></i> 今日のチェックを始めましょう！
+                        </h2>
+                        <p class="lead mb-3">
+                            {% if current_user.gender == 'female' %}
+                                <span class="badge bg-danger fs-6"><i class="fas fa-venus"></i> 女性用</span>
+                                <br>
+                                各項目<strong class="text-danger">10分</strong>（合計50分）のチェック
+                            {% else %}
+                                <span class="badge bg-primary fs-6"><i class="fas fa-mars"></i> 男性用</span>
+                                <br>
+                                各項目<strong class="text-primary">1分</strong>（合計5分）のチェック
+                            {% endif %}
+                        </p>
+                        <div class="row text-center mb-4">
+                            <div class="col">
+                                <i class="fas fa-tint fa-3x text-secondary mb-2"></i>
+                                <p><small>肌・髪</small></p>
+                            </div>
+                            <div class="col">
+                                <i class="fas fa-angle-right fa-3x text-secondary mb-2"></i>
+                                <p><small>眉</small></p>
+                            </div>
+                            <div class="col">
+                                <i class="fas fa-eye fa-3x text-secondary mb-2"></i>
+                                <p><small>目</small></p>
+                            </div>
+                            <div class="col">
+                                <i class="fas fa-head-side-mask fa-3x text-secondary mb-2"></i>
+                                <p><small>鼻</small></p>
+                            </div>
+                            <div class="col">
+                                <i class="fas fa-smile fa-3x text-secondary mb-2"></i>
+                                <p><small>口</small></p>
+                            </div>
+                        </div>
+                        <a href="{{ url_for('client.daily_check') }}" class="btn btn-primary btn-lg px-5 py-3 mb-2" style="font-size: 1.25rem;">
+                            <i class="fas fa-play-circle"></i> チェックを始める
+                        </a>
+                        <p class="text-muted small mb-0">
+                            <i class="fas fa-camera"></i> カメラで確認しながらチェック ｜
+                            <i class="fas fa-lightbulb"></i> タイマー中にヒントが表示されます
+                        </p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
     
     <!-- クイックアクション -->
     <div class="row mb-4">
         <div class="col-md-12">
-            <a href="{{ url_for('coach.list_coaches') }}" class="btn btn-primary me-2 mb-2" title="コーチを探す">
-                <i class="fas fa-search"></i> コーチ検索
-            </a>
+            <h5 class="mb-3"><i class="fas fa-bolt"></i> クイックアクション</h5>
             <a href="{{ url_for('client.select_impression') }}" class="btn btn-outline-primary me-2 mb-2" title="なりたい印象を選択">
                 <i class="fas fa-smile"></i> なりたい印象
             </a>
             <a href="{{ url_for('client.skin_check') }}" class="btn btn-outline-primary me-2 mb-2" title="最新の肌質・肌悩み">
                 <i class="fas fa-check-circle"></i> 肌診断
             </a>
-            <a href="{{ url_for('client.daily_check') }}" class="btn btn-outline-success me-2 mb-2" title="当日5分チェック">
-                <i class="fas fa-clipboard-check"></i> 5分チェック
+            <a href="{{ url_for('coach.list_coaches') }}" class="btn btn-outline-primary me-2 mb-2" title="コーチを探す">
+                <i class="fas fa-search"></i> コーチ検索
             </a>
             {% if active_chats and (skin_check_data or selected_impression) %}
             <button class="btn btn-outline-success mb-2" data-bs-toggle="modal" data-bs-target="#sendDataModal" title="肌質・印象をコーチに送信">
@@ -150,90 +279,6 @@
             {% endif %}
         </div>
     </div>
-    
-    <!-- 下段1カラム（フル幅）：当日5分チェック -->
-    {% if today_check %}
-    <div class="row">
-        <div class="col-12">
-            <h2 class="mb-3">当日5分チェック</h2>
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                    <div class="row text-center mb-3">
-                        <div class="col">
-                            <div class="mb-2 position-relative d-inline-block">
-                                <i class="fas fa-angle-right fa-3x {% if today_check.eyebrow_ok == 1 %}text-success{% else %}text-secondary{% endif %}"></i>
-                                {% if today_check.eyebrow_ok == 1 %}
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success">
-                                    <i class="fas fa-check"></i>
-                                </span>
-                                {% endif %}
-                            </div>
-                            <small>眉</small>
-                        </div>
-                        <div class="col">
-                            <div class="mb-2 position-relative d-inline-block">
-                                <i class="fas fa-eye fa-3x {% if today_check.eye_ok == 1 %}text-success{% else %}text-secondary{% endif %}"></i>
-                                {% if today_check.eye_ok == 1 %}
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success">
-                                    <i class="fas fa-check"></i>
-                                </span>
-                                {% endif %}
-                            </div>
-                            <small>目</small>
-                        </div>
-                        <div class="col">
-                            <div class="mb-2 position-relative d-inline-block">
-                                <i class="fas fa-head-side-mask fa-3x {% if today_check.nose_ok == 1 %}text-success{% else %}text-secondary{% endif %}"></i>
-                                {% if today_check.nose_ok == 1 %}
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success">
-                                    <i class="fas fa-check"></i>
-                                </span>
-                                {% endif %}
-                            </div>
-                            <small>鼻</small>
-                        </div>
-                        <div class="col">
-                            <div class="mb-2 position-relative d-inline-block">
-                                <i class="fas fa-tint fa-3x {% if today_check.skin_ok == 1 %}text-success{% else %}text-secondary{% endif %}"></i>
-                                {% if today_check.skin_ok == 1 %}
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success">
-                                    <i class="fas fa-check"></i>
-                                </span>
-                                {% endif %}
-                            </div>
-                            <small>肌</small>
-                        </div>
-                        <div class="col">
-                            <div class="mb-2 position-relative d-inline-block">
-                                <i class="fas fa-smile fa-3x {% if today_check.lip_ok == 1 %}text-success{% else %}text-secondary{% endif %}"></i>
-                                {% if today_check.lip_ok == 1 %}
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success">
-                                    <i class="fas fa-check"></i>
-                                </span>
-                                {% endif %}
-                            </div>
-                            <small>口</small>
-                        </div>
-                    </div>
-                    {% if today_check.notes %}
-                    <div class="alert alert-light mb-3">
-                        <strong><i class="fas fa-sticky-note"></i> メモ:</strong>
-                        <p class="mb-0 mt-2">{{ today_check.notes }}</p>
-                    </div>
-                    {% endif %}
-                    <div class="d-flex justify-content-between align-items-center">
-                        <small class="text-muted">
-                            <i class="fas fa-calendar"></i> チェック日: {{ today_check.check_date.strftime('%Y年%m月%d日') }}
-                        </small>
-                        <a href="{{ url_for('client.daily_check') }}" class="btn btn-outline-primary">
-                            <i class="fas fa-edit"></i> チェックを更新する
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
 </div>
 
 <!-- モーダル：送信先チャット選択 -->

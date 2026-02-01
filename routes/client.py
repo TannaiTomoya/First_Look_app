@@ -1,7 +1,7 @@
 """
 クライアント関連ルート
 """
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from functools import wraps
 from models.impression import DesiredFace, SkinCheck
@@ -11,6 +11,7 @@ from models.user import User
 from models.chat import Chat, Message
 from models.daily_check import DailyCheck
 from datetime import datetime, date
+from utils.gemini_skin_analysis import analyze_skin_with_gemini
 
 client = Blueprint('client', __name__, url_prefix='/client')
 
@@ -237,4 +238,66 @@ def daily_check():
     
     return render_template('client/daily_check.html', 
                          today_check=today_check,
-                         check_saved=check_saved)
+                         check_saved=check_saved,
+                         user_gender=current_user.gender)
+
+
+@client.route('/ai-skin-analysis', methods=['POST'])
+@client_required
+def ai_skin_analysis():
+    """AI肌診断（Gemini Flash使用）"""
+    try:
+        # JSONデータを取得
+        data = request.get_json()
+        
+        if not data or 'image' not in data:
+            return jsonify({
+                'error': True,
+                'message': '画像データが必要です'
+            }), 400
+        
+        image_data = data.get('image')
+        
+        # Gemini APIで診断
+        print(f"[AI診断] ユーザー: {current_user.username}, 性別: {current_user.gender}")
+        result = analyze_skin_with_gemini(
+            image_data, 
+            gender=current_user.gender
+        )
+        
+        # エラーチェック
+        if result.get('error'):
+            print(f"[AI診断] エラー: {result.get('message')}")
+            return jsonify(result), 500
+        
+        # データベースに保存
+        try:
+            skin_check = SkinCheck.create(
+                user=current_user,
+                skin_type=result['skin_type'],
+                concerns=','.join(result['concerns']),
+                ai_analyzed=1,  # AI診断済みフラグ
+                ai_score=result['score'],
+                ai_skin_age=result['skin_age'],
+                ai_general_advice=result['general_advice'],
+                ai_expert_advice=result['expert_advice']
+            )
+            print(f"[AI診断] 保存成功: ID={skin_check.id}")
+            
+            # レスポンスに保存IDを追加
+            result['skin_check_id'] = skin_check.id
+            result['saved'] = True
+            
+        except Exception as e:
+            print(f"[AI診断] DB保存エラー: {str(e)}")
+            result['saved'] = False
+            result['save_error'] = str(e)
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        print(f"[AI診断] 予期しないエラー: {str(e)}")
+        return jsonify({
+            'error': True,
+            'message': f'診断中にエラーが発生しました: {str(e)}'
+        }), 500

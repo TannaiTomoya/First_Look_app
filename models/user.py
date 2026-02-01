@@ -17,6 +17,7 @@ class User(BaseModel, UserMixin):
     profile_image = CharField(max_length=255, default='default.jpg')
     bio = TextField(null=True)
     role = CharField(max_length=20, default='client')  # 'client' or 'coach'
+    gender = CharField(max_length=10, default='male')  # 'male' or 'female'
     desired_face = DeferredForeignKey('DesiredFace', null=True, backref='users', on_delete='SET NULL')  # 選択中の印象カード
     created_at = DateTimeField(default=datetime.now)
     updated_at = DateTimeField(default=datetime.now)
@@ -47,6 +48,14 @@ class User(BaseModel, UserMixin):
     def is_coach(self):
         """コーチかどうか"""
         return self.role == 'coach'
+    
+    def is_female(self):
+        """女性ユーザーかどうか"""
+        return self.gender == 'female'
+    
+    def is_male(self):
+        """男性ユーザーかどうか"""
+        return self.gender == 'male'
     
     def save(self, *args, **kwargs):
         """保存時にupdated_atを更新"""

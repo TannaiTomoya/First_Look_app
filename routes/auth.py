@@ -37,7 +37,8 @@ def register():
             user = User(
                 username=form.username.data,
                 email=form.email.data,
-                role=form.role.data
+                role=form.role.data,
+                gender=form.gender.data
             )
             # パスワードのハッシュ化
             user.set_password(form.password.data)

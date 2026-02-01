@@ -4,14 +4,60 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h1 class="mb-4">肌診断</h1>
+    <h1 class="mb-4">
+        <i class="fas fa-spa"></i> 肌診断
+        <small class="text-muted fs-6">AI診断 or 手動入力</small>
+    </h1>
+    
+    <!-- AI診断ボタン（目立つCTA） -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-primary shadow-lg" style="border-width: 3px;">
+                <div class="card-body text-center py-4" style="background: linear-gradient(135deg, #e7f3ff 0%, #cfe9ff 100%);">
+                    <h2 class="mb-3">
+                        <i class="fas fa-robot text-primary"></i> AI肌診断
+                    </h2>
+                    <p class="lead mb-3">
+                        カメラで撮影するだけ！AIが自動で肌タイプと悩みを診断します
+                    </p>
+                    <button type="button" class="btn btn-primary btn-lg px-5 py-3" 
+                            style="font-size: 1.25rem;" 
+                            onclick="startAIAnalysis()">
+                        <i class="fas fa-camera"></i> AI診断を始める
+                    </button>
+                    <p class="text-muted small mt-2 mb-0">
+                        <i class="fas fa-lock"></i> 画像は診断のみに使用され、保存されません
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
     
     {% if latest_check %}
-    <div class="alert alert-info mb-4">
-        <strong>最新の診断:</strong><br>
-        肌質: {{ latest_check.skin_type }}<br>
-        悩み: {{ latest_check.concerns }}<br>
-        記録日: {{ latest_check.created_at.strftime('%Y年%m月%d日') }}
+    <div class="alert {% if latest_check.is_ai_analyzed() %}alert-success{% else %}alert-info{% endif %} mb-4">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <strong>
+                    {% if latest_check.is_ai_analyzed() %}
+                        <i class="fas fa-robot"></i> AI診断結果
+                    {% else %}
+                        <i class="fas fa-hand-paper"></i> 最新の診断
+                    {% endif %}
+                </strong><br>
+                肌質: {{ latest_check.skin_type }}<br>
+                悩み: {{ latest_check.concerns }}<br>
+                {% if latest_check.is_ai_analyzed() %}
+                    スコア: {{ latest_check.ai_score }}点 / 肌年齢: {{ latest_check.ai_skin_age }}歳<br>
+                {% endif %}
+                記録日: {{ latest_check.created_at.strftime('%Y年%m月%d日') }}
+            </div>
+            {% if latest_check.is_ai_analyzed() %}
+            <button type="button" class="btn btn-sm btn-outline-primary" 
+                    onclick="showAdvice({{ latest_check.id }})">
+                <i class="fas fa-lightbulb"></i> アドバイスを見る
+            </button>
+            {% endif %}
+        </div>
     </div>
     {% endif %}
     
@@ -183,4 +229,321 @@
         <a href="{{ url_for('client.dashboard') }}" class="btn btn-secondary">戻る</a>
     </form>
 </div>
+
+<!-- AI診断モーダル -->
+<div class="modal fade" id="aiAnalysisModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-robot"></i> AI肌診断
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- カメラプレビュー -->
+                <div id="cameraSection" class="text-center">
+                    <video id="aiVideo" autoplay playsinline muted 
+                           style="width: 100%; max-height: 400px; border-radius: 10px; background: #000;"></video>
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-success btn-lg" onclick="captureAndAnalyze()">
+                            <i class="fas fa-camera"></i> 撮影して診断
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            キャンセル
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- ローディング -->
+                <div id="loadingSection" class="text-center" style="display: none;">
+                    <div class="spinner-border text-primary" style="width: 4rem; height: 4rem;" role="status">
+                        <span class="visually-hidden">診断中...</span>
+                    </div>
+                    <p class="mt-3 lead">AI診断中...</p>
+                    <p class="text-muted">15-30秒ほどお待ちください</p>
+                </div>
+                
+                <!-- 診断結果 -->
+                <div id="resultSection" style="display: none;">
+                    <div class="text-center mb-4">
+                        <h3 class="text-success">
+                            <i class="fas fa-check-circle"></i> 診断完了！
+                        </h3>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">肌タイプ</h5>
+                                    <p class="display-6" id="resultSkinType">-</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">スコア</h5>
+                                    <p class="display-6" id="resultScore">-</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">肌年齢</h5>
+                                    <p class="display-6" id="resultAge">-</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-exclamation-triangle text-warning"></i> 肌悩み
+                            </h5>
+                            <p id="resultConcerns">-</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-lightbulb text-info"></i> アドバイス
+                            </h5>
+                            <p id="resultAdvice">-</p>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleExpertAdvice()">
+                                <i class="fas fa-user-md"></i> 専門家向けアドバイス
+                            </button>
+                            <div id="expertAdviceSection" style="display: none; margin-top: 1rem;">
+                                <div class="alert alert-light">
+                                    <p class="mb-0" id="resultExpertAdvice">-</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <button type="button" class="btn btn-primary" onclick="location.reload()">
+                            <i class="fas fa-sync"></i> ダッシュボードに戻る
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let videoStream = null;
+const modal = new bootstrap.Modal(document.getElementById('aiAnalysisModal'));
+
+// AI診断を開始
+async function startAIAnalysis() {
+    try {
+        // モーダルを表示
+        modal.show();
+        
+        // カメラを起動
+        const video = document.getElementById('aiVideo');
+        videoStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { 
+                facingMode: 'user',
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            } 
+        });
+        video.srcObject = videoStream;
+        
+        // セクション表示
+        document.getElementById('cameraSection').style.display = 'block';
+        document.getElementById('loadingSection').style.display = 'none';
+        document.getElementById('resultSection').style.display = 'none';
+        
+    } catch (error) {
+        alert('カメラの起動に失敗しました: ' + error.message);
+        modal.hide();
+    }
+}
+
+// 撮影して診断
+async function captureAndAnalyze() {
+    try {
+        // 画像をキャプチャ
+        const video = document.getElementById('aiVideo');
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+        
+        // base64エンコード
+        const imageData = canvas.toDataURL('image/jpeg', 0.9);
+        
+        // カメラを停止
+        if (videoStream) {
+            videoStream.getTracks().forEach(track => track.stop());
+            videoStream = null;
+        }
+        
+        // ローディング表示
+        document.getElementById('cameraSection').style.display = 'none';
+        document.getElementById('loadingSection').style.display = 'block';
+        
+        // APIリクエスト
+        const response = await fetch('/client/ai-skin-analysis', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ image: imageData })
+        });
+        
+        console.log('=== API呼び出し ===');
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        
+        const result = await response.json();
+        console.log('=== APIレスポンス ===');
+        console.log('Raw response:', result);
+        
+        if (result.error) {
+            console.error('❌ APIエラー:', result.message);
+            throw new Error(result.message);
+        }
+        
+        console.log('✅ API呼び出し成功。結果を表示します...');
+        
+        // 結果を表示
+        displayResults(result);
+        
+    } catch (error) {
+        console.error('❌ captureAndAnalyze エラー:', error);
+        alert('診断エラー: ' + error.message);
+        modal.hide();
+    }
+}
+
+// 結果を表示
+function displayResults(result) {
+    console.log('=== AI診断結果 ===');
+    console.log('Full result:', result);
+    console.log('skin_type:', result.skin_type);
+    console.log('skin_type_jp:', result.skin_type_jp);
+    console.log('score:', result.score);
+    console.log('skin_age:', result.skin_age);
+    console.log('concerns:', result.concerns);
+    console.log('concerns_jp:', result.concerns_jp);
+    console.log('general_advice:', result.general_advice);
+    console.log('expert_advice:', result.expert_advice);
+    
+    // モーダルのDOMが完全に準備されるまで少し待機
+    setTimeout(() => {
+        try {
+            console.log('=== DOM要素の取得を開始 ===');
+            
+            // 要素を安全に取得するヘルパー関数
+            function getElementSafely(id) {
+                const element = document.getElementById(id);
+                if (!element) {
+                    console.warn(`⚠️ ${id} が見つかりません。スキップします。`);
+                }
+                return element;
+            }
+            
+            // 各要素を取得
+            const elements = {
+                resultSkinType: getElementSafely('resultSkinType'),
+                resultScore: getElementSafely('resultScore'),
+                resultAge: getElementSafely('resultAge'),
+                resultConcerns: getElementSafely('resultConcerns'),
+                resultAdvice: getElementSafely('resultAdvice'),
+                resultExpertAdvice: getElementSafely('resultExpertAdvice'),
+                loadingSection: getElementSafely('loadingSection'),
+                resultSection: getElementSafely('resultSection')
+            };
+            
+            // 存在確認と値の設定
+            console.log('=== 値の設定開始 ===');
+            
+            if (elements.resultSkinType) {
+                elements.resultSkinType.textContent = result.skin_type_jp || result.skin_type || '不明';
+                console.log('✅ 肌タイプ設定完了');
+            }
+            
+            if (elements.resultScore) {
+                elements.resultScore.textContent = (result.score || 0) + '点';
+                console.log('✅ スコア設定完了');
+            }
+            
+            if (elements.resultAge) {
+                elements.resultAge.textContent = (result.skin_age || 0) + '歳';
+                console.log('✅ 肌年齢設定完了');
+            }
+            
+            if (elements.resultConcerns) {
+                const concernsJp = result.concerns_jp || result.concerns || [];
+                elements.resultConcerns.textContent = Array.isArray(concernsJp) ? (concernsJp.join('、') || 'なし') : 'なし';
+                console.log('✅ 肌悩み設定完了');
+            }
+            
+            if (elements.resultAdvice) {
+                elements.resultAdvice.textContent = result.general_advice || 'アドバイスがありません';
+                console.log('✅ 一般向けアドバイス設定完了');
+            }
+            
+            if (elements.resultExpertAdvice) {
+                elements.resultExpertAdvice.textContent = result.expert_advice || '専門家向けアドバイスがありません';
+                console.log('✅ 専門家向けアドバイス設定完了');
+            } else {
+                console.warn('⚠️ 専門家向けアドバイス要素が見つからないため、スキップしました');
+            }
+            
+            // セクション切り替え
+            console.log('=== セクション切り替え ===');
+            if (elements.loadingSection) {
+                elements.loadingSection.style.display = 'none';
+                console.log('✅ ローディング非表示');
+            }
+            
+            if (elements.resultSection) {
+                elements.resultSection.style.display = 'block';
+                console.log('✅ 結果セクション表示');
+            }
+            
+            console.log('✅ 結果表示完了');
+            
+        } catch (error) {
+            console.error('❌ displayResults エラー:', error);
+            console.error('エラー詳細:', error.stack);
+            alert('結果の表示中にエラーが発生しました: ' + error.message);
+        }
+    }, 100); // 100ms待機してからDOM操作を実行
+}
+
+// 専門家向けアドバイス切り替え
+function toggleExpertAdvice() {
+    const section = document.getElementById('expertAdviceSection');
+    section.style.display = section.style.display === 'none' ? 'block' : 'none';
+}
+
+// CSRFトークン取得
+function getCsrfToken() {
+    const token = document.querySelector('input[name="csrf_token"]');
+    return token ? token.value : '';
+}
+
+// モーダルが閉じられたときにカメラを停止
+document.getElementById('aiAnalysisModal').addEventListener('hidden.bs.modal', function () {
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+    }
+});
+</script>
 {% endblock %}

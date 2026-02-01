@@ -272,10 +272,11 @@
 
 <div class="container-fluid mt-4 px-4">
     <div class="text-center mb-4">
-        <h1 class="mb-2">当日5分チェック</h1>
+        <h1 class="mb-2">当日{% if user_gender == 'female' %}10分{% else %}5分{% endif %}チェック</h1>
         <p class="text-muted">
             <i class="fas fa-camera"></i> カメラで確認しながらチェックできます｜
             <i class="fas fa-lightbulb"></i> タイマー中にヒントが表示されます
+            {% if user_gender == 'female' %}<br><i class="fas fa-venus text-danger"></i> 女性用：各項目10分（合計50分）{% else %}<br><i class="fas fa-mars text-primary"></i> 男性用：各項目1分（合計5分）{% endif %}
         </p>
     </div>
     
@@ -344,7 +345,7 @@
                         </div>
                         
                         <div id="skin_timer" class="timer-display mb-2">
-                            <i class="fas fa-clock"></i> 60
+                            <i class="fas fa-clock"></i> {% if user_gender == 'female' %}600{% else %}60{% endif %}
                         </div>
                         
                         <div class="camera-preview" id="skin_camera" style="display: none;">
@@ -398,7 +399,7 @@
                         </div>
                         
                         <div id="eyebrow_timer" class="timer-display mb-2">
-                            <i class="fas fa-clock"></i> 60
+                            <i class="fas fa-clock"></i> {% if user_gender == 'female' %}600{% else %}60{% endif %}
                         </div>
                         
                         <!-- カメラプレビュー -->
@@ -452,7 +453,7 @@
                         </div>
                         
                         <div id="eye_timer" class="timer-display mb-2">
-                            <i class="fas fa-clock"></i> 60
+                            <i class="fas fa-clock"></i> {% if user_gender == 'female' %}600{% else %}60{% endif %}
                         </div>
                         
                         <div class="camera-preview" id="eye_camera" style="display: none;">
@@ -506,7 +507,7 @@
                         </div>
                         
                         <div id="nose_timer" class="timer-display mb-2">
-                            <i class="fas fa-clock"></i> 60
+                            <i class="fas fa-clock"></i> {% if user_gender == 'female' %}600{% else %}60{% endif %}
                         </div>
                         
                         <div class="camera-preview" id="nose_camera" style="display: none;">
@@ -557,7 +558,7 @@
                         </div>
                         
                         <div id="lip_timer" class="timer-display mb-2">
-                            <i class="fas fa-clock"></i> 60
+                            <i class="fas fa-clock"></i> {% if user_gender == 'female' %}600{% else %}60{% endif %}
                         </div>
                         
                         <div class="camera-preview" id="lip_camera" style="display: none;">
@@ -621,14 +622,30 @@
 </div>
 
 <script>
+// ユーザーの性別に応じた時間設定
+const userGender = '{{ user_gender }}';
+const checkDuration = userGender === 'female' ? 600 : 60; // 女性: 10分(600秒) / 男性: 1分(60秒)
+
 // タイマー管理オブジェクト
 const timers = {
-    eyebrow: { seconds: 60, interval: null, started: false, hintsShown: { 45: false, 30: false, 15: false } },
-    eye: { seconds: 60, interval: null, started: false, hintsShown: { 45: false, 30: false, 15: false } },
-    nose: { seconds: 60, interval: null, started: false, hintsShown: { 45: false, 30: false, 15: false } },
-    skin: { seconds: 60, interval: null, started: false, hintsShown: { 45: false, 30: false, 15: false } },
-    lip: { seconds: 60, interval: null, started: false, hintsShown: { 45: false, 30: false, 15: false } }
+    eyebrow: { seconds: checkDuration, interval: null, started: false, hintsShown: {} },
+    eye: { seconds: checkDuration, interval: null, started: false, hintsShown: {} },
+    nose: { seconds: checkDuration, interval: null, started: false, hintsShown: {} },
+    skin: { seconds: checkDuration, interval: null, started: false, hintsShown: {} },
+    lip: { seconds: checkDuration, interval: null, started: false, hintsShown: {} }
 };
+
+// ヒントのタイミングを性別に応じて設定
+const hintTimings = userGender === 'female' 
+    ? [450, 300, 150] // 女性: 7分30秒、5分、2分30秒
+    : [45, 30, 15];    // 男性: 45秒、30秒、15秒
+
+// ヒント表示済みフラグを初期化
+Object.keys(timers).forEach(item => {
+    hintTimings.forEach(timing => {
+        timers[item].hintsShown[timing] = false;
+    });
+});
 
 // カメラ管理オブジェクト
 const cameras = {
@@ -639,8 +656,36 @@ const cameras = {
     lip: { stream: null, enabled: false }
 };
 
-// ヒントデータ
-const hints = {
+// ヒントデータ（性別に応じて）
+const hints = userGender === 'female' ? {
+    // 女性用（10分）
+    eyebrow: {
+        450: '眉毛の形と太さを確認しましょう。左右対称かチェック！メイクのノリも確認を',
+        300: '眉間や眉頭に余分な毛がないか確認！眉毛の色味も整っていますか？',
+        150: '眉尻まで整っているか最終チェック！アイブロウの仕上がりを確認'
+    },
+    eye: {
+        450: '目の下のクマや目元の疲れをチェックしましょう。アイメイクの崩れもチェック',
+        300: 'まつ毛の状態と目やにがないか確認！マスカラのダマも注意',
+        150: '目元全体の印象を最終確認！アイシャドウのグラデーションもチェック'
+    },
+    nose: {
+        450: '鼻毛が出ていないか正面から確認しましょう。ファンデーションのヨレもチェック',
+        300: '左右の鼻の穴も忘れずにチェック！小鼻のテカリにも注意',
+        150: '斜めからも確認して最終チェック！ハイライトの入れ方も確認'
+    },
+    skin: {
+        450: '第一印象チェック！顔全体の清潔感と髪のシルエット。ベースメイクの仕上がりも',
+        300: '肌：Tゾーンのテカリ、毛穴の目立ち / 髪：寝癖、前髪の流れ / ファンデの厚塗りに注意',
+        150: '仕上げ確認！分け目・もみあげ・襟足・フェイスライン。フェイスパウダーで仕上げを'
+    },
+    lip: {
+        450: '唇の乾燥と縦ジワを確認しましょう。リップの色ムラもチェック',
+        300: '口角の状態と唇の色をチェック！リップライナーのはみ出しも確認',
+        150: '保湿が必要か最終判断！グロスの量も調整して'
+    }
+} : {
+    // 男性用（1分）
     eyebrow: {
         45: '眉毛の形と太さを確認しましょう。左右対称かチェック！',
         30: '眉間や眉頭に余分な毛がないか確認！',
@@ -769,7 +814,7 @@ function startTimer(itemName) {
     const displayElement = document.getElementById(`${itemName}_timer`);
     const progressBar = document.getElementById(`${itemName}_progress`);
     const card = document.getElementById(`${itemName}_card`);
-    const totalSeconds = 60;
+    const totalSeconds = checkDuration; // 性別に応じた時間
     
     card.classList.add('active');
     
@@ -783,25 +828,20 @@ function startTimer(itemName) {
         progressBar.style.width = percentage + '%';
         
         // ヒント表示（範囲チェック + フラグ管理で確実に表示）
-        if (timer.seconds <= 45 && timer.seconds > 43 && !timer.hintsShown[45]) {
-            console.log(`💡 ${itemNames[itemName]} - ヒント1表示: 45秒`);
-            showHint(itemName, 45);
-            timer.hintsShown[45] = true;
-        }
-        if (timer.seconds <= 30 && timer.seconds > 28 && !timer.hintsShown[30]) {
-            console.log(`💡 ${itemNames[itemName]} - ヒント2表示: 30秒`);
-            showHint(itemName, 30);
-            timer.hintsShown[30] = true;
-        }
-        if (timer.seconds <= 15 && timer.seconds > 13 && !timer.hintsShown[15]) {
-            console.log(`💡 ${itemNames[itemName]} - ヒント3表示: 15秒`);
-            showHint(itemName, 15);
-            timer.hintsShown[15] = true;
-        }
+        hintTimings.forEach((timing, index) => {
+            const range = timing > 50 ? 5 : 2; // 長い時間の場合は範囲を広げる
+            if (timer.seconds <= timing && timer.seconds > (timing - range) && !timer.hintsShown[timing]) {
+                console.log(`💡 ${itemNames[itemName]} - ヒント${index + 1}表示: ${timing}秒`);
+                showHint(itemName, timing);
+                timer.hintsShown[timing] = true;
+            }
+        });
         
         displayElement.innerHTML = `<i class="fas fa-hourglass-half"></i> ${timer.seconds}`;
         
-        if (timer.seconds > 10) {
+        const warningThreshold = totalSeconds > 100 ? 60 : 10; // 女性は60秒、男性は10秒
+        
+        if (timer.seconds > warningThreshold) {
             displayElement.className = 'timer-display';
             progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-info';
         } else if (timer.seconds > 0) {

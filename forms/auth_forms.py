@@ -54,6 +54,12 @@ class RegisterForm(FlaskForm):
         validators=[DataRequired(message='ロールを選択してください')]
     )
 
+    gender = SelectField(
+        '性別',
+        choices=[('male', '男性'), ('female', '女性')],
+        validators=[DataRequired(message='性別を選択してください')]
+    )
+
     submit = SubmitField('登録')
 
     def validate_username(self, username):
