@@ -7,7 +7,7 @@ from forms.profile_forms import ProfileEditForm
 from models.user import User
 from models.daily_check import BeforeAfterPost, Photo
 from models.booking import Booking
-from utils.image_handler import save_image
+from utils.uploads import save_image, get_upload_subdir, InvalidImageFormatError, InvalidImageDataError
 
 users = Blueprint('users', __name__, url_prefix='/users')
 
@@ -87,8 +87,17 @@ def edit(username):
             
             # プロフィール画像をアップロード
             if form.profile_image.data:
-                image_filename = save_image(form.profile_image.data, image_type='profile')
-                current_user.profile_image = image_filename
+                try:
+                    # 新しいアップロードユーティリティを使用
+                    subdir = get_upload_subdir('profile')
+                    image_path = save_image(form.profile_image.data, subdir, max_size=200, quality=85)
+                    current_user.profile_image = image_path
+                except InvalidImageFormatError as e:
+                    flash(f'画像形式エラー: {str(e)}', 'danger')
+                    return render_template('users/edit.html', form=form)
+                except InvalidImageDataError as e:
+                    flash(f'画像データエラー: {str(e)}', 'danger')
+                    return render_template('users/edit.html', form=form)
             
             # データベースに保存
             current_user.save()

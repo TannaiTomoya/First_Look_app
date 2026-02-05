@@ -7,6 +7,7 @@ from functools import wraps
 from models.coach import Coach, Menu
 from models.impression import DesiredFace
 from models.daily_check import BeforeAfterPost
+from utils.uploads import save_image, get_upload_subdir, InvalidImageFormatError, InvalidImageDataError
 
 coach = Blueprint('coach', __name__, url_prefix='/coach')
 
@@ -84,10 +85,14 @@ def edit_profile():
             # プロフィール写真の処理
             profile_image = request.files.get('profile_image')
             if profile_image and profile_image.filename:
-                from utils.image_handler import save_image
-                # 画像を保存
-                filename = save_image(profile_image, 'profiles')
-                current_user.profile_image = filename
+                try:
+                    # 新しいアップロードユーティリティを使用
+                    subdir = get_upload_subdir('profile')
+                    image_path = save_image(profile_image, subdir, max_size=200, quality=85)
+                    current_user.profile_image = image_path
+                except (InvalidImageFormatError, InvalidImageDataError) as e:
+                    flash(f'画像アップロードエラー: {str(e)}', 'danger')
+                    return render_template('coach/edit_profile.html', coach_profile=coach_profile)
             
             # プロフィール更新
             coach_profile.bio = request.form.get('bio', '')

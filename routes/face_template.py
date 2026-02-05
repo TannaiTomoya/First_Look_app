@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from models.face_template import FaceTemplate, FacePart, FaceComposition
 from models.impression import DesiredFace
-from werkzeug.utils import secure_filename
+from utils.uploads import save_image, get_upload_subdir, InvalidImageFormatError, InvalidImageDataError
 from datetime import datetime
 import os
 import traceback
@@ -32,19 +32,21 @@ def save_base_image():
         if file.filename == '':
             return jsonify({'error': 'No selected file'}), 400
         
-        # ファイル保存
-        filename = secure_filename(f"base_{current_user.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.png")
-        upload_folder = os.path.join('static', 'uploads', 'face_templates')
-        os.makedirs(upload_folder, exist_ok=True)
-        filepath = os.path.join(upload_folder, filename)
-        file.save(filepath)
+        # 新しいアップロードユーティリティを使用
+        try:
+            subdir = get_upload_subdir('face_templates')
+            image_path = save_image(file, subdir, max_size=1080, quality=85)
+        except InvalidImageFormatError as e:
+            return jsonify({'error': f'画像形式エラー: {str(e)}'}), 400
+        except InvalidImageDataError as e:
+            return jsonify({'error': f'画像データエラー: {str(e)}'}), 400
         
         # データベースに保存
         # impression は現時点では null（後から紐付け機能を追加可能）
         template = FaceTemplate.create(
             user=current_user.id,
             impression=None,
-            base_image_path=filepath.replace('static/', '')
+            base_image_path=image_path
         )
         
         return jsonify({

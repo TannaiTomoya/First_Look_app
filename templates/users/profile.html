@@ -13,7 +13,7 @@
                         <!-- プロフィール画像 -->
                         <div class="col-md-3 text-center mb-3 mb-md-0">
                             <img 
-                                src="{{ url_for('static', filename='uploads/profiles/' + user.profile_image) }}" 
+                                src="{{ user.profile_image | image_url('profile') }}" 
                                 alt="{{ user.username }}"
                                 class="rounded-circle img-fluid"
                                 style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #667eea;"
@@ -81,7 +81,7 @@
                             <div class="row g-0">
                                 <div class="col-6">
                                     <img 
-                                        src="{{ url_for('static', filename='uploads/before_after/' + post.before_photo.file_path) }}" 
+                                        src="{{ post.before_photo.file_path | image_url('before_after') }}" 
                                         alt="Before"
                                         class="img-fluid w-100"
                                         style="aspect-ratio: 1/1; object-fit: cover;"
@@ -92,7 +92,7 @@
                                 </div>
                                 <div class="col-6">
                                     <img 
-                                        src="{{ url_for('static', filename='uploads/before_after/' + post.after_photo.file_path) }}" 
+                                        src="{{ post.after_photo.file_path | image_url('before_after') }}" 
                                         alt="After"
                                         class="img-fluid w-100"
                                         style="aspect-ratio: 1/1; object-fit: cover;"

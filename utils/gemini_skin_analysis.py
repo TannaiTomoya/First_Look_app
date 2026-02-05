@@ -1,28 +1,19 @@
 """
 Gemini API を使用したAI肌診断機能
 
-Google Gemini 2.0 Flash を使用して肌診断を実行します。
+Google Gemini 2.5 Flash を使用して肌診断を実行します。
 参考: https://note.com/satoru666/n/n08e754f7313e
 """
 import google.generativeai as genai
-import os
 import json
-from typing import Dict, Optional
-from dotenv import load_dotenv
+from typing import Dict
+from flask import current_app
 from utils.image_processing import resize_and_compress_image, validate_image_data
-
-# 環境変数を読み込み
-load_dotenv()
-
-# Gemini API初期化
-GEMINI_API_KEY = os.getenv('GOOGLE_GEMINI_API_KEY')
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
 
 
 def analyze_skin_with_gemini(image_data: str, gender: str = 'male') -> Dict:
     """
-    Gemini 2.0 Flashで肌診断を実行
+    Gemini 2.5 Flashで肌診断を実行
     
     Args:
         image_data: base64エンコードされた顔画像
@@ -41,6 +32,28 @@ def analyze_skin_with_gemini(image_data: str, gender: str = 'male') -> Dict:
             }
     """
     try:
+        # 0. APIキーチェック（app.configから取得）
+        api_key = current_app.config.get('GOOGLE_GEMINI_API_KEY')
+        
+        if not api_key:
+            print("[Gemini] ⚠️ APIキーが未設定です")
+            return {
+                'error': True,
+                'message': 'AI肌診断機能は現在利用できません。管理者がGemini APIキーを設定していない可能性があります。',
+                'skin_type': 'unknown',
+                'skin_type_jp': '不明',
+                'concerns': [],
+                'concerns_jp': [],
+                'skin_age': 0,
+                'score': 0,
+                'general_advice': '現在AI診断機能はご利用いただけません。手動で肌診断フォームをご利用ください。',
+                'expert_advice': ''
+            }
+        
+        # Gemini APIを設定
+        genai.configure(api_key=api_key)
+        print(f"[Gemini] APIキー設定完了（app.config経由）")
+        
         # 1. 画像データのバリデーション
         if not validate_image_data(image_data):
             return create_error_response("無効な画像データです")
@@ -252,12 +265,22 @@ def create_error_response(message: str) -> Dict:
 
 # テスト用関数
 if __name__ == '__main__':
+    import os
+    from dotenv import load_dotenv
+    
     print("Gemini AI 肌診断 テスト")
     print("-" * 50)
     
-    if not GEMINI_API_KEY:
+    # テスト用に直接環境変数から読み込み
+    load_dotenv()
+    api_key = os.getenv('GOOGLE_GEMINI_API_KEY')
+    
+    if not api_key:
         print("✗ エラー: GOOGLE_GEMINI_API_KEY が設定されていません")
         print("  .env ファイルにAPIキーを設定してください")
     else:
         print("✓ APIキー設定済み")
-        print(f"  APIキー: {GEMINI_API_KEY[:10]}...")
+        print(f"  APIキー: {api_key[:10]}...")
+        print("\n注意: このスクリプトを直接実行する場合は、Flaskアプリケーションコンテキスト外なので")
+        print("      analyze_skin_with_gemini() は使用できません。")
+        print("      Flask経由でテストしてください。")

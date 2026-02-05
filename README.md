@@ -15,16 +15,29 @@ pip install -r requirements.txt
 ```
 
 ### 3. データベースのセットアップ
+
+**推奨方法（マイグレーションシステム使用）:**
 ```bash
-# テーブル作成
-python db_manager.py create
+# マイグレーション状態確認
+python scripts/migrate.py status
+
+# マイグレーション適用
+python scripts/migrate.py up
 
 # テストデータ投入（任意）
 python db_manager.py seed
 
 # テーブル確認
-python db_manager.py show
+python scripts/migrate.py status
 ```
+
+**旧方法（参考用）:**
+```bash
+# ⚠️ 非推奨：今後は migrate.py を使用してください
+python db_manager.py create
+```
+
+**詳細:** マイグレーション運用の詳細は `MIGRATIONS_README.md` を参照
 
 ### 4. アプリケーションの起動
 ```bash

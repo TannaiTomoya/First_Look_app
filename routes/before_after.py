@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from models.daily_check import BeforeAfterPost, Photo
 from models.impression import DesiredFace
-from utils.image_handler import save_image
+from utils.uploads import save_image, get_upload_subdir, delete_image, InvalidImageFormatError, InvalidImageDataError
 import os
 
 before_after = Blueprint('before_after', __name__, url_prefix='/before-after')
@@ -74,41 +74,55 @@ def create():
             # After画像2（任意）
             after_file_2 = request.files.get('after_image_2')
             
+            # アップロード用サブディレクトリ
+            subdir = get_upload_subdir('before_after')
+            
             # 画像を保存（1枚目）
-            before_filename = save_image(before_file, 'before_after')
-            after_filename = save_image(after_file, 'before_after')
+            try:
+                before_path = save_image(before_file, subdir, max_size=1080, quality=85)
+                after_path = save_image(after_file, subdir, max_size=1080, quality=85)
+            except (InvalidImageFormatError, InvalidImageDataError) as e:
+                flash(f'画像アップロードエラー: {str(e)}', 'danger')
+                faces = DesiredFace.select().order_by(DesiredFace.id.asc())
+                return render_template('before_after/create.html', faces=faces)
             
             # Photoレコード作成（1枚目）
             before_photo = Photo.create(
                 user=current_user,
                 purpose='before',
-                file_path=before_filename
+                file_path=before_path
             )
             
             after_photo = Photo.create(
                 user=current_user,
                 purpose='after',
-                file_path=after_filename
+                file_path=after_path
             )
             
             # Photoレコード作成（2枚目・任意）
             before_photo_2 = None
             if before_file_2 and before_file_2.filename:
-                before_filename_2 = save_image(before_file_2, 'before_after')
-                before_photo_2 = Photo.create(
-                    user=current_user,
-                    purpose='before',
-                    file_path=before_filename_2
-                )
+                try:
+                    before_path_2 = save_image(before_file_2, subdir, max_size=1080, quality=85)
+                    before_photo_2 = Photo.create(
+                        user=current_user,
+                        purpose='before',
+                        file_path=before_path_2
+                    )
+                except (InvalidImageFormatError, InvalidImageDataError) as e:
+                    flash(f'Before画像2のアップロードエラー: {str(e)}。他の画像は保存されました。', 'warning')
             
             after_photo_2 = None
             if after_file_2 and after_file_2.filename:
-                after_filename_2 = save_image(after_file_2, 'before_after')
-                after_photo_2 = Photo.create(
-                    user=current_user,
-                    purpose='after',
-                    file_path=after_filename_2
-                )
+                try:
+                    after_path_2 = save_image(after_file_2, subdir, max_size=1080, quality=85)
+                    after_photo_2 = Photo.create(
+                        user=current_user,
+                        purpose='after',
+                        file_path=after_path_2
+                    )
+                except (InvalidImageFormatError, InvalidImageDataError) as e:
+                    flash(f'After画像2のアップロードエラー: {str(e)}。他の画像は保存されました。', 'warning')
             
             # 印象カードID
             desired_face_id = request.form.get('desired_face_id')
@@ -208,25 +222,24 @@ def delete(post_id):
         file_paths = []
         
         # 1枚目の画像パス
-        file_paths.append(os.path.join('static/uploads/before_after', before_photo.file_path))
-        file_paths.append(os.path.join('static/uploads/before_after', after_photo.file_path))
+        file_paths.append(before_photo.file_path)
+        file_paths.append(after_photo.file_path)
         
         # 2枚目の画像パス（存在する場合）
         if post.before_photo_2:
             before_photo_2_obj = Photo.get_by_id(post.before_photo_2)
-            file_paths.append(os.path.join('static/uploads/before_after', before_photo_2_obj.file_path))
+            file_paths.append(before_photo_2_obj.file_path)
         
         if post.after_photo_2:
             after_photo_2_obj = Photo.get_by_id(post.after_photo_2)
-            file_paths.append(os.path.join('static/uploads/before_after', after_photo_2_obj.file_path))
+            file_paths.append(after_photo_2_obj.file_path)
         
         # レコード削除（on_delete='CASCADE'によりPhotoレコードも自動削除される）
         post.delete_instance()
         
         # 物理ファイルを削除（レコード削除後）
         for file_path in file_paths:
-            if os.path.exists(file_path):
-                os.remove(file_path)
+            delete_image(file_path)
         
         flash('投稿を削除しました', 'success')
         return redirect(url_for('before_after.list_posts'))

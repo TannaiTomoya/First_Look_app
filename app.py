@@ -1,27 +1,27 @@
-from flask import Flask, render_template, g, request
+from flask import Flask, render_template, g, request, send_from_directory
 from flask_login import LoginManager, current_user
 from flask_wtf.csrf import CSRFProtect
 from models import db
 from models.user import User
+from config import get_config
+from utils.logging_helper import setup_logging
 from typing import Optional
+import os
 
 # Flaskアプリケーションの初期化
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'dev-secret-key-change-in-production'
 
-# Flask-Login 1.0.0 セキュリティ設定
-app.config['SESSION_COOKIE_SECURE'] = False  # 開発環境はHTTP、本番はTrue
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30分（秒単位）
-app.config['REMEMBER_COOKIE_SECURE'] = False  # 開発環境はHTTP、本番はTrue
-app.config['REMEMBER_COOKIE_HTTPONLY'] = True
-app.config['REMEMBER_COOKIE_DURATION'] = 2592000  # 30日（秒単位）
+# config.pyから設定を読み込み
+config_class = get_config()
+app.config.from_object(config_class)
 
-# CSRF保護の設定
-app.config['WTF_CSRF_TIME_LIMIT'] = None  # CSRFトークンの有効期限を無効化（セッション期限に従う）
-app.config['WTF_CSRF_SSL_STRICT'] = False  # 開発環境用（本番ではTrue）
-app.config['WTF_CSRF_ENABLED'] = True  # CSRF保護を有効化
+# ログ設定の初期化（秘密情報マスキング機能付き）
+setup_logging(app)
+
+# 起動時のログ出力
+app.logger.info("=" * 60)
+app.logger.info("🚀 FirstLook アプリケーション起動")
+app.logger.info("=" * 60)
 
 # CSRF保護の初期化
 csrf = CSRFProtect(app)
@@ -32,8 +32,8 @@ login_manager.init_app(app)
 login_manager.login_view = 'auth.login'
 login_manager.login_message = 'ログインが必要です'
 login_manager.login_message_category = 'warning'
-# Flask-Login 1.0.0: セッション保護の強化
-login_manager.session_protection = 'strong'  # 'basic', 'strong', or None
+# セッション保護の設定（config.pyから読み込み）
+login_manager.session_protection = app.config['SESSION_PROTECTION']
 
 
 @login_manager.user_loader
@@ -101,10 +101,88 @@ def index():
     """
     return render_template('index.html')
 
-if __name__ == '__main__':
-    # データベース初期化確認
-    print("FirstLook アプリケーション起動中...")
-    print(f"データベース: {db.database}")
+@app.route('/uploads/<path:filename>')
+def serve_upload(filename):
+    """
+    アップロードされた画像を配信
     
-    # 開発サーバー起動
-    app.run(debug=True, port=8000)
+    セキュリティ：
+    - send_from_directoryを使用してパストラバーサル対策
+    - uploadsディレクトリ配下のみアクセス可能
+    
+    Args:
+        filename: ファイルパス（サブディレクトリを含む）
+    
+    Returns:
+        画像ファイル
+    """
+    return send_from_directory('uploads', filename)
+
+@app.template_filter('image_url')
+def image_url_filter(path, category='profile'):
+    """
+    画像パスをURLに変換するテンプレートフィルター
+    
+    新旧の画像パス形式に対応：
+    - 新形式: uploads/profile/xxx.webp → /uploads/profile/xxx.webp
+    - 旧形式: xxx.jpg → /static/uploads/profiles/xxx.jpg
+    
+    Args:
+        path: 画像パス
+        category: 画像カテゴリ（'profile', 'before_after'等）
+    
+    Returns:
+        表示用URL
+    """
+    if not path:
+        return url_for('static', filename='uploads/profiles/default.jpg')
+    
+    # 新形式（uploads/で始まる）
+    if path.startswith('uploads/'):
+        return '/' + path
+    
+    # 旧形式（ファイル名のみ）- 互換性のため
+    category_map = {
+        'profile': 'profiles',
+        'before_after': 'before_after',
+        'face_templates': 'face_templates',
+        'chat': 'chat'
+    }
+    folder = category_map.get(category, 'profiles')
+    return url_for('static', filename=f'uploads/{folder}/{path}')
+
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    """
+    ファイルサイズ超過エラーハンドラー
+    
+    MAX_CONTENT_LENGTH を超えるリクエストに対して
+    ユーザーフレンドリーなエラーメッセージを表示
+    """
+    max_size_mb = app.config['MAX_CONTENT_LENGTH'] / (1024 * 1024)
+    flash(f'ファイルサイズが大きすぎます。最大{max_size_mb:.0f}MBまでアップロード可能です。', 'danger')
+    return redirect(request.referrer or url_for('index')), 413
+
+if __name__ == '__main__':
+    # 起動前の設定確認ログ
+    app.logger.info("")
+    app.logger.info("=" * 60)
+    app.logger.info("📋 アプリケーション設定確認")
+    app.logger.info("=" * 60)
+    app.logger.info(f"環境: {os.environ.get('FLASK_ENV', 'development')}")
+    app.logger.info(f"デバッグモード: {app.config['DEBUG']}")
+    app.logger.info(f"データベース: {db.database}")
+    app.logger.info(f"SECRET_KEY: {'設定済み' if app.config.get('SECRET_KEY') else '未設定'}")
+    app.logger.info(f"GEMINI API: {'設定済み' if app.config.get('GOOGLE_GEMINI_API_KEY') else '未設定'}")
+    app.logger.info(f"最大アップロード: {app.config['MAX_CONTENT_LENGTH'] / (1024 * 1024):.1f}MB")
+    app.logger.info(f"セッションセキュア: {app.config['SESSION_COOKIE_SECURE']}")
+    app.logger.info(f"CSRF保護: {app.config['WTF_CSRF_ENABLED']}")
+    app.logger.info("=" * 60)
+    app.logger.info("")
+    
+    # 開発サーバー起動（config.pyのDEBUG設定を使用）
+    app.run(
+        debug=app.config['DEBUG'],
+        port=8000,
+        host='127.0.0.1'
+    )

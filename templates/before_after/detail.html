@@ -13,7 +13,7 @@
                 <div class="col-md-6">
                     <h4 class="text-center mb-3">Before</h4>
                     <div class="mb-3">
-                        <img src="{{ url_for('static', filename='uploads/before_after/' + post.before_photo.file_path) }}" 
+                        <img src="{{ post.before_photo.file_path | image_url('before_after') }}" 
                              class="rounded shadow-sm" 
                              alt="Before 1"
                              style="width: 100%; height: 500px; object-fit: cover;">
@@ -21,7 +21,7 @@
                     
                     {% if post.before_photo_2 %}
                     <div class="mb-3">
-                        <img src="{{ url_for('static', filename='uploads/before_after/' + post.before_photo_2.file_path) }}" 
+                        <img src="{{ post.before_photo_2.file_path | image_url('before_after') }}" 
                              class="rounded shadow-sm" 
                              alt="Before 2"
                              style="width: 100%; height: 500px; object-fit: cover;">
@@ -33,7 +33,7 @@
                 <div class="col-md-6">
                     <h4 class="text-center mb-3">After</h4>
                     <div class="mb-3">
-                        <img src="{{ url_for('static', filename='uploads/before_after/' + post.after_photo.file_path) }}" 
+                        <img src="{{ post.after_photo.file_path | image_url('before_after') }}" 
                              class="rounded shadow-sm" 
                              alt="After 1"
                              style="width: 100%; height: 500px; object-fit: cover;">
@@ -41,7 +41,7 @@
                     
                     {% if post.after_photo_2 %}
                     <div class="mb-3">
-                        <img src="{{ url_for('static', filename='uploads/before_after/' + post.after_photo_2.file_path) }}" 
+                        <img src="{{ post.after_photo_2.file_path | image_url('before_after') }}" 
                              class="rounded shadow-sm" 
                              alt="After 2"
                              style="width: 100%; height: 500px; object-fit: cover;">

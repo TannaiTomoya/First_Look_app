@@ -1,10 +1,10 @@
 """
 データベースモデルパッケージ - FirstLook
 """
-from peewee import SqliteDatabase, Model
+from peewee import Model
 
-# データベースインスタンス
-db = SqliteDatabase('instance/firstlook.db')
+# データベースインスタンスをインポート（単一ソース）
+from db import db
 
 class BaseModel(Model):
     """全モデルの基底クラス"""
