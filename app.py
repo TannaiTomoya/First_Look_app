@@ -34,6 +34,11 @@ upload_dir = app.config['FIRSTLOOK_UPLOAD_DIR']
 os.makedirs(upload_dir, exist_ok=True)
 app.logger.info(f"✅ Upload ディレクトリ: {upload_dir}")
 
+# Exportディレクトリ作成（Step4-B）
+export_dir = app.config['FIRSTLOOK_EXPORT_DIR']
+os.makedirs(export_dir, exist_ok=True)
+app.logger.info(f"✅ Export ディレクトリ: {export_dir}")
+
 # ログディレクトリ作成
 log_dir = app.config['FIRSTLOOK_LOG_DIR']
 os.makedirs(log_dir, exist_ok=True)
@@ -99,25 +104,42 @@ def close_connection(exception):
 # Blueprintの登録
 from routes.auth import auth
 from routes.users import users
-from routes.coach import coach
 from routes.client import client
-from routes.booking import booking
-from routes.chat import chat_bp
-from routes.before_after import before_after
 from routes.face_template import face_template
+# NOTE: Step4-B時点では未実装のため一旦外す
+# from routes.api_face_adjustments import api_adjustments
+from routes.api_export import api_export
+from routes.share import share_bp
 from routes.system import system_bp
 
 app.register_blueprint(auth)
 app.register_blueprint(users)
-app.register_blueprint(coach)
 app.register_blueprint(client)
-app.register_blueprint(booking)
-app.register_blueprint(chat_bp)
-app.register_blueprint(before_after)
 app.register_blueprint(face_template)
+# app.register_blueprint(api_adjustments)  # Step4-B: 未実装のため一旦外す
+app.register_blueprint(api_export)
+app.register_blueprint(share_bp)
 app.register_blueprint(system_bp)
 
+# ========================================
+# アップロード画像配信
+# ========================================
+
+@app.route('/uploads/<path:filename>')
+def uploaded_file(filename):
+    """
+    アップロード画像を配信
+    
+    face_templates/, face_parts/ などの画像にアクセスするため
+    """
+    from flask import send_from_directory, current_app
+    return send_from_directory(current_app.config['FIRSTLOOK_UPLOAD_DIR'], filename)
+
+
+# ========================================
 # ルート定義
+# ========================================
+
 @app.route('/')
 def index():
     """

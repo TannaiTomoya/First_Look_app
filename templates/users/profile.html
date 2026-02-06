@@ -35,19 +35,7 @@
                                 {% endif %}
                             </div>
 
-                            <!-- 統計情報 -->
-                            <div class="d-flex gap-4 mb-3">
-                                <div>
-                                    <span class="fw-bold">{{ post_count }}</span>
-                                    <span class="text-muted">Before/After投稿</span>
-                                </div>
-                                {% if user.is_client() %}
-                                <div>
-                                    <span class="fw-bold">{{ booking_count }}</span>
-                                    <span class="text-muted">予約</span>
-                                </div>
-                                {% endif %}
-                            </div>
+                            <!-- 統計情報（将来的に表示するデータがあれば追加） -->
 
                             <!-- 自己紹介 -->
                             {% if user.bio %}
@@ -60,125 +48,13 @@
                 </div>
             </div>
 
-            <!-- タブナビゲーション -->
-            <div class="border-bottom mb-4">
-                <ul class="nav nav-tabs border-0">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="#">
-                            <i class="fas fa-images"></i> Before/After投稿
-                        </a>
-                    </li>
-                </ul>
-            </div>
-
-            <!-- Before/After投稿一覧 -->
-            {% if before_after_posts %}
-            <div class="row g-3">
-                {% for post in before_after_posts %}
-                <div class="col-12 col-md-6 col-lg-4">
-                    <a href="{{ url_for('before_after.detail', post_id=post.id) }}" class="text-decoration-none">
-                        <div class="card h-100 photo-grid-item">
-                            <div class="row g-0">
-                                <div class="col-6">
-                                    <img 
-                                        src="{{ post.before_photo.file_path | image_url('before_after') }}" 
-                                        alt="Before"
-                                        class="img-fluid w-100"
-                                        style="aspect-ratio: 1/1; object-fit: cover;"
-                                    >
-                                    <div class="position-absolute top-0 start-0 m-2">
-                                        <span class="badge bg-danger">Before</span>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <img 
-                                        src="{{ post.after_photo.file_path | image_url('before_after') }}" 
-                                        alt="After"
-                                        class="img-fluid w-100"
-                                        style="aspect-ratio: 1/1; object-fit: cover;"
-                                    >
-                                    <div class="position-absolute top-0 end-0 m-2">
-                                        <span class="badge bg-success">After</span>
-                                    </div>
-                                </div>
-                            </div>
-                            {% if post.caption %}
-                            <div class="card-body">
-                                <p class="card-text small text-muted mb-0">
-                                    {{ post.caption[:80] }}{% if post.caption|length > 80 %}...{% endif %}
-                                </p>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </a>
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <!-- 投稿がない場合 -->
+            <!-- コンテンツエリア -->
             <div class="text-center py-5">
-                <i class="fas fa-images fa-4x text-muted mb-3"></i>
-                <h3 class="h5 text-muted">まだBefore/After投稿がありません</h3>
-                {% if current_user.id == user.id %}
-                <p class="text-muted mb-4">施術結果を記録してみましょう！</p>
-                <a href="{{ url_for('before_after.create') }}" class="btn btn-primary">
-                    <i class="fas fa-plus-square"></i> Before/After投稿を作成
-                </a>
-                {% endif %}
+                <i class="fas fa-user fa-4x text-muted mb-3"></i>
+                <h3 class="h5 text-muted">プロフィールページ</h3>
+                <p class="text-muted">{{ user.username }}さんのプロフィールです</p>
             </div>
-            {% endif %}
         </div>
     </div>
 </div>
-
-<!-- カスタムスタイル -->
-<style>
-.photo-grid-item {
-    position: relative;
-    overflow: hidden;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: transform 0.2s;
-}
-
-.photo-grid-item:hover {
-    transform: scale(1.02);
-}
-
-.photo-grid-item img {
-    display: block;
-    transition: filter 0.2s;
-}
-
-.photo-grid-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-.photo-grid-item:hover .photo-grid-overlay {
-    opacity: 1;
-}
-
-.photo-grid-overlay i {
-    font-size: 1.2rem;
-}
-
-.photo-grid-overlay span {
-    font-weight: 600;
-    font-size: 1rem;
-}
-
-/* レスポンシブ調整 */
-@media (max-width: 576px) {
-    .photo-grid-item {
-        border-radius: 4px;
-    }
-}
-</style>
 {% endblock %}

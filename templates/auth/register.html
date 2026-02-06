@@ -96,22 +96,6 @@
                         <small class="text-muted" id="strengthText"></small>
                     </div>
 
-                    <!-- ロール選択 -->
-                    <div class="mb-3">
-                        {{ form.role.label(class="form-label fw-semibold") }}
-                        {{ form.role(class="form-select form-select-lg" + (" is-invalid" if form.role.errors else "")) }}
-                        {% if form.role.errors %}
-                            <div class="invalid-feedback">
-                                {% for error in form.role.errors %}
-                                    <div>{{ error }}</div>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                        <small class="form-text text-muted">
-                            <i class="fas fa-info-circle"></i> クライアント: サービスを受ける / コーチ: サービスを提供する
-                        </small>
-                    </div>
-
                     <!-- 性別選択 -->
                     <div class="mb-4">
                         {{ form.gender.label(class="form-label fw-semibold") }}

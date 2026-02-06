@@ -3,8 +3,16 @@
 {% block title %}イメージを作成 - FirstLook{% endblock %}
 
 {% block head %}
-<!-- Face-api.js -->
-<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<!-- MediaPipe FaceMesh (Step1: ランドマーク追従) -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+
+<!-- FaceMesh Preview JS -->
+<script src="{{ url_for('static', filename='js/facemesh_preview.js') }}" defer></script>
+
+<!-- 旧実装（フォールバック用に残す） -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script> -->
 
 <!-- コンシーラーツール用CSS -->
 <style>
@@ -69,7 +77,7 @@ canvas.concealer-off {
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
+<div class="container-fluid mt-4" data-template-id="{{ template.id }}">
     <h1 class="mb-4 text-center"><i class="fas fa-magic"></i> なりたい顔のイメージを作成</h1>
     
     <div class="row">
@@ -80,10 +88,75 @@ canvas.concealer-off {
                     <h4 class="mb-0">プレビュー</h4>
                 </div>
                 <div class="card-body text-center">
+                    <!-- Step3: Before/After比較 + Undo/Redo + Step4: 確定保存 -->
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <!-- Before/After -->
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-secondary" id="compare-before-btn">
+                                <i class="fas fa-eye-slash"></i> Before
+                            </button>
+                            <button type="button" class="btn btn-outline-primary active" id="compare-after-btn">
+                                <i class="fas fa-eye"></i> After
+                            </button>
+                            <button type="button" class="btn btn-outline-info" id="compare-hold-btn">
+                                <i class="fas fa-hand-pointer"></i> 押して比較
+                            </button>
+                        </div>
+                        
+                        <!-- Undo/Redo + 保存 -->
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-secondary" id="undo-btn" disabled title="元に戻す (Cmd/Ctrl+Z)">
+                                <i class="fas fa-undo"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="redo-btn" disabled title="やり直す (Cmd/Ctrl+Shift+Z)">
+                                <i class="fas fa-redo"></i>
+                            </button>
+                            <button type="button" class="btn btn-primary" id="save-adjustment-btn">
+                                <i class="fas fa-save me-1"></i>保存
+                            </button>
+                            <!-- Step4: 確定して保存（高品質） -->
+                            <button type="button" class="btn btn-success" id="export-btn">
+                                <i class="fas fa-check-circle me-1"></i>確定して保存
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Step4: 共有URL表示エリア -->
+                    <div id="shareUrlArea" class="alert alert-success" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong><i class="fas fa-check-circle"></i> 保存完了！</strong>
+                                <div class="mt-2 small">
+                                    <input type="text" class="form-control form-control-sm" id="shareUrlInput" readonly>
+                                </div>
+                            </div>
+                            <div class="btn-group-vertical btn-group-sm">
+                                <button class="btn btn-sm btn-outline-primary" id="copyShareUrlBtn">
+                                    <i class="fas fa-copy"></i> コピー
+                                </button>
+                                <a class="btn btn-sm btn-outline-secondary" id="openShareLinkBtn" target="_blank">
+                                    <i class="fas fa-external-link-alt"></i> 開く
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- FaceMeshステータス表示 -->
+                    <div id="facemeshStatus" class="alert alert-info" style="display: none;">
+                        初期化中...
+                    </div>
+                    
+                    <!-- 旧ステータス（互換性） -->
                     <div id="loadingFaceDetection" class="alert alert-info" style="display: none;">
                         <div class="spinner-border spinner-border-sm me-2" role="status"></div>
                         顔認識中...
                     </div>
+                    
+                    <!-- ベース画像（非表示、FaceMesh入力用） -->
+                    <img id="baseFaceImg" style="display:none;" crossorigin="anonymous">
+                    
+                    <!-- カメラ入力（任意、Step1では使わない） -->
+                    <video id="cameraVideo" style="display:none;" width="640" height="480" autoplay></video>
                     
                     <canvas id="previewCanvas" width="500" height="500" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></canvas>
                     
@@ -182,6 +255,24 @@ canvas.concealer-off {
                             <i class="fas fa-save"></i> 選択を保存
                         </button>
                     </div>
+                    
+                    <!-- Step4-A: Export最小UI -->
+                    <div class="mt-3">
+                        <button id="exportBtn" type="button" class="btn btn-warning">
+                            <i class="fas fa-file-export"></i> Export（共有URL作成）
+                        </button>
+                        <div id="exportStatus" class="small text-muted mt-2"></div>
+                        
+                        <div id="shareWrap" class="mt-2" style="display:none;">
+                            <label class="form-label small">Share URL</label>
+                            <div class="input-group input-group-sm">
+                                <input id="shareUrl" class="form-control" readonly />
+                                <button type="button" class="btn btn-outline-secondary" id="copyShareBtn">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -236,6 +327,115 @@ canvas.concealer-off {
                             </div>
                         </div>
                         {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step2: 微調整パネル -->
+            <div class="card mt-3">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-sliders-h"></i> 微調整
+                        <small class="ms-2 opacity-75">(左右別に調整可能)</small>
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- プリセット選択 -->
+                    <div class="mb-3">
+                        <label class="form-label small mb-1"><strong>プリセット:</strong></label>
+                        <select class="form-select form-select-sm" id="preset-select">
+                            <option value="none">選択なし</option>
+                            <option value="clean">清潔感（眉を上げ＋薄く）</option>
+                            <option value="smart">知的（眉の角度調整）</option>
+                            <option value="gentle">やさしい（眉を下げ＋緩く）</option>
+                        </select>
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i> プリセット適用後、さらに微調整できます
+                        </small>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- 調整対象タブ -->
+                    <div class="mb-3">
+                        <label class="form-label small mb-2"><strong>調整対象:</strong></label>
+                        <div class="btn-group w-100" role="group">
+                            <button type="button" class="btn btn-sm btn-outline-primary active" id="tab-leftBrow">
+                                左眉
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="tab-rightBrow">
+                                右眉
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="tab-nose">
+                                鼻
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- スライダー群 -->
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="small mb-0">横位置 (X)</label>
+                            <span class="badge bg-secondary" id="display-dx">0</span>
+                        </div>
+                        <input type="range" class="form-range form-range-sm" id="adjust-dx" 
+                               min="-60" max="60" value="0" step="1">
+                    </div>
+                    
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="small mb-0">縦位置 (Y)</label>
+                            <span class="badge bg-secondary" id="display-dy">0</span>
+                        </div>
+                        <input type="range" class="form-range form-range-sm" id="adjust-dy" 
+                               min="-60" max="60" value="0" step="1">
+                    </div>
+                    
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="small mb-0">サイズ</label>
+                            <span class="badge bg-secondary" id="display-scale">1.00</span>
+                        </div>
+                        <input type="range" class="form-range form-range-sm" id="adjust-scale" 
+                               min="0.6" max="1.6" value="1.0" step="0.01">
+                    </div>
+                    
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="small mb-0">回転</label>
+                            <span class="badge bg-secondary" id="display-rotate">0</span>
+                        </div>
+                        <input type="range" class="form-range form-range-sm" id="adjust-rotate" 
+                               min="-30" max="30" value="0" step="1">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="small mb-0">濃さ</label>
+                            <span class="badge bg-secondary" id="display-opacity">1.00</span>
+                        </div>
+                        <input type="range" class="form-range form-range-sm" id="adjust-opacity" 
+                               min="0.0" max="1.0" value="1.0" step="0.05">
+                    </div>
+                    
+                    <!-- リセットボタン -->
+                    <div class="d-flex gap-2 justify-content-between">
+                        <button class="btn btn-sm btn-warning" id="reset-part-btn">
+                            <i class="fas fa-undo"></i> 対象のみリセット
+                        </button>
+                        <button class="btn btn-sm btn-danger" id="reset-all-btn">
+                            <i class="fas fa-sync"></i> 全リセット
+                        </button>
+                    </div>
+                    
+                    <!-- ヒント -->
+                    <div class="alert alert-info mt-3 mb-0 py-2 px-3" role="alert">
+                        <small>
+                            <strong>💡 使い方:</strong><br>
+                            ・タブで左眉/右眉/鼻を切り替え<br>
+                            ・スライダーで微調整<br>
+                            ・プリセットで簡単設定
+                        </small>
                     </div>
                 </div>
             </div>
@@ -348,33 +548,25 @@ canvas.concealer-off {
 </div>
 
 <script>
+// ========================================
+// Step1: FaceMesh プレビュー実装
+// ========================================
+
 const canvas = document.getElementById('previewCanvas');
 const ctx = canvas.getContext('2d');
 const templateId = {{ template.id }};
-const baseImagePath = "{{ url_for('static', filename=template.base_image_path) }}";
+const baseImagePath = "/uploads/{{ template.base_image_path }}";
 
+// FaceMeshPreviewインスタンス
+let faceMeshPreview = null;
+
+// 既存変数（互換性維持）
 let baseImage = new Image();
 let selectedEyebrow = null;
 let selectedNose = null;
 let eyebrowImage = null;
 let noseImage = null;
 let originalCanvas = null;
-let faceLandmarks = null; // 顔認識の結果を保存
-let faceDetectionComplete = false;
-
-// パーツごとの状態管理
-const partState = {
-    eyebrow: {
-        offsetX: 0,
-        offsetY: 0,
-        rotation: 0
-    },
-    nose: {
-        offsetX: 0,
-        offsetY: 0,
-        rotation: 0
-    }
-};
 
 // 現在調整中のパーツ
 let currentAdjustTarget = 'eyebrow';
@@ -392,69 +584,66 @@ const concealerState = {
     historyStep: -1
 };
 
-// Face-api.jsのモデルを読み込み
-async function loadFaceApiModels() {
-    // Face-api.jsが読み込まれているか確認
-    if (typeof faceapi === 'undefined') {
-        console.error('Face-api.js が読み込まれていません');
-        return false;
-    }
-    
-    const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-    try {
-        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-        console.log('✓ Face-api.js モデル読み込み完了');
-        return true;
-    } catch (err) {
-        console.error('Face-api.js モデル読み込み失敗:', err);
-        return false;
-    }
-}
-
-// 顔認識を実行
-async function detectFaceLandmarks() {
-    const loadingEl = document.getElementById('loadingFaceDetection');
-    loadingEl.style.display = 'block';
-    
-    try {
-        const detection = await faceapi
-            .detectSingleFace(baseImage, new faceapi.TinyFaceDetectorOptions())
-            .withFaceLandmarks();
-        
-        if (detection) {
-            faceLandmarks = detection.landmarks;
-            console.log('✓ 顔認識成功');
-            faceDetectionComplete = true;
-        } else {
-            console.warn('顔が検出できませんでした。固定位置で配置します。');
-            faceDetectionComplete = false;
-        }
-    } catch (err) {
-        console.error('顔認識エラー:', err);
-        faceDetectionComplete = false;
-    }
-    
-    loadingEl.style.display = 'none';
-}
+// ========================================
+// FaceMesh初期化・起動
+// ========================================
 
 // ベース画像読み込み
 baseImage.onload = async () => {
-    // モデル読み込み
-    const modelLoaded = await loadFaceApiModels();
+    // baseFaceImgにも設定（FaceMesh入力用）
+    const baseFaceImg = document.getElementById('baseFaceImg');
+    baseFaceImg.src = baseImagePath;
     
-    // 顔認識実行
-    if (modelLoaded) {
-        await detectFaceLandmarks();
+    // FaceMeshPreviewインスタンス作成
+    faceMeshPreview = new FaceMeshPreview('previewCanvas', 'baseFaceImg');
+    
+    // Step3: templateIdを設定
+    faceMeshPreview.templateId = templateId;
+    
+    // Step3: 状態復元（API優先、なければlocalStorage）
+    await faceMeshPreview.loadStateWithPriority();
+    
+    // FaceMesh初期化
+    const initSuccess = await faceMeshPreview.init();
+    
+    if (initSuccess) {
+        // Step2: UIコントロールをバインド（Step3でUndo/Redo/Before/After/保存追加）
+        faceMeshPreview.bindControls();
+        
+        // Step2: UIを状態から更新
+        faceMeshPreview.updateUIFromState();
+        
+        // Step4-A: window stateに同期
+        if (faceMeshPreview.syncToWindowState) {
+            faceMeshPreview.syncToWindowState();
+        }
+        
+        // Undo/Redoボタンの初期状態更新
+        faceMeshPreview.updateUndoRedoButtons();
+        
+        // 初回描画
+        await faceMeshPreview.processImage();
+        
+        // 定期的に処理（10FPS間引き設定）
+        setInterval(() => {
+            if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
+                faceMeshPreview.processImage();
+            }
+        }, 100);
+    } else {
+        // フォールバック: 固定位置で描画
+        drawCompositionFixed();
     }
-    
-    drawComposition();
 };
 baseImage.crossOrigin = 'anonymous';
 baseImage.src = baseImagePath;
 
-// 合成描画
-function drawComposition() {
+// ========================================
+// 描画関数（FaceMesh版とフォールバック版）
+// ========================================
+
+// フォールバック: 固定位置で描画（旧実装）
+function drawCompositionFixed() {
     // Canvas状態を確実にリセット
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalCompositeOperation = 'source-over';
@@ -472,23 +661,9 @@ function drawComposition() {
     if (eyebrowImage && selectedEyebrow) {
         let x, y;
         
-        if (faceDetectionComplete && faceLandmarks) {
-            // 顔認識成功: 自動配置
-            const leftEyebrow = faceLandmarks.getLeftEyeBrow();
-            const rightEyebrow = faceLandmarks.getRightEyeBrow();
-            
-            // 両眉の中心を計算（元画像座標）
-            const eyebrowCenterX = (leftEyebrow[0].x + rightEyebrow[4].x) / 2;
-            const eyebrowCenterY = (leftEyebrow[2].y + rightEyebrow[2].y) / 2;
-            
-            // Canvas座標に変換して配置（眉用オフセット適用）
-            x = (eyebrowCenterX * scaleX) - (eyebrowImage.width * selectedEyebrow.scale / 2) + partState.eyebrow.offsetX;
-            y = (eyebrowCenterY * scaleY) - (eyebrowImage.height * selectedEyebrow.scale / 2) + partState.eyebrow.offsetY;
-        } else {
-            // 固定位置（眉用オフセット適用）
-            x = (canvas.width * selectedEyebrow.x) / 100 + partState.eyebrow.offsetX;
-            y = (canvas.height * selectedEyebrow.y) / 100 + partState.eyebrow.offsetY;
-        }
+        // 固定位置（眉用オフセット適用）
+        x = (canvas.width * selectedEyebrow.x) / 100 + (faceMeshPreview ? faceMeshPreview.partState.eyebrow.offsetX : 0);
+        y = (canvas.height * selectedEyebrow.y) / 100 + (faceMeshPreview ? faceMeshPreview.partState.eyebrow.offsetY : 0);
         
         const width = eyebrowImage.width * selectedEyebrow.scale;
         const height = eyebrowImage.height * selectedEyebrow.scale;
@@ -499,8 +674,9 @@ function drawComposition() {
         ctx.globalAlpha = 1.0; // 完全不透明
         
         // 回転適用
+        const rotation = faceMeshPreview ? faceMeshPreview.partState.eyebrow.rotation : 0;
         ctx.translate(x + width/2, y + height/2);
-        ctx.rotate(partState.eyebrow.rotation * Math.PI / 180);
+        ctx.rotate(rotation * Math.PI / 180);
         ctx.drawImage(eyebrowImage, -width/2, -height/2, width, height);
         
         ctx.restore();
@@ -510,22 +686,9 @@ function drawComposition() {
     if (noseImage && selectedNose) {
         let x, y;
         
-        if (faceDetectionComplete && faceLandmarks) {
-            // 顔認識成功: 自動配置
-            const nose = faceLandmarks.getNose();
-            
-            // 鼻の中心を計算（元画像座標）
-            const noseCenterX = nose[3].x;
-            const noseCenterY = nose[3].y;
-            
-            // Canvas座標に変換して配置（鼻用オフセット適用）
-            x = (noseCenterX * scaleX) - (noseImage.width * selectedNose.scale / 2) + partState.nose.offsetX;
-            y = (noseCenterY * scaleY) - (noseImage.height * selectedNose.scale / 2) + partState.nose.offsetY;
-        } else {
-            // 固定位置（鼻用オフセット適用）
-            x = (canvas.width * selectedNose.x) / 100 + partState.nose.offsetX;
-            y = (canvas.height * selectedNose.y) / 100 + partState.nose.offsetY;
-        }
+        // 固定位置（鼻用オフセット適用）
+        x = (canvas.width * selectedNose.x) / 100 + (faceMeshPreview ? faceMeshPreview.partState.nose.offsetX : 0);
+        y = (canvas.height * selectedNose.y) / 100 + (faceMeshPreview ? faceMeshPreview.partState.nose.offsetY : 0);
         
         const width = noseImage.width * selectedNose.scale;
         const height = noseImage.height * selectedNose.scale;
@@ -536,8 +699,9 @@ function drawComposition() {
         ctx.globalAlpha = 0.65; // 透明度をさらに下げて肌に溶け込ませる
         
         // 回転適用
+        const rotation = faceMeshPreview ? faceMeshPreview.partState.nose.rotation : 0;
         ctx.translate(x + width/2, y + height/2);
-        ctx.rotate(partState.nose.rotation * Math.PI / 180);
+        ctx.rotate(rotation * Math.PI / 180);
         ctx.drawImage(noseImage, -width/2, -height/2, width, height);
         
         ctx.restore();
@@ -582,9 +746,18 @@ document.querySelectorAll('.eyebrow-option').forEach(option => {
         eyebrowImage.onload = () => {
             // 眉を選択したので調整対象を眉に
             currentAdjustTarget = 'eyebrow';
-            drawComposition();
+            
+            // FaceMeshPreviewに登録
+            if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
+                faceMeshPreview.selectPart('eyebrow', selectedEyebrow, eyebrowImage);
+            } else {
+                // フォールバック: 固定位置描画
+                drawCompositionFixed();
+            }
+            
             showPositionAdjust();
         };
+        eyebrowImage.crossOrigin = 'anonymous';
         eyebrowImage.src = selectedEyebrow.url;
     });
 });
@@ -610,9 +783,18 @@ document.querySelectorAll('.nose-option').forEach(option => {
         noseImage.onload = () => {
             // 鼻を選択したので調整対象を鼻に
             currentAdjustTarget = 'nose';
-            drawComposition();
+            
+            // FaceMeshPreviewに登録
+            if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
+                faceMeshPreview.selectPart('nose', selectedNose, noseImage);
+            } else {
+                // フォールバック: 固定位置描画
+                drawCompositionFixed();
+            }
+            
             showPositionAdjust();
         };
+        noseImage.crossOrigin = 'anonymous';
         noseImage.src = selectedNose.url;
     });
 });
@@ -666,56 +848,73 @@ function updateAdjustTarget() {
 
 // 位置調整ボタン
 document.getElementById('moveUp').addEventListener('click', () => {
-    partState[currentAdjustTarget].offsetY -= 3;
+    if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
+        faceMeshPreview.updatePartState(currentAdjustTarget, { 
+            offsetY: faceMeshPreview.partState[currentAdjustTarget].offsetY - 3 
+        });
+    }
     updateAllDisplayValues();
-    drawComposition();
 });
 
 document.getElementById('moveDown').addEventListener('click', () => {
-    partState[currentAdjustTarget].offsetY += 3;
+    if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
+        faceMeshPreview.updatePartState(currentAdjustTarget, { 
+            offsetY: faceMeshPreview.partState[currentAdjustTarget].offsetY + 3 
+        });
+    }
     updateAllDisplayValues();
-    drawComposition();
 });
 
 document.getElementById('moveLeft').addEventListener('click', () => {
-    partState[currentAdjustTarget].offsetX -= 3;
+    if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
+        faceMeshPreview.updatePartState(currentAdjustTarget, { 
+            offsetX: faceMeshPreview.partState[currentAdjustTarget].offsetX - 3 
+        });
+    }
     updateAllDisplayValues();
-    drawComposition();
 });
 
 document.getElementById('moveRight').addEventListener('click', () => {
-    partState[currentAdjustTarget].offsetX += 3;
+    if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
+        faceMeshPreview.updatePartState(currentAdjustTarget, { 
+            offsetX: faceMeshPreview.partState[currentAdjustTarget].offsetX + 3 
+        });
+    }
     updateAllDisplayValues();
-    drawComposition();
 });
 
 // 回転調整
 document.getElementById('rotationSlider').addEventListener('input', (e) => {
     const rotation = parseInt(e.target.value);
-    partState[currentAdjustTarget].rotation = rotation;
+    if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
+        faceMeshPreview.updatePartState(currentAdjustTarget, { rotation });
+    }
     updateAllDisplayValues();
-    drawComposition();
 });
 
 document.getElementById('rotateLeft').addEventListener('click', () => {
-    partState[currentAdjustTarget].rotation -= 5;
+    if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
+        const currentRotation = faceMeshPreview.partState[currentAdjustTarget].rotation;
+        faceMeshPreview.updatePartState(currentAdjustTarget, { rotation: currentRotation - 5 });
+    }
     updateAllDisplayValues();
-    drawComposition();
 });
 
 document.getElementById('rotateRight').addEventListener('click', () => {
-    partState[currentAdjustTarget].rotation += 5;
+    if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
+        const currentRotation = faceMeshPreview.partState[currentAdjustTarget].rotation;
+        faceMeshPreview.updatePartState(currentAdjustTarget, { rotation: currentRotation + 5 });
+    }
     updateAllDisplayValues();
-    drawComposition();
 });
 
-// 位置・回転リセット
+// 位置・回転リセット（Step1の旧UI）
 document.getElementById('resetCurrentPart').addEventListener('click', () => {
-    partState[currentAdjustTarget].offsetX = 0;
-    partState[currentAdjustTarget].offsetY = 0;
-    partState[currentAdjustTarget].rotation = 0;
+    if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
+        // Step1互換のリセット
+        faceMeshPreview.resetPartLegacy(currentAdjustTarget);
+    }
     updateAllDisplayValues();
-    drawComposition();
 });
 
 // パーツ削除
@@ -724,9 +923,10 @@ document.getElementById('removeCurrentPart').addEventListener('click', () => {
         // 眉を削除
         selectedEyebrow = null;
         eyebrowImage = null;
-        partState.eyebrow.offsetX = 0;
-        partState.eyebrow.offsetY = 0;
-        partState.eyebrow.rotation = 0;
+        
+        if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
+            faceMeshPreview.removePart('eyebrow');
+        }
         
         // 選択UIの解除
         document.querySelectorAll('.eyebrow-option').forEach(o => {
@@ -742,9 +942,10 @@ document.getElementById('removeCurrentPart').addEventListener('click', () => {
         // 鼻を削除
         selectedNose = null;
         noseImage = null;
-        partState.nose.offsetX = 0;
-        partState.nose.offsetY = 0;
-        partState.nose.rotation = 0;
+        
+        if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
+            faceMeshPreview.removePart('nose');
+        }
         
         // 選択UIの解除
         document.querySelectorAll('.nose-option').forEach(o => {
@@ -758,16 +959,14 @@ document.getElementById('removeCurrentPart').addEventListener('click', () => {
         }
     }
     
-    // 再描画
-    drawComposition();
-    
     // UIの表示更新
     hidePositionAdjust();
 });
 
 // 全ての表示値を更新
 function updateAllDisplayValues() {
-    const state = partState[currentAdjustTarget];
+    // FaceMeshPreviewの状態を参照
+    const state = faceMeshPreview ? faceMeshPreview.partState[currentAdjustTarget] : { offsetX: 0, offsetY: 0, rotation: 0 };
     
     // 位置表示
     document.getElementById('xOffsetDisplay').textContent = state.offsetX;
@@ -1146,7 +1345,13 @@ document.getElementById('redoBtn').addEventListener('click', redo);
 // リセット
 document.getElementById('resetConcealerBtn').addEventListener('click', () => {
     if (confirm('コンシーラーをリセットしますか？元の状態に戻ります。')) {
-        drawComposition(); // 元の合成画像を再描画
+        // 元の合成画像を再描画
+        if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
+            faceMeshPreview.renderComposite();
+        } else {
+            drawCompositionFixed();
+        }
+        
         concealerState.history = [];
         concealerState.historyStep = -1;
         updateUndoRedoButtons();
@@ -1156,6 +1361,116 @@ document.getElementById('resetConcealerBtn').addEventListener('click', () => {
 
 // 初期カーソル設定
 updateCanvasCursor();
+
+// ========================================
+// Step4-A: Export最小実装
+// ========================================
+
+// Export関数（Step4-A最小実装用）
+async function exportFaceTemplate() {
+    const btn = document.getElementById("exportBtn");
+    const statusEl = document.getElementById("exportStatus");
+    const shareWrap = document.getElementById("shareWrap");
+    const shareInput = document.getElementById("shareUrl");
+    
+    try {
+        if (btn) btn.disabled = true;
+        if (statusEl) statusEl.textContent = "Export中...";
+        
+        const templateId = document.querySelector('[data-template-id]')?.dataset?.templateId;
+        const anchors = window.__FL_ANCHORS__;
+        const state = window.__FL_STATE__ || {};
+        
+        if (!templateId) {
+            if (statusEl) statusEl.textContent = "Export不可：template_idが取得できません";
+            return;
+        }
+        
+        if (!anchors) {
+            if (statusEl) statusEl.textContent = "Export不可：アンカーがありません（顔を検出してください）";
+            return;
+        }
+        
+        // Step4-A: 最小実装（JSON保存）を使用
+        const res = await fetch("/client/api/face-template/export-minimal", {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json",
+                "X-CSRFToken": document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            },
+            body: JSON.stringify({
+                template_id: parseInt(templateId),
+                anchors,
+                state,
+                parts: {
+                    eyebrow_id: selectedEyebrow?.id || null,
+                    nose_id: selectedNose?.id || null
+                }
+            })
+        });
+        
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.ok) {
+            if (statusEl) statusEl.textContent = `Export失敗：${json.error || res.status}`;
+            return;
+        }
+        
+        const url = window.location.origin + json.share_url;
+        if (shareInput) shareInput.value = url;
+        if (shareWrap) shareWrap.style.display = "block";
+        
+        // Step4-B: PNG生成結果を反映
+        if (statusEl) {
+            if (json.png_generated) {
+                statusEl.innerHTML = '✅ 完了（画像生成済み）：<a href="' + json.share_url + '" target="_blank" class="text-decoration-none">Share URLを開く <i class="fas fa-external-link-alt"></i></a>';
+            } else {
+                statusEl.innerHTML = '⚠️ 完了（画像未生成）：<a href="' + json.share_url + '" target="_blank" class="text-decoration-none">Share URLを開く <i class="fas fa-external-link-alt"></i></a>';
+                if (json.png_error) {
+                    console.warn('PNG生成エラー:', json.png_error);
+                }
+            }
+        }
+        
+    } catch (err) {
+        console.error('Export error:', err);
+        if (statusEl) statusEl.textContent = `通信エラー：${err.message}`;
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+// Export UI のバインド
+function bindExportButton() {
+    const btn = document.getElementById("exportBtn");
+    if (btn) {
+        btn.addEventListener("click", exportFaceTemplate);
+    }
+    
+    const copyBtn = document.getElementById("copyShareBtn");
+    if (copyBtn) {
+        copyBtn.addEventListener("click", () => {
+            const input = document.getElementById("shareUrl");
+            if (input) {
+                input.select();
+                navigator.clipboard.writeText(input.value).then(() => {
+                    copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied';
+                    setTimeout(() => {
+                        copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                    }, 1500);
+                }).catch(() => {
+                    document.execCommand('copy');
+                });
+            }
+        });
+    }
+}
+
+// DOM ready
+document.addEventListener("DOMContentLoaded", bindExportButton);
+
+// anchors更新を追加（既存のアンカー計算の後に呼ぶ）
+window.__FL_ANCHORS__ = window.__FL_ANCHORS__ || null;
+window.__FL_STATE__ = window.__FL_STATE__ || {};
 
 </script>
 {% endblock %}

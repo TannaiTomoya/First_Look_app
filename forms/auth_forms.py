@@ -48,12 +48,6 @@ class RegisterForm(FlaskForm):
         ]
     )
 
-    role = SelectField(
-        'ロール',
-        choices=[('client', 'クライアント'), ('coach', 'コーチ')],
-        validators=[DataRequired(message='ロールを選択してください')]
-    )
-
     gender = SelectField(
         '性別',
         choices=[('male', '男性'), ('female', '女性')],

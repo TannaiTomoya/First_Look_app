@@ -26,25 +26,11 @@
                     </a>
                 </div>
                 {% else %}
-                    {% if current_user.is_coach() %}
-                    <div class="d-flex gap-3 justify-content-center">
-                        <a href="{{ url_for('coach.dashboard') }}" class="btn btn-primary btn-lg">
-                            <i class="fas fa-tachometer-alt"></i> ダッシュボード
-                        </a>
-                        <a href="{{ url_for('chat.list_chats') }}" class="btn btn-outline-primary btn-lg">
-                            <i class="fas fa-comments"></i> チャット
-                        </a>
-                    </div>
-                    {% else %}
                     <div class="d-flex gap-3 justify-content-center">
                         <a href="{{ url_for('client.dashboard') }}" class="btn btn-primary btn-lg">
                             <i class="fas fa-tachometer-alt"></i> ダッシュボード
                         </a>
-                        <a href="{{ url_for('coach.list_coaches') }}" class="btn btn-outline-primary btn-lg">
-                            <i class="fas fa-search"></i> コーチを探す
-                        </a>
                     </div>
-                    {% endif %}
                 {% endif %}
             </div>
         </div>
@@ -63,9 +49,9 @@
             <div class="col-md-4 mb-4">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body text-center">
-                        <i class="fas fa-user-check fa-3x text-success mb-3"></i>
-                        <h4 class="h5 fw-bold">コーチマッチング</h4>
-                        <p class="text-muted">あなたに合ったコーチを見つけて予約</p>
+                        <i class="fas fa-microscope fa-3x text-success mb-3"></i>
+                        <h4 class="h5 fw-bold">AI肌診断</h4>
+                        <p class="text-muted">肌質・肌悩みを選択して即時診断</p>
                     </div>
                 </div>
             </div>
@@ -78,15 +64,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Before/Afterセクション -->
-        <div class="text-center mt-5">
-            <h3 class="mb-4">Before/After事例</h3>
-            <p class="text-muted mb-4">実際の変化を見て、予約の参考にしてください</p>
-            <a href="{{ url_for('before_after.list_posts') }}" class="btn btn-outline-primary">
-                <i class="fas fa-images"></i> 事例を見る
-            </a>
         </div>
     </div>
 </div>

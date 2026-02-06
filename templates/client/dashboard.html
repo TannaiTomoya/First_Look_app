@@ -147,46 +147,8 @@
             <a href="{{ url_for('client.skin_check') }}" class="btn btn-outline-primary me-2 mb-2" title="最新の肌質・肌悩み">
                 <i class="fas fa-check-circle"></i> 肌診断
             </a>
-            <a href="{{ url_for('coach.list_coaches') }}" class="btn btn-outline-primary me-2 mb-2" title="コーチを探す">
-                <i class="fas fa-search"></i> コーチ検索
-            </a>
-            {% if active_chats and (skin_check_data or selected_impression) %}
-            <button class="btn btn-outline-success mb-2" data-bs-toggle="modal" data-bs-target="#sendDataModal" title="肌質・印象をコーチに送信">
-                <i class="fas fa-paper-plane"></i> コーチに送信
-            </button>
-            {% endif %}
         </div>
     </div>
-    
-    <!-- 予約一覧 -->
-    <h2 class="mb-3">予約一覧</h2>
-    {% if bookings %}
-    <div class="list-group mb-4">
-        {% for booking in bookings %}
-        <a href="{{ url_for('booking.detail', booking_id=booking.id) }}" class="list-group-item list-group-item-action">
-            <div class="d-flex w-100 justify-content-between">
-                <h5 class="mb-1">{{ booking.menu_obj.title }}</h5>
-                <small>{{ booking.booking_datetime.strftime('%Y年%m月%d日 %H:%M') }}</small>
-            </div>
-            <p class="mb-1">コーチ: {{ booking.coach_user.username }}</p>
-            <small>
-                ステータス: 
-                {% if booking.status == 'pending' %}
-                    <span class="badge bg-warning">確認待ち</span>
-                {% elif booking.status == 'confirmed' %}
-                    <span class="badge bg-success">確定</span>
-                {% elif booking.status == 'completed' %}
-                    <span class="badge bg-secondary">完了</span>
-                {% elif booking.status == 'cancelled' %}
-                    <span class="badge bg-danger">キャンセル</span>
-                {% endif %}
-            </small>
-        </a>
-        {% endfor %}
-    </div>
-    {% else %}
-    <p class="text-muted">予約がありません。</p>
-    {% endif %}
     
     <!-- なりたい顔のイメージ作成ボタン -->
     <div class="row mb-4">
@@ -280,41 +242,4 @@
         </div>
     </div>
 </div>
-
-<!-- モーダル：送信先チャット選択 -->
-{% if active_chats %}
-<div class="modal fade" id="sendDataModal" tabindex="-1" aria-labelledby="sendDataModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="sendDataModalLabel">
-                    <i class="fas fa-paper-plane"></i> 送信先のコーチを選択
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted mb-3">
-                    <i class="fas fa-info-circle"></i> 肌診断結果となりたい印象をコーチに送信します
-                </p>
-                {% for chat in active_chats %}
-                <form action="{{ url_for('chat.send_dashboard_data', chat_id=chat.id) }}" method="POST" class="mb-2">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <button type="submit" class="btn btn-outline-primary w-100 d-flex justify-content-between align-items-center">
-                        <span>
-                            <i class="fas fa-user"></i> {{ chat.coach_name }}
-                        </span>
-                        <i class="fas fa-arrow-right"></i>
-                    </button>
-                </form>
-                {% endfor %}
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times"></i> キャンセル
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
 {% endblock %}

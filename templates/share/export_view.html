@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}共有イメージ - FirstLook{% endblock %}
+
+{% block head %}
+<meta name="robots" content="noindex, nofollow">
+<style>
+.export-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.export-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 12px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.export-footer {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid #dee2e6;
+    text-align: center;
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5 export-container">
+    <div class="card">
+        <div class="card-body text-center p-4">
+            <h2 class="mb-4">
+                <i class="fas fa-image"></i> なりたい顔イメージ
+            </h2>
+            
+            <!-- 確定画像 -->
+            <div class="mb-4">
+                <img src="{{ image_url }}" alt="なりたい顔イメージ" class="export-image">
+            </div>
+            
+            <!-- 作成日時 -->
+            <div class="text-muted small mb-3">
+                <i class="fas fa-calendar"></i> 
+                作成日: {{ export.created_at.strftime('%Y年%m月%d日 %H:%M') }}
+            </div>
+            
+            <!-- アクション -->
+            <div class="d-flex justify-content-center gap-2 flex-wrap">
+                <a href="{{ image_url }}" download="naritai_kao.png" class="btn btn-primary">
+                    <i class="fas fa-download"></i> 画像をダウンロード
+                </a>
+                <button class="btn btn-outline-secondary" id="copyUrlBtn">
+                    <i class="fas fa-link"></i> URLをコピー
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- フッター -->
+    <div class="export-footer">
+        <p class="mb-2">
+            <i class="fas fa-magic"></i> FirstLook で作成
+        </p>
+        <p class="mb-0">
+            <a href="{{ url_for('index') }}" class="text-decoration-none">
+                あなたもなりたい顔を作成 <i class="fas fa-arrow-right"></i>
+            </a>
+        </p>
+    </div>
+</div>
+
+<script>
+// URLコピー機能
+document.getElementById('copyUrlBtn').addEventListener('click', function() {
+    const url = window.location.href;
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+            const btn = this;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> コピーしました';
+            btn.classList.remove('btn-outline-secondary');
+            btn.classList.add('btn-success');
+            
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-secondary');
+            }, 2000);
+        }).catch(err => {
+            alert('コピーに失敗しました');
+        });
+    } else {
+        // フォールバック（古いブラウザ）
+        const input = document.createElement('input');
+        input.value = url;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        
+        alert('URLをコピーしました');
+    }
+});
+</script>
+{% endblock %}

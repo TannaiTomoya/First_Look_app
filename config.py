@@ -23,6 +23,7 @@ class Config:
     
     # 永続パス設定（本番環境対応）
     FIRSTLOOK_UPLOAD_DIR = os.environ.get('FIRSTLOOK_UPLOAD_DIR', 'instance/uploads')
+    FIRSTLOOK_EXPORT_DIR = os.environ.get('FIRSTLOOK_EXPORT_DIR', 'instance/exports')  # Step4-B
     FIRSTLOOK_LOG_DIR = os.environ.get('FIRSTLOOK_LOG_DIR', 'instance/logs')
     
     # API設定
@@ -201,6 +202,7 @@ def get_config():
     print(f"[Config] DEBUG: {config_class.DEBUG}")
     print(f"[Config] DATABASE: {config_class.FIRSTLOOK_DB_PATH}")
     print(f"[Config] UPLOAD_DIR: {config_class.FIRSTLOOK_UPLOAD_DIR}")
+    print(f"[Config] EXPORT_DIR: {config_class.FIRSTLOOK_EXPORT_DIR}")
     print(f"[Config] LOG_DIR: {config_class.FIRSTLOOK_LOG_DIR}")
     print(f"[Config] GEMINI API: {'設定済み' if config_class.GOOGLE_GEMINI_API_KEY else '未設定'}")
     print(f"[Config] MAX_UPLOAD: {config_class.MAX_CONTENT_LENGTH / (1024 * 1024):.1f}MB")

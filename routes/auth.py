@@ -5,7 +5,6 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required
 from forms.auth_forms import RegisterForm, LoginForm
 from models.user import User
-from models.coach import Coach
 from urllib.parse import urlparse, urljoin
 
 auth = Blueprint('auth', __name__)
@@ -33,20 +32,16 @@ def register():
 
     if form.validate_on_submit():
         try:
-            # 新規ユーザーの作成
+            # 新規ユーザーの作成（クライアントのみ）
             user = User(
                 username=form.username.data,
                 email=form.email.data,
-                role=form.role.data,
+                role='client',  # 男性版MVPではクライアントのみ
                 gender=form.gender.data
             )
             # パスワードのハッシュ化
             user.set_password(form.password.data)
             user.save()
-
-            # コーチの場合、Coachプロフィールも作成
-            if user.role == 'coach':
-                Coach.create(user=user)
 
             flash('登録が完了しました。ログインしてください。', 'success')
             return redirect(url_for('auth.login'))
