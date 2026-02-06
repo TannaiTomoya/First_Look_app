@@ -32,6 +32,13 @@ Thumbs.db
 .env
 .env.local
 
+# Task completion files (may contain sensitive info)
+TASK_*.md
+*_COMPLETE.md
+API_KEY_LEAK_RESPONSE.md
+EMERGENCY_API_KEY_LEAK.md
+API_KEY_LEAK_INVESTIGATION_FINAL.md
+
 # Logs
 *.log
 

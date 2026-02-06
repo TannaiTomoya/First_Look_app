@@ -147,9 +147,9 @@ def test_sensitive_data_masking():
     from utils.logging_helper import mask_sensitive_data
     
     # Google APIキーのマスキング
-    text1 = "GOOGLE_GEMINI_API_KEY=AIzaSyAwTib_lcA9Fdj01PGjeP27J1j9waB6Tv0"
+    text1 = "GOOGLE_GEMINI_API_KEY=AIzaSyDUMMY_KEY_FOR_TESTING_PURPOSES_ONLY"
     masked1 = mask_sensitive_data(text1)
-    assert 'AIzaSyAwTib_lcA9Fdj01PGjeP27J1j9waB6Tv0' not in masked1, "❌ APIキーがマスキングされていません"
+    assert 'AIzaSyDUMMY_KEY_FOR_TESTING_PURPOSES_ONLY' not in masked1, "❌ APIキーがマスキングされていません"
     assert 'AIza****' in masked1, "❌ APIキーのマスキング形式が間違っています"
     print(f"✅ APIキーのマスキング: {masked1}")
     
