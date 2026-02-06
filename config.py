@@ -21,6 +21,10 @@ class Config:
     # 互換性のため DATABASE_PATH も保持（廃止予定）
     DATABASE_PATH = FIRSTLOOK_DB_PATH
     
+    # 永続パス設定（本番環境対応）
+    FIRSTLOOK_UPLOAD_DIR = os.environ.get('FIRSTLOOK_UPLOAD_DIR', 'instance/uploads')
+    FIRSTLOOK_LOG_DIR = os.environ.get('FIRSTLOOK_LOG_DIR', 'instance/logs')
+    
     # API設定
     GOOGLE_GEMINI_API_KEY = os.environ.get('GOOGLE_GEMINI_API_KEY')
     
@@ -196,6 +200,8 @@ def get_config():
     print(f"[Config] 環境: {env}")
     print(f"[Config] DEBUG: {config_class.DEBUG}")
     print(f"[Config] DATABASE: {config_class.FIRSTLOOK_DB_PATH}")
+    print(f"[Config] UPLOAD_DIR: {config_class.FIRSTLOOK_UPLOAD_DIR}")
+    print(f"[Config] LOG_DIR: {config_class.FIRSTLOOK_LOG_DIR}")
     print(f"[Config] GEMINI API: {'設定済み' if config_class.GOOGLE_GEMINI_API_KEY else '未設定'}")
     print(f"[Config] MAX_UPLOAD: {config_class.MAX_CONTENT_LENGTH / (1024 * 1024):.1f}MB")
     print(f"[Config] SESSION_COOKIE_SECURE: {config_class.SESSION_COOKIE_SECURE}")

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, g, request, send_from_directory
+from flask import Flask, render_template, g, request, send_from_directory, jsonify, url_for, flash, redirect
 from flask_login import LoginManager, current_user
 from flask_wtf.csrf import CSRFProtect
 from models import db
@@ -17,6 +17,29 @@ app.config.from_object(config_class)
 
 # ログ設定の初期化（秘密情報マスキング機能付き）
 setup_logging(app)
+
+# 永続パス用ディレクトリの自動作成
+app.logger.info("=" * 60)
+app.logger.info("📁 永続パス初期化")
+app.logger.info("=" * 60)
+
+# DBディレクトリ作成
+db_dir = os.path.dirname(app.config['FIRSTLOOK_DB_PATH'])
+if db_dir:  # 空文字列や ':memory:' の場合はスキップ
+    os.makedirs(db_dir, exist_ok=True)
+    app.logger.info(f"✅ DB ディレクトリ: {db_dir}")
+
+# アップロードディレクトリ作成
+upload_dir = app.config['FIRSTLOOK_UPLOAD_DIR']
+os.makedirs(upload_dir, exist_ok=True)
+app.logger.info(f"✅ Upload ディレクトリ: {upload_dir}")
+
+# ログディレクトリ作成
+log_dir = app.config['FIRSTLOOK_LOG_DIR']
+os.makedirs(log_dir, exist_ok=True)
+app.logger.info(f"✅ Log ディレクトリ: {log_dir}")
+
+app.logger.info("=" * 60)
 
 # 起動時のログ出力
 app.logger.info("=" * 60)
@@ -82,6 +105,7 @@ from routes.booking import booking
 from routes.chat import chat_bp
 from routes.before_after import before_after
 from routes.face_template import face_template
+from routes.system import system_bp
 
 app.register_blueprint(auth)
 app.register_blueprint(users)
@@ -91,6 +115,7 @@ app.register_blueprint(booking)
 app.register_blueprint(chat_bp)
 app.register_blueprint(before_after)
 app.register_blueprint(face_template)
+app.register_blueprint(system_bp)
 
 # ルート定義
 @app.route('/')
@@ -108,7 +133,12 @@ def serve_upload(filename):
     
     セキュリティ：
     - send_from_directoryを使用してパストラバーサル対策
-    - uploadsディレクトリ配下のみアクセス可能
+    - FIRSTLOOK_UPLOAD_DIR配下のみアクセス可能
+    
+    環境変数対応：
+    - FIRSTLOOK_UPLOAD_DIR で保存先を切り替え可能
+    - ローカル: instance/uploads
+    - 本番: /data/uploads 等
     
     Args:
         filename: ファイルパス（サブディレクトリを含む）
@@ -116,7 +146,8 @@ def serve_upload(filename):
     Returns:
         画像ファイル
     """
-    return send_from_directory('uploads', filename)
+    upload_dir = app.config['FIRSTLOOK_UPLOAD_DIR']
+    return send_from_directory(upload_dir, filename)
 
 @app.template_filter('image_url')
 def image_url_filter(path, category='profile'):
@@ -180,9 +211,14 @@ if __name__ == '__main__':
     app.logger.info("=" * 60)
     app.logger.info("")
     
-    # 開発サーバー起動（config.pyのDEBUG設定を使用）
+    # PORT環境変数から起動ポートを取得（本番環境対応）
+    port = int(os.environ.get('PORT', 8000))
+    
+    # 開発サーバー起動
+    # 本番環境では gunicorn を使用するため、このブロックは実行されない
+    app.logger.info(f"開発サーバーをポート {port} で起動中...")
     app.run(
         debug=app.config['DEBUG'],
-        port=8000,
-        host='127.0.0.1'
+        port=port,
+        host='0.0.0.0'  # コンテナ・本番環境対応（外部からアクセス可能）
     )

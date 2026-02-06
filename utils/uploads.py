@@ -8,6 +8,9 @@
 - ファイルサイズとリサイズ制限
 - UUID命名（ユーザー入力を信頼しない）
 - パストラバーサル対策
+
+環境変数対応：
+- FIRSTLOOK_UPLOAD_DIR で保存先を切り替え可能
 """
 
 import os
@@ -16,15 +19,13 @@ from typing import Optional, Tuple
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
 from PIL import Image
+from flask import current_app
 import io
 
 
 # 許可する画像形式
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
 ALLOWED_MIMES = {'image/jpeg', 'image/png', 'image/webp'}
-
-# アップロードベースディレクトリ
-UPLOAD_BASE_DIR = 'uploads'
 
 # 用途別サブディレクトリ
 UPLOAD_SUBDIRS = {
@@ -33,6 +34,24 @@ UPLOAD_SUBDIRS = {
     'skin_checks': 'skin_checks',
     'face_templates': 'face_templates'
 }
+
+
+def get_upload_base_dir() -> str:
+    """
+    アップロードベースディレクトリを取得
+    
+    環境変数 FIRSTLOOK_UPLOAD_DIR から取得。
+    未設定の場合は 'instance/uploads' をデフォルトとする。
+    
+    Returns:
+        str: アップロードベースディレクトリのパス
+    """
+    try:
+        # Flaskアプリケーションコンテキスト内の場合
+        return current_app.config.get('FIRSTLOOK_UPLOAD_DIR', 'instance/uploads')
+    except RuntimeError:
+        # アプリケーションコンテキスト外（テストなど）
+        return os.environ.get('FIRSTLOOK_UPLOAD_DIR', 'instance/uploads')
 
 
 class ImageUploadError(Exception):
@@ -231,8 +250,9 @@ def save_image(
     # 2. 画像の検証
     ext, mime_type = validate_image(file)
     
-    # 3. 保存先ディレクトリの作成
-    upload_dir = os.path.join(UPLOAD_BASE_DIR, subdir)
+    # 3. 保存先ディレクトリの作成（環境変数対応）
+    upload_base_dir = get_upload_base_dir()
+    upload_dir = os.path.join(upload_base_dir, subdir)
     os.makedirs(upload_dir, exist_ok=True)
     
     # 4. 画像を読み込み
@@ -265,7 +285,8 @@ def save_image(
     processed_img.save(file_path, format=recommended_format, **save_options)
     
     # 8. 相対パスを返す（DB保存用）
-    relative_path = os.path.join(UPLOAD_BASE_DIR, subdir, unique_filename)
+    # 注: upload_base_dir からの相対パスではなく、subdirからの相対パスを返す
+    relative_path = os.path.join(subdir, unique_filename)
     
     print(f"[Upload] 画像保存成功: {relative_path} ({recommended_format})")
     
@@ -277,7 +298,7 @@ def delete_image(relative_path: str) -> bool:
     保存された画像を安全に削除
     
     セキュリティ：
-    - パストラバーサル対策（UPLOAD_BASE_DIR配下のみ削除可能）
+    - パストラバーサル対策（FIRSTLOOK_UPLOAD_DIR配下のみ削除可能）
     - 存在しないファイルでもエラーを出さない
     
     Args:
@@ -290,9 +311,11 @@ def delete_image(relative_path: str) -> bool:
         return True
     
     try:
-        # パストラバーサル対策：UPLOAD_BASE_DIR配下のみ許可
-        full_path = os.path.abspath(relative_path)
-        base_path = os.path.abspath(UPLOAD_BASE_DIR)
+        # パストラバーサル対策：FIRSTLOOK_UPLOAD_DIR配下のみ許可
+        upload_base_dir = get_upload_base_dir()
+        full_path = os.path.join(upload_base_dir, relative_path)
+        full_path = os.path.abspath(full_path)
+        base_path = os.path.abspath(upload_base_dir)
         
         if not full_path.startswith(base_path):
             print(f"[Upload] ⚠️ 不正なパス削除試行を検出: {relative_path}")
