@@ -21,8 +21,9 @@ def view_export(token):
     if not export.is_public:
         abort(404)
     
-    # 画像URLを生成
-    image_url = f'/uploads/{export.output_path}'
+    # 画像URLを生成（/exports/経由）
+    # output_pathは 'exports/export_id.png' 形式
+    image_url = f'/exports/{os.path.basename(export.output_path)}'
     
     # テンプレートを解決
     template_obj = export.template

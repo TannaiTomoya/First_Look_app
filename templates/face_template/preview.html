@@ -9,7 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
 
 <!-- FaceMesh Preview JS -->
-<script src="{{ url_for('static', filename='js/facemesh_preview.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/facemesh_preview.js') }}"></script>
 
 <!-- 旧実装（フォールバック用に残す） -->
 <!-- <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script> -->
@@ -121,24 +121,9 @@ canvas.concealer-off {
                         </div>
                     </div>
                     
-                    <!-- Step4: 共有URL表示エリア -->
-                    <div id="shareUrlArea" class="alert alert-success" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong><i class="fas fa-check-circle"></i> 保存完了！</strong>
-                                <div class="mt-2 small">
-                                    <input type="text" class="form-control form-control-sm" id="shareUrlInput" readonly>
-                                </div>
-                            </div>
-                            <div class="btn-group-vertical btn-group-sm">
-                                <button class="btn btn-sm btn-outline-primary" id="copyShareUrlBtn">
-                                    <i class="fas fa-copy"></i> コピー
-                                </button>
-                                <a class="btn btn-sm btn-outline-secondary" id="openShareLinkBtn" target="_blank">
-                                    <i class="fas fa-external-link-alt"></i> 開く
-                                </a>
-                            </div>
-                        </div>
+                    <!-- 保存完了メッセージ -->
+                    <div id="saveSuccessMessage" class="alert alert-success mt-3" style="display: none;">
+                        <i class="fas fa-check-circle"></i> 保存しました！ダッシュボードに移動します...
                     </div>
                     
                     <!-- FaceMeshステータス表示 -->
@@ -255,24 +240,6 @@ canvas.concealer-off {
                             <i class="fas fa-save"></i> 選択を保存
                         </button>
                     </div>
-                    
-                    <!-- Step4-A: Export最小UI -->
-                    <div class="mt-3">
-                        <button id="exportBtn" type="button" class="btn btn-warning">
-                            <i class="fas fa-file-export"></i> Export（共有URL作成）
-                        </button>
-                        <div id="exportStatus" class="small text-muted mt-2"></div>
-                        
-                        <div id="shareWrap" class="mt-2" style="display:none;">
-                            <label class="form-label small">Share URL</label>
-                            <div class="input-group input-group-sm">
-                                <input id="shareUrl" class="form-control" readonly />
-                                <button type="button" class="btn btn-outline-secondary" id="copyShareBtn">
-                                    <i class="fas fa-copy"></i> Copy
-                                </button>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -336,7 +303,7 @@ canvas.concealer-off {
                 <div class="card-header bg-primary text-white">
                     <h4 class="mb-0">
                         <i class="fas fa-sliders-h"></i> 微調整
-                        <small class="ms-2 opacity-75">(左右別に調整可能)</small>
+                        <small class="ms-2 opacity-75">(眉と鼻を調整可能)</small>
                     </h4>
                 </div>
                 <div class="card-body">
@@ -360,11 +327,8 @@ canvas.concealer-off {
                     <div class="mb-3">
                         <label class="form-label small mb-2"><strong>調整対象:</strong></label>
                         <div class="btn-group w-100" role="group">
-                            <button type="button" class="btn btn-sm btn-outline-primary active" id="tab-leftBrow">
-                                左眉
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-primary" id="tab-rightBrow">
-                                右眉
+                            <button type="button" class="btn btn-sm btn-outline-primary active" id="tab-eyebrow">
+                                眉（両眉）
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-primary" id="tab-nose">
                                 鼻
@@ -432,7 +396,7 @@ canvas.concealer-off {
                     <div class="alert alert-info mt-3 mb-0 py-2 px-3" role="alert">
                         <small>
                             <strong>💡 使い方:</strong><br>
-                            ・タブで左眉/右眉/鼻を切り替え<br>
+                            ・タブで眉/鼻を切り替え<br>
                             ・スライダーで微調整<br>
                             ・プリセットで簡単設定
                         </small>
@@ -590,6 +554,8 @@ const concealerState = {
 
 // ベース画像読み込み
 baseImage.onload = async () => {
+    console.log('[DEBUG] ベース画像のロード成功:', baseImagePath);
+    
     // baseFaceImgにも設定（FaceMesh入力用）
     const baseFaceImg = document.getElementById('baseFaceImg');
     baseFaceImg.src = baseImagePath;
@@ -635,8 +601,15 @@ baseImage.onload = async () => {
         drawCompositionFixed();
     }
 };
+
+baseImage.onerror = (error) => {
+    console.error('[ERROR] ベース画像のロード失敗:', baseImagePath, error);
+    alert('画像の読み込みに失敗しました。パス: ' + baseImagePath);
+};
+
 baseImage.crossOrigin = 'anonymous';
 baseImage.src = baseImagePath;
+console.log('[DEBUG] ベース画像のロード開始:', baseImagePath);
 
 // ========================================
 // 描画関数（FaceMesh版とフォールバック版）
@@ -749,7 +722,14 @@ document.querySelectorAll('.eyebrow-option').forEach(option => {
             
             // FaceMeshPreviewに登録
             if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
-                faceMeshPreview.selectPart('eyebrow', selectedEyebrow, eyebrowImage);
+                // eyebrowはleftBrowとrightBrowの両方を管理
+                faceMeshPreview.selectPart('leftBrow', selectedEyebrow, eyebrowImage);
+                faceMeshPreview.selectPart('rightBrow', selectedEyebrow, eyebrowImage);
+                
+                // partState.eyebrowを初期化
+                if (!faceMeshPreview.partState.eyebrow) {
+                    faceMeshPreview.partState.eyebrow = { offsetX: 0, offsetY: 0, rotation: 0 };
+                }
             } else {
                 // フォールバック: 固定位置描画
                 drawCompositionFixed();
@@ -765,6 +745,8 @@ document.querySelectorAll('.eyebrow-option').forEach(option => {
 // 鼻選択
 document.querySelectorAll('.nose-option').forEach(option => {
     option.addEventListener('click', function() {
+        console.log('[DEBUG] 鼻がクリックされました:', this.dataset);
+        
         // 選択状態更新
         document.querySelectorAll('.nose-option').forEach(o => o.style.border = '2px solid transparent');
         this.style.border = '2px solid #0d6efd';
@@ -778,32 +760,67 @@ document.querySelectorAll('.nose-option').forEach(option => {
             scale: parseFloat(this.dataset.scale)
         };
         
+        console.log('[DEBUG] 鼻データ:', selectedNose);
+        
         // 画像読み込み
         noseImage = new Image();
         noseImage.onload = () => {
+            console.log('[DEBUG] 鼻画像の読み込み完了');
+            
             // 鼻を選択したので調整対象を鼻に
             currentAdjustTarget = 'nose';
             
             // FaceMeshPreviewに登録
             if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
+                console.log('[DEBUG] faceMeshPreview.selectPart を呼び出します');
                 faceMeshPreview.selectPart('nose', selectedNose, noseImage);
+                
+                // partState.noseを初期化
+                if (!faceMeshPreview.partState.nose) {
+                    faceMeshPreview.partState.nose = { offsetX: 0, offsetY: 0, rotation: 0 };
+                }
             } else {
+                console.log('[DEBUG] フォールバックモード:', faceMeshPreview ? 'fallbackMode有効' : 'faceMeshPreviewがnull');
                 // フォールバック: 固定位置描画
                 drawCompositionFixed();
             }
             
             showPositionAdjust();
         };
+        
+        noseImage.onerror = (error) => {
+            console.error('[DEBUG] 鼻画像の読み込みエラー:', error);
+            console.error('[DEBUG] 画像URL:', selectedNose.url);
+        };
+        
         noseImage.crossOrigin = 'anonymous';
         noseImage.src = selectedNose.url;
+        console.log('[DEBUG] 鼻画像の読み込み開始:', selectedNose.url);
     });
 });
 
 // 位置調整UIを表示
 function showPositionAdjust() {
+    console.log('[DEBUG] showPositionAdjust 呼び出し:', {
+        selectedEyebrow: selectedEyebrow,
+        selectedNose: selectedNose
+    });
+    
     if (selectedEyebrow || selectedNose) {
-        document.getElementById('positionAdjust').style.display = 'block';
-        updateAdjustTarget();
+        const adjustPanel = document.getElementById('positionAdjust');
+        console.log('[DEBUG] positionAdjust要素:', adjustPanel);
+        
+        if (adjustPanel) {
+            adjustPanel.style.display = 'block';
+            console.log('[DEBUG] positionAdjustを表示しました');
+            
+            // DOMの更新を待ってからupdateAdjustTargetを呼ぶ
+            setTimeout(() => {
+                updateAdjustTarget();
+            }, 100);
+        } else {
+            console.error('[DEBUG] positionAdjust要素が見つかりません');
+        }
     }
 }
 
@@ -835,12 +852,32 @@ document.getElementById('adjustNose').addEventListener('click', () => {
 
 // 調整対象の更新
 function updateAdjustTarget() {
+    console.log('[DEBUG] updateAdjustTarget 呼び出し');
+    
+    // 要素の存在チェック
+    const adjustEyebrow = document.getElementById('adjustEyebrow');
+    const adjustNose = document.getElementById('adjustNose');
+    const currentPartLabel = document.getElementById('currentPartLabel');
+    
+    console.log('[DEBUG] 要素チェック:', {
+        adjustEyebrow: adjustEyebrow,
+        adjustNose: adjustNose,
+        currentPartLabel: currentPartLabel,
+        positionAdjust: document.getElementById('positionAdjust')
+    });
+    
+    if (!adjustEyebrow || !adjustNose || !currentPartLabel) {
+        console.warn('[updateAdjustTarget] 必要な要素が見つかりません');
+        console.warn('DOM全体:', document.body.innerHTML.substring(0, 500));
+        return;
+    }
+    
     // ボタンのアクティブ状態
-    document.getElementById('adjustEyebrow').classList.toggle('active', currentAdjustTarget === 'eyebrow');
-    document.getElementById('adjustNose').classList.toggle('active', currentAdjustTarget === 'nose');
+    adjustEyebrow.classList.toggle('active', currentAdjustTarget === 'eyebrow');
+    adjustNose.classList.toggle('active', currentAdjustTarget === 'nose');
     
     // ラベル更新
-    document.getElementById('currentPartLabel').textContent = currentAdjustTarget === 'eyebrow' ? '眉' : '鼻';
+    currentPartLabel.textContent = currentAdjustTarget === 'eyebrow' ? '眉' : '鼻';
     
     // 表示値更新
     updateAllDisplayValues();
@@ -849,36 +886,66 @@ function updateAdjustTarget() {
 // 位置調整ボタン
 document.getElementById('moveUp').addEventListener('click', () => {
     if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
-        faceMeshPreview.updatePartState(currentAdjustTarget, { 
-            offsetY: faceMeshPreview.partState[currentAdjustTarget].offsetY - 3 
-        });
+        if (currentAdjustTarget === 'eyebrow') {
+            // 眉の場合
+            const currentDy = faceMeshPreview.state.parts.eyebrow.dy;
+            const newDy = currentDy - 3;
+            faceMeshPreview.applyPatch('eyebrow', { dy: newDy });
+            faceMeshPreview.applyPatch('leftBrow', { dy: newDy });
+            faceMeshPreview.applyPatch('rightBrow', { dy: newDy });
+        } else {
+            // 鼻の場合
+            const currentDy = faceMeshPreview.state.parts.nose.dy;
+            faceMeshPreview.applyPatch('nose', { dy: currentDy - 3 });
+        }
     }
     updateAllDisplayValues();
 });
 
 document.getElementById('moveDown').addEventListener('click', () => {
     if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
-        faceMeshPreview.updatePartState(currentAdjustTarget, { 
-            offsetY: faceMeshPreview.partState[currentAdjustTarget].offsetY + 3 
-        });
+        if (currentAdjustTarget === 'eyebrow') {
+            const currentDy = faceMeshPreview.state.parts.eyebrow.dy;
+            const newDy = currentDy + 3;
+            faceMeshPreview.applyPatch('eyebrow', { dy: newDy });
+            faceMeshPreview.applyPatch('leftBrow', { dy: newDy });
+            faceMeshPreview.applyPatch('rightBrow', { dy: newDy });
+        } else {
+            const currentDy = faceMeshPreview.state.parts.nose.dy;
+            faceMeshPreview.applyPatch('nose', { dy: currentDy + 3 });
+        }
     }
     updateAllDisplayValues();
 });
 
 document.getElementById('moveLeft').addEventListener('click', () => {
     if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
-        faceMeshPreview.updatePartState(currentAdjustTarget, { 
-            offsetX: faceMeshPreview.partState[currentAdjustTarget].offsetX - 3 
-        });
+        if (currentAdjustTarget === 'eyebrow') {
+            const currentDx = faceMeshPreview.state.parts.eyebrow.dx;
+            const newDx = currentDx - 3;
+            faceMeshPreview.applyPatch('eyebrow', { dx: newDx });
+            faceMeshPreview.applyPatch('leftBrow', { dx: newDx });
+            faceMeshPreview.applyPatch('rightBrow', { dx: newDx });
+        } else {
+            const currentDx = faceMeshPreview.state.parts.nose.dx;
+            faceMeshPreview.applyPatch('nose', { dx: currentDx - 3 });
+        }
     }
     updateAllDisplayValues();
 });
 
 document.getElementById('moveRight').addEventListener('click', () => {
     if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
-        faceMeshPreview.updatePartState(currentAdjustTarget, { 
-            offsetX: faceMeshPreview.partState[currentAdjustTarget].offsetX + 3 
-        });
+        if (currentAdjustTarget === 'eyebrow') {
+            const currentDx = faceMeshPreview.state.parts.eyebrow.dx;
+            const newDx = currentDx + 3;
+            faceMeshPreview.applyPatch('eyebrow', { dx: newDx });
+            faceMeshPreview.applyPatch('leftBrow', { dx: newDx });
+            faceMeshPreview.applyPatch('rightBrow', { dx: newDx });
+        } else {
+            const currentDx = faceMeshPreview.state.parts.nose.dx;
+            faceMeshPreview.applyPatch('nose', { dx: currentDx + 3 });
+        }
     }
     updateAllDisplayValues();
 });
@@ -887,23 +954,45 @@ document.getElementById('moveRight').addEventListener('click', () => {
 document.getElementById('rotationSlider').addEventListener('input', (e) => {
     const rotation = parseInt(e.target.value);
     if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
-        faceMeshPreview.updatePartState(currentAdjustTarget, { rotation });
+        if (currentAdjustTarget === 'eyebrow') {
+            faceMeshPreview.applyPatch('eyebrow', { rotate: rotation });
+            faceMeshPreview.applyPatch('leftBrow', { rotate: rotation });
+            faceMeshPreview.applyPatch('rightBrow', { rotate: rotation });
+        } else {
+            faceMeshPreview.applyPatch('nose', { rotate: rotation });
+        }
     }
     updateAllDisplayValues();
 });
 
 document.getElementById('rotateLeft').addEventListener('click', () => {
     if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
-        const currentRotation = faceMeshPreview.partState[currentAdjustTarget].rotation;
-        faceMeshPreview.updatePartState(currentAdjustTarget, { rotation: currentRotation - 5 });
+        if (currentAdjustTarget === 'eyebrow') {
+            const currentRotation = faceMeshPreview.state.parts.eyebrow.rotate;
+            const newRotation = currentRotation - 5;
+            faceMeshPreview.applyPatch('eyebrow', { rotate: newRotation });
+            faceMeshPreview.applyPatch('leftBrow', { rotate: newRotation });
+            faceMeshPreview.applyPatch('rightBrow', { rotate: newRotation });
+        } else {
+            const currentRotation = faceMeshPreview.state.parts.nose.rotate;
+            faceMeshPreview.applyPatch('nose', { rotate: currentRotation - 5 });
+        }
     }
     updateAllDisplayValues();
 });
 
 document.getElementById('rotateRight').addEventListener('click', () => {
     if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
-        const currentRotation = faceMeshPreview.partState[currentAdjustTarget].rotation;
-        faceMeshPreview.updatePartState(currentAdjustTarget, { rotation: currentRotation + 5 });
+        if (currentAdjustTarget === 'eyebrow') {
+            const currentRotation = faceMeshPreview.state.parts.eyebrow.rotate;
+            const newRotation = currentRotation + 5;
+            faceMeshPreview.applyPatch('eyebrow', { rotate: newRotation });
+            faceMeshPreview.applyPatch('leftBrow', { rotate: newRotation });
+            faceMeshPreview.applyPatch('rightBrow', { rotate: newRotation });
+        } else {
+            const currentRotation = faceMeshPreview.state.parts.nose.rotate;
+            faceMeshPreview.applyPatch('nose', { rotate: currentRotation + 5 });
+        }
     }
     updateAllDisplayValues();
 });
@@ -911,8 +1000,13 @@ document.getElementById('rotateRight').addEventListener('click', () => {
 // 位置・回転リセット（Step1の旧UI）
 document.getElementById('resetCurrentPart').addEventListener('click', () => {
     if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
-        // Step1互換のリセット
-        faceMeshPreview.resetPartLegacy(currentAdjustTarget);
+        if (currentAdjustTarget === 'eyebrow') {
+            // 眉は eyebrow, leftBrow と rightBrow 全てをリセット
+            faceMeshPreview.resetPart('eyebrow');
+        } else {
+            // 鼻の場合
+            faceMeshPreview.resetPart('nose');
+        }
     }
     updateAllDisplayValues();
 });
@@ -925,7 +1019,9 @@ document.getElementById('removeCurrentPart').addEventListener('click', () => {
         eyebrowImage = null;
         
         if (faceMeshPreview && !faceMeshPreview.fallbackMode) {
-            faceMeshPreview.removePart('eyebrow');
+            // leftBrow と rightBrow 両方を削除
+            faceMeshPreview.removePart('leftBrow');
+            faceMeshPreview.removePart('rightBrow');
         }
         
         // 選択UIの解除
@@ -965,17 +1061,25 @@ document.getElementById('removeCurrentPart').addEventListener('click', () => {
 
 // 全ての表示値を更新
 function updateAllDisplayValues() {
-    // FaceMeshPreviewの状態を参照
-    const state = faceMeshPreview ? faceMeshPreview.partState[currentAdjustTarget] : { offsetX: 0, offsetY: 0, rotation: 0 };
+    if (!faceMeshPreview) return;
+    
+    let state;
+    if (currentAdjustTarget === 'eyebrow') {
+        // 眉の場合は state.parts.eyebrow を参照
+        state = faceMeshPreview.state.parts.eyebrow;
+    } else {
+        // 鼻の場合は state.parts.nose を参照
+        state = faceMeshPreview.state.parts.nose;
+    }
     
     // 位置表示
-    document.getElementById('xOffsetDisplay').textContent = state.offsetX;
-    document.getElementById('yOffsetDisplay').textContent = state.offsetY;
+    document.getElementById('xOffsetDisplay').textContent = state.dx || 0;
+    document.getElementById('yOffsetDisplay').textContent = state.dy || 0;
     
     // 回転表示
-    document.getElementById('rotationValue').textContent = state.rotation;
-    document.getElementById('rotationDisplay').textContent = state.rotation;
-    document.getElementById('rotationSlider').value = state.rotation;
+    document.getElementById('rotationValue').textContent = state.rotate || 0;
+    document.getElementById('rotationDisplay').textContent = state.rotate || 0;
+    document.getElementById('rotationSlider').value = state.rotate || 0;
 }
 
 // ダウンロード
@@ -1366,84 +1470,26 @@ updateCanvasCursor();
 // Step4-A: Export最小実装
 // ========================================
 
-// Export関数（Step4-A最小実装用）
-async function exportFaceTemplate() {
-    const btn = document.getElementById("exportBtn");
-    const statusEl = document.getElementById("exportStatus");
-    const shareWrap = document.getElementById("shareWrap");
-    const shareInput = document.getElementById("shareUrl");
-    
-    try {
-        if (btn) btn.disabled = true;
-        if (statusEl) statusEl.textContent = "Export中...";
-        
-        const templateId = document.querySelector('[data-template-id]')?.dataset?.templateId;
-        const anchors = window.__FL_ANCHORS__;
-        const state = window.__FL_STATE__ || {};
-        
-        if (!templateId) {
-            if (statusEl) statusEl.textContent = "Export不可：template_idが取得できません";
-            return;
-        }
-        
-        if (!anchors) {
-            if (statusEl) statusEl.textContent = "Export不可：アンカーがありません（顔を検出してください）";
-            return;
-        }
-        
-        // Step4-A: 最小実装（JSON保存）を使用
-        const res = await fetch("/client/api/face-template/export-minimal", {
-            method: "POST",
-            headers: { 
-                "Content-Type": "application/json",
-                "X-CSRFToken": document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-            },
-            body: JSON.stringify({
-                template_id: parseInt(templateId),
-                anchors,
-                state,
-                parts: {
-                    eyebrow_id: selectedEyebrow?.id || null,
-                    nose_id: selectedNose?.id || null
-                }
-            })
-        });
-        
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok || !json.ok) {
-            if (statusEl) statusEl.textContent = `Export失敗：${json.error || res.status}`;
-            return;
-        }
-        
-        const url = window.location.origin + json.share_url;
-        if (shareInput) shareInput.value = url;
-        if (shareWrap) shareWrap.style.display = "block";
-        
-        // Step4-B: PNG生成結果を反映
-        if (statusEl) {
-            if (json.png_generated) {
-                statusEl.innerHTML = '✅ 完了（画像生成済み）：<a href="' + json.share_url + '" target="_blank" class="text-decoration-none">Share URLを開く <i class="fas fa-external-link-alt"></i></a>';
-            } else {
-                statusEl.innerHTML = '⚠️ 完了（画像未生成）：<a href="' + json.share_url + '" target="_blank" class="text-decoration-none">Share URLを開く <i class="fas fa-external-link-alt"></i></a>';
-                if (json.png_error) {
-                    console.warn('PNG生成エラー:', json.png_error);
-                }
-            }
-        }
-        
-    } catch (err) {
-        console.error('Export error:', err);
-        if (statusEl) statusEl.textContent = `通信エラー：${err.message}`;
-    } finally {
-        if (btn) btn.disabled = false;
-    }
-}
-
 // Export UI のバインド
 function bindExportButton() {
+    // 新しいexport-btnボタン
+    const exportBtn = document.getElementById("export-btn");
+    if (exportBtn) {
+        exportBtn.addEventListener("click", async function() {
+            exportBtn.disabled = true;
+            exportBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>保存中...';
+            
+            await performExport();
+            
+            exportBtn.disabled = false;
+            exportBtn.innerHTML = '<i class="fas fa-check-circle me-1"></i>確定して保存';
+        });
+    }
+    
+    // 古いexportBtnボタン（互換性のため）
     const btn = document.getElementById("exportBtn");
     if (btn) {
-        btn.addEventListener("click", exportFaceTemplate);
+        btn.addEventListener("click", performExport);
     }
     
     const copyBtn = document.getElementById("copyShareBtn");
@@ -1462,6 +1508,127 @@ function bindExportButton() {
                 });
             }
         });
+    }
+    
+    // 新しいコピーボタン
+    const copyShareUrlBtn = document.getElementById("copyShareUrlBtn");
+    if (copyShareUrlBtn) {
+        copyShareUrlBtn.addEventListener("click", () => {
+            const input = document.getElementById("shareUrlInput");
+            if (input) {
+                input.select();
+                navigator.clipboard.writeText(input.value).then(() => {
+                    copyShareUrlBtn.innerHTML = '<i class="fas fa-check"></i> コピー済';
+                    setTimeout(() => {
+                        copyShareUrlBtn.innerHTML = '<i class="fas fa-copy"></i> コピー';
+                    }, 1500);
+                });
+            }
+        });
+    }
+}
+
+// Export実行関数
+async function performExport() {
+    const successMsg = document.getElementById('saveSuccessMessage');
+    
+    try {
+        if (successMsg) successMsg.style.display = 'none';
+        
+        const templateId = document.querySelector('[data-template-id]')?.dataset?.templateId;
+        const anchors = window.__FL_ANCHORS__;
+        const state = window.__FL_STATE__ || {};
+        
+        console.log('[Export] templateId:', templateId);
+        console.log('[Export] anchors:', anchors);
+        console.log('[Export] state:', state);
+        console.log('[Export] selectedEyebrow:', selectedEyebrow);
+        console.log('[Export] selectedNose:', selectedNose);
+        console.log('[Export] faceMeshPreview:', faceMeshPreview);
+        if (faceMeshPreview) {
+            console.log('[Export] faceMeshPreview.selectedParts:', faceMeshPreview.selectedParts);
+            console.log('[Export] faceMeshPreview.selectedParts.leftBrow:', faceMeshPreview.selectedParts?.leftBrow);
+            console.log('[Export] faceMeshPreview.selectedParts.eyebrow:', faceMeshPreview.selectedParts?.eyebrow);
+            console.log('[Export] faceMeshPreview.selectedParts.nose:', faceMeshPreview.selectedParts?.nose);
+        }
+        
+        if (!templateId) {
+            alert('Export不可：template_idが取得できません');
+            return;
+        }
+        
+        if (!anchors) {
+            alert('Export不可：アンカーがありません（顔を検出してください）');
+            return;
+        }
+        
+        const eyebrow_id = (faceMeshPreview?.selectedParts?.leftBrow?.id || faceMeshPreview?.selectedParts?.eyebrow?.id || selectedEyebrow?.id || null);
+        const nose_id = (faceMeshPreview?.selectedParts?.nose?.id || selectedNose?.id || null);
+        
+        console.log('[Export] Calculating part IDs:');
+        console.log('  - eyebrow_id:', eyebrow_id);
+        console.log('  - nose_id:', nose_id);
+        
+        // パーツが選択されていない場合の警告
+        if (!eyebrow_id && !nose_id) {
+            const proceed = confirm('眉も鼻も選択されていません。元の画像のみが保存されますが、よろしいですか？');
+            if (!proceed) {
+                return;
+            }
+        }
+        
+        const payload = {
+            template_id: parseInt(templateId),
+            anchors,
+            state,
+            parts: {
+                eyebrow_id: eyebrow_id,
+                nose_id: nose_id
+            }
+        };
+        
+        console.log('[Export] payload (detailed):');
+        console.log('  - template_id:', payload.template_id, typeof payload.template_id);
+        console.log('  - anchors:', payload.anchors, typeof payload.anchors);
+        console.log('  - state:', payload.state, typeof payload.state);
+        console.log('  - parts:', payload.parts);
+        console.log('  - Full JSON:', JSON.stringify(payload, null, 2));
+        
+        // Step4-A: 最小実装（JSON保存）を使用
+        const res = await fetch("/client/api/face-template/export-minimal", {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json",
+                "X-CSRFToken": document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        const json = await res.json().catch(() => ({}));
+        console.log('[Export] response status:', res.status);
+        console.log('[Export] response json:', json);
+        
+        if (!res.ok || !json.ok) {
+            const errorMsg = `Export失敗：${json.error || res.status}`;
+            console.error('[Export] error:', errorMsg, json);
+            alert(`Export失敗:\nStatus: ${res.status}\nError: ${json.error || 'unknown'}\n\nコンソールログを確認してください`);
+            return;
+        }
+        
+        // 成功時: 保存完了メッセージを表示してダッシュボードにリダイレクト
+        const successMsg = document.getElementById('saveSuccessMessage');
+        if (successMsg) {
+            successMsg.style.display = 'block';
+        }
+        
+        // 2秒後にダッシュボードに移動
+        setTimeout(() => {
+            window.location.href = '/client/dashboard';
+        }, 2000);
+        
+    } catch (err) {
+        console.error('Export error:', err);
+        alert(`通信エラー：${err.message}`);
     }
 }
 

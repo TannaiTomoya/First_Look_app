@@ -75,9 +75,9 @@ def create_export():
         if template_user_id != current_user.id:
             return jsonify({'ok': False, 'error': '権限がありません'}), 403
         
-        # stateのバリデーション
-        if 'parts' not in state:
-            return jsonify({'ok': False, 'error': 'state.partsが必要です'}), 400
+        # stateのバリデーション（柔軟に対応）
+        if 'parts' not in state and 'eyebrow' not in state:
+            return jsonify({'ok': False, 'error': 'state.partsまたはstate.eyebrowが必要です'}), 400
         
         # anchorsのバリデーション（Step4: x,y形式に対応）
         required_anchors = ['leftBrow', 'rightBrow', 'nose']
@@ -129,6 +129,14 @@ def create_export():
         # レンダリングエンジン初期化
         upload_dir = current_app.config['FIRSTLOOK_UPLOAD_DIR']
         engine = RenderEngine(upload_dir)
+        
+        # デバッグログ
+        print(f'[Export] レンダリング開始:')
+        print(f'  - template_id: {template_id}')
+        print(f'  - base_image: {template.base_image_path}')
+        print(f'  - parts: {parts}')
+        print(f'  - state: {engine_state}')
+        print(f'  - anchors: {anchors}')
         
         # 画像を合成
         try:
@@ -216,13 +224,24 @@ def create_export():
 def _convert_state_format(state):
     """
     stateの形式を変換（柔軟に対応）
-    RenderState形式（eyebrow.left/right）→ engine形式（leftBrow/rightBrow）
+    RenderState形式（eyebrow.left/right）→ engine形式（parts: {leftBrow/rightBrow}）
     """
-    # Step2形式（parts.leftBrow）の場合はそのまま使用
-    if 'parts' in state and 'leftBrow' in state['parts']:
-        return state
+    # 既にparts.leftBrow形式の場合
+    if 'parts' in state:
+        # state['parts']の中にleftBrowがある場合、そのままOK
+        if 'leftBrow' in state['parts']:
+            return state
+        # state['parts']の中にeyebrowがある場合、変換
+        elif 'eyebrow' in state['parts']:
+            return {
+                'parts': {
+                    'leftBrow': state['parts']['eyebrow'],
+                    'rightBrow': state['parts']['eyebrow'],
+                    'nose': state['parts'].get('nose', {})
+                }
+            }
     
-    # RenderState形式（eyebrow.left）の場合は変換
+    # RenderState形式（eyebrow.left/right）の場合は変換
     if 'eyebrow' in state:
         return {
             'parts': {
@@ -232,5 +251,11 @@ def _convert_state_format(state):
             }
         }
     
-    # デフォルト
-    return state
+    # デフォルト（空のparts）
+    return {
+        'parts': {
+            'leftBrow': {},
+            'rightBrow': {},
+            'nose': {}
+        }
+    }

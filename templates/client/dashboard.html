@@ -137,6 +137,18 @@
         </div>
     </div>
     
+    <!-- なりたい顔のイメージ作成ボタン -->
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <a href="{{ url_for('face_template.capture') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-magic"></i> なりたい顔のイメージを作成する
+            </a>
+            <p class="text-muted mt-2 small">
+                顔写真を撮影し、眉・鼻のパーツを組み合わせて理想の顔イメージを作成できます
+            </p>
+        </div>
+    </div>
+    
     <!-- クイックアクション -->
     <div class="row mb-4">
         <div class="col-md-12">
@@ -147,18 +159,6 @@
             <a href="{{ url_for('client.skin_check') }}" class="btn btn-outline-primary me-2 mb-2" title="最新の肌質・肌悩み">
                 <i class="fas fa-check-circle"></i> 肌診断
             </a>
-        </div>
-    </div>
-    
-    <!-- なりたい顔のイメージ作成ボタン -->
-    <div class="row mb-4">
-        <div class="col-12 text-center">
-            <a href="{{ url_for('face_template.capture') }}" class="btn btn-primary btn-lg">
-                <i class="fas fa-magic"></i> なりたい顔のイメージを作成する
-            </a>
-            <p class="text-muted mt-2 small">
-                顔写真を撮影し、眉・鼻のパーツを組み合わせて理想の顔イメージを作成できます
-            </p>
         </div>
     </div>
     

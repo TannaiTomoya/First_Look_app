@@ -3,7 +3,7 @@
 """
 from peewee import (
     AutoField, CharField, IntegerField, FloatField, 
-    DateTimeField, DeferredForeignKey
+    DateTimeField, DeferredForeignKey, TextField
 )
 from datetime import datetime
 from models import BaseModel
@@ -56,6 +56,7 @@ class FaceComposition(BaseModel):
     template = DeferredForeignKey('FaceTemplate', backref='compositions', on_delete='CASCADE')
     eyebrow_part = DeferredForeignKey('FacePart', backref='eyebrow_uses', null=True, on_delete='SET NULL')
     nose_part = DeferredForeignKey('FacePart', backref='nose_uses', null=True, on_delete='SET NULL')
+    adjustments = TextField(null=True)  # JSON形式で微調整データを保存
     created_at = DateTimeField(default=datetime.now)
     updated_at = DateTimeField(default=datetime.now)
     

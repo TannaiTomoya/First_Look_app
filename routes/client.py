@@ -274,95 +274,260 @@ def api_face_template_export_minimal():
     from models import FaceTemplate, FacePart
     from utils.render_engine import render_export
     
+    try:
+        data = request.get_json(silent=True) or {}
+        template_id = data.get("template_id")
+        anchors = data.get("anchors")
+        state = data.get("state")
+        parts_data = data.get("parts", {})  # {eyebrow_id, nose_id}
+        
+        # デバッグログ（詳細）
+        current_app.logger.info(f"[Export-Minimal] リクエスト受信:")
+        current_app.logger.info(f"  template_id: {template_id} (type: {type(template_id)})")
+        current_app.logger.info(f"  anchors: {anchors} (type: {type(anchors)})")
+        current_app.logger.info(f"  state: {state} (type: {type(state)})")
+        current_app.logger.info(f"  parts_data: {parts_data} (type: {type(parts_data)})")
+        current_app.logger.info(f"  raw_data: {data}")
+        
+        # 詳細な検証ログ
+        if not template_id:
+            current_app.logger.error(f"[Export-Minimal] Validation failed: template_id is missing or falsy")
+            return jsonify({"ok": False, "error": "template_id is required"}), 400
+        
+        if not isinstance(anchors, dict):
+            current_app.logger.error(f"[Export-Minimal] Validation failed: anchors is not dict (type: {type(anchors)})")
+            return jsonify({"ok": False, "error": "anchors must be a dict"}), 400
+        
+        if not isinstance(state, dict):
+            current_app.logger.error(f"[Export-Minimal] Validation failed: state is not dict (type: {type(state)})")
+            return jsonify({"ok": False, "error": "state must be a dict"}), 400
+        
+        # Template取得
+        try:
+            template = FaceTemplate.get_by_id(template_id)
+            
+            # userフィールドの解決
+            template_user_id = template.user if isinstance(template.user, int) else template.user.id
+            
+            if template_user_id != current_user.id:
+                return jsonify({"ok": False, "error": "permission_denied"}), 403
+                
+            current_app.logger.info(f"[Export-Minimal] Template取得成功: {template.id}, base_image_path: {template.base_image_path}")
+        except FaceTemplate.DoesNotExist:
+            return jsonify({"ok": False, "error": "template_not_found"}), 404
+        except Exception as e:
+            current_app.logger.error(f"[Export] Template取得エラー: {str(e)}")
+            import traceback
+            current_app.logger.error(traceback.format_exc())
+            return jsonify({"ok": False, "error": f"template_error: {str(e)}"}), 500
+        
+        # Parts取得
+        parts = {}
+        eyebrow_id = parts_data.get("eyebrow_id")
+        nose_id = parts_data.get("nose_id")
+        
+        if eyebrow_id:
+            try:
+                eyebrow = FacePart.get_by_id(eyebrow_id)
+                # image_urlフィールドを使用
+                parts["leftBrow"] = {"path": eyebrow.image_url}
+                parts["rightBrow"] = {"path": eyebrow.image_url}
+                current_app.logger.info(f"[Export-Minimal] 眉パーツ取得: {eyebrow.label}, path: {eyebrow.image_url}")
+            except FacePart.DoesNotExist:
+                current_app.logger.warning(f"[Export] 眉パーツが見つかりません: {eyebrow_id}")
+                pass
+            except Exception as e:
+                current_app.logger.error(f"[Export] 眉パーツ取得エラー: {str(e)}")
+        
+        if nose_id:
+            try:
+                nose = FacePart.get_by_id(nose_id)
+                # image_urlフィールドを使用
+                parts["nose"] = {"path": nose.image_url}
+                current_app.logger.info(f"[Export-Minimal] 鼻パーツ取得: {nose.label}, path: {nose.image_url}")
+            except FacePart.DoesNotExist:
+                current_app.logger.warning(f"[Export] 鼻パーツが見つかりません: {nose_id}")
+                pass
+            except Exception as e:
+                current_app.logger.error(f"[Export] 鼻パーツ取得エラー: {str(e)}")
+        
+        # 保存先（Step4-B: EXPORT_DIRに統一）
+        export_dir = current_app.config['FIRSTLOOK_EXPORT_DIR']
+        os.makedirs(export_dir, exist_ok=True)
+        
+        export_id = uuid.uuid4().hex[:12]
+        meta_path = os.path.join(export_dir, f"{export_id}.json")
+        png_path = os.path.join(export_dir, f"{export_id}.png")
+        
+        # Step4-B: メタ情報拡張（base_image_path, parts追加）
+        meta = {
+            "export_id": export_id,
+            "user_id": current_user.id,
+            "template_id": template_id,
+            "base_image_path": template.base_image_path,  # 修正: image_path → base_image_path
+            "anchors": anchors,
+            "state": state,
+            "parts": parts,
+            "created_at": datetime.utcnow().isoformat() + "Z",
+        }
+        
+        current_app.logger.info(f"[Export-Minimal] メタ情報: {meta}")
+        
+        # 1. JSON保存（必ず成功させる）
+        with open(meta_path, "w", encoding="utf-8") as f:
+            json.dump(meta, f, ensure_ascii=False, indent=2)
+        
+        # 2. PNG生成を試行（失敗しても壊れない）
+        png_generated = False
+        png_error = None
+        db_saved = False
+        share_token = None
+        
+        try:
+            upload_dir = current_app.config['FIRSTLOOK_UPLOAD_DIR']
+            current_app.logger.info(f"[Export-Minimal] PNG生成開始: {png_path}")
+            render_export(meta, png_path, upload_dir)
+            png_generated = True
+            current_app.logger.info(f"[Export-Minimal] PNG生成成功")
+            
+            # PNG成功時はメタに追記（HTTP参照可能な相対パス）
+            relative_png_path = f"exports/{export_id}.png"
+            meta["png_path"] = relative_png_path
+            with open(meta_path, "w", encoding="utf-8") as f:
+                json.dump(meta, f, ensure_ascii=False, indent=2)
+            
+            # データベースに保存（RenderExportテーブル）
+            try:
+                from models.render_export import RenderExport
+                
+                share_token = RenderExport.generate_share_token()
+                
+                export_record = RenderExport.create(
+                    user=current_user.id,
+                    template=template_id,
+                    state_json=json.dumps(state),
+                    output_path=relative_png_path,
+                    share_token=share_token,
+                    is_public=True
+                )
+                
+                db_saved = True
+                current_app.logger.info(f"[Export-Minimal] DB保存成功: export_id={export_record.id}, token={share_token}")
+                
+            except Exception as db_err:
+                current_app.logger.error(f"[Export-Minimal] DB保存失敗: {str(db_err)}")
+                import traceback
+                current_app.logger.error(traceback.format_exc())
+                
+        except Exception as e:
+            png_error = str(e)
+            current_app.logger.exception(f"[Export] PNG生成失敗（exportは継続）: {e}")
+        
+        # 3. レスポンス（exportは常に成功）
+        # デフォルトのshare_url
+        share_url = url_for("client.face_template_share", export_id=export_id, _external=False)
+        
+        response_data = {
+            "ok": True,
+            "export_id": export_id,
+            "share_url": share_url,
+            "png_generated": png_generated,
+            "png_error": png_error if not png_generated else None,
+            "db_saved": db_saved
+        }
+        
+        # DB保存が成功していれば、share_tokenを使ったURLに変更
+        if db_saved and share_token:
+            response_data["share_url"] = url_for("share.view_export", token=share_token, _external=False)
+            response_data["share_token"] = share_token
+        
+        return jsonify(response_data), 200
+        
+    except Exception as e:
+        current_app.logger.exception(f"[Export-Minimal] 予期しないエラー: {e}")
+        return jsonify({"ok": False, "error": f"internal_error: {str(e)}"}), 500
+
+
+@client.route('/api/face-template/adjustments/save', methods=['POST'])
+@client_required
+def api_save_adjustments():
+    """
+    微調整の状態を保存
+    """
+    import json
+    
     data = request.get_json(silent=True) or {}
     template_id = data.get("template_id")
-    anchors = data.get("anchors")
     state = data.get("state")
-    parts_data = data.get("parts", {})  # {eyebrow_id, nose_id}
     
-    if not template_id or not isinstance(anchors, dict) or not isinstance(state, dict):
+    if not template_id or not isinstance(state, dict):
         return jsonify({"ok": False, "error": "invalid_payload"}), 400
     
-    # Template取得
     try:
+        from models import FaceTemplate, FaceComposition
+        
+        # Template確認
         template = FaceTemplate.get_by_id(template_id)
         if template.user_id != current_user.id:
             return jsonify({"ok": False, "error": "permission_denied"}), 403
+        
+        # FaceCompositionにJSON形式で保存
+        composition = FaceComposition.get_or_none(
+            FaceComposition.user == current_user.id,
+            FaceComposition.template == template_id
+        )
+        
+        if composition:
+            # 既存の場合は更新
+            composition.adjustments = json.dumps(state)
+            composition.save()
+        else:
+            # 新規作成
+            composition = FaceComposition.create(
+                user=current_user.id,
+                template=template_id,
+                adjustments=json.dumps(state)
+            )
+        
+        return jsonify({"ok": True, "composition_id": composition.id}), 200
+        
     except FaceTemplate.DoesNotExist:
         return jsonify({"ok": False, "error": "template_not_found"}), 404
+    except Exception as e:
+        current_app.logger.exception(f"adjustments保存エラー: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@client.route('/api/face-template/adjustments/', methods=['GET'])
+@client_required
+def api_load_adjustments():
+    """
+    微調整の状態を復元
+    """
+    import json
     
-    # Parts取得
-    parts = {}
-    eyebrow_id = parts_data.get("eyebrow_id")
-    nose_id = parts_data.get("nose_id")
+    template_id = request.args.get("template_id")
     
-    if eyebrow_id:
-        try:
-            eyebrow = FacePart.get_by_id(eyebrow_id)
-            parts["leftBrow"] = {"path": eyebrow.image_path}
-            parts["rightBrow"] = {"path": eyebrow.image_path}
-        except FacePart.DoesNotExist:
-            pass
-    
-    if nose_id:
-        try:
-            nose = FacePart.get_by_id(nose_id)
-            parts["nose"] = {"path": nose.image_path}
-        except FacePart.DoesNotExist:
-            pass
-    
-    # 保存先（Step4-B: EXPORT_DIRに統一）
-    export_dir = current_app.config['FIRSTLOOK_EXPORT_DIR']
-    os.makedirs(export_dir, exist_ok=True)
-    
-    export_id = uuid.uuid4().hex[:12]
-    meta_path = os.path.join(export_dir, f"{export_id}.json")
-    png_path = os.path.join(export_dir, f"{export_id}.png")
-    
-    # Step4-B: メタ情報拡張（base_image_path, parts追加）
-    meta = {
-        "export_id": export_id,
-        "user_id": current_user.id,
-        "template_id": template_id,
-        "base_image_path": template.image_path,
-        "anchors": anchors,
-        "state": state,
-        "parts": parts,
-        "created_at": datetime.utcnow().isoformat() + "Z",
-    }
-    
-    # 1. JSON保存（必ず成功させる）
-    with open(meta_path, "w", encoding="utf-8") as f:
-        json.dump(meta, f, ensure_ascii=False, indent=2)
-    
-    # 2. PNG生成を試行（失敗しても壊れない）
-    png_generated = False
-    png_error = None
+    if not template_id:
+        return jsonify({"ok": False, "error": "template_id required"}), 400
     
     try:
-        upload_dir = current_app.config['FIRSTLOOK_UPLOAD_DIR']
-        render_export(meta, png_path, upload_dir)
-        png_generated = True
+        from models import FaceComposition
         
-        # PNG成功時はメタに追記（HTTP参照可能な相対パス）
-        meta["png_path"] = f"exports/{export_id}.png"
-        with open(meta_path, "w", encoding="utf-8") as f:
-            json.dump(meta, f, ensure_ascii=False, indent=2)
+        composition = FaceComposition.get_or_none(
+            FaceComposition.user == current_user.id,
+            FaceComposition.template == int(template_id)
+        )
+        
+        if composition and composition.adjustments:
+            state = json.loads(composition.adjustments)
+            return jsonify({"ok": True, "state": state}), 200
+        else:
+            return jsonify({"ok": False, "error": "not_found"}), 404
             
     except Exception as e:
-        png_error = str(e)
-        current_app.logger.exception(f"[Export] PNG生成失敗（exportは継続）: {e}")
-    
-    # 3. レスポンス（exportは常に成功）
-    share_url = url_for("client.face_template_share", export_id=export_id, _external=False)
-    
-    return jsonify({
-        "ok": True,
-        "export_id": export_id,
-        "share_url": share_url,
-        "png_generated": png_generated,
-        "png_error": png_error if not png_generated else None
-    }), 200
+        current_app.logger.exception(f"adjustments復元エラー: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @client.route('/share/face/<export_id>')

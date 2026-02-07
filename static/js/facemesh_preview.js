@@ -110,22 +110,19 @@ function getExportPayload(templateId) {
     };
 }
 
-// プリセット定義（Step2）
+// プリセット定義（Step2）- 眉は1つの画像として扱う
 const PRESETS = {
     clean: {
-        leftBrow:  { dx: 0, dy: -6, scale: 1.02, rotate: 0, opacity: 0.85 },
-        rightBrow: { dx: 0, dy: -6, scale: 1.02, rotate: 0, opacity: 0.85 },
-        nose:      { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 }
+        eyebrow: { dx: 0, dy: -6, scale: 1.02, rotate: 0, opacity: 0.85 },
+        nose:    { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 }
     },
     smart: {
-        leftBrow:  { dx: -2, dy: -3, scale: 1.05, rotate: -2, opacity: 0.95 },
-        rightBrow: { dx: 2, dy: -3, scale: 1.05, rotate: 2, opacity: 0.95 },
-        nose:      { dx: 0, dy: 0, scale: 0.98, rotate: 0, opacity: 1.0 }
+        eyebrow: { dx: 0, dy: -3, scale: 1.05, rotate: 0, opacity: 0.95 },
+        nose:    { dx: 0, dy: 0, scale: 0.98, rotate: 0, opacity: 1.0 }
     },
     gentle: {
-        leftBrow:  { dx: 0, dy: 3, scale: 0.98, rotate: 2, opacity: 0.75 },
-        rightBrow: { dx: 0, dy: 3, scale: 0.98, rotate: -2, opacity: 0.75 },
-        nose:      { dx: 0, dy: 2, scale: 1.02, rotate: 0, opacity: 0.95 }
+        eyebrow: { dx: 0, dy: 3, scale: 0.98, rotate: 0, opacity: 0.75 },
+        nose:    { dx: 0, dy: 2, scale: 1.02, rotate: 0, opacity: 0.95 }
     }
 };
 
@@ -147,22 +144,22 @@ class FaceMeshPreview {
         this.undetectedStartTime = null;
         this.undetectedTimeout = 3000; // 3秒
         
-        // パーツ画像
+        // パーツ画像（眉は1つの画像として扱う）
         this.partsImages = {
-            leftBrow: null,
-            rightBrow: null,
+            eyebrow: null,  // 両眉セット画像
             nose: null
         };
         
         // Step2: 調整データモデル（唯一の真実）
         this.state = {
             parts: {
+                eyebrow:   { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 },
                 leftBrow:  { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 },
                 rightBrow: { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 },
                 nose:      { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 }
             },
             presetId: null,
-            activePart: 'leftBrow' // 現在調整中のパーツ
+            activePart: 'eyebrow' // 現在調整中のパーツ
         };
         
         // Step3: Undo/Redo履歴管理
@@ -204,6 +201,10 @@ class FaceMeshPreview {
         
         // localStorage key
         this.storageKey = 'firstlook.facemesh.adjustments.v1';
+        
+        // Export用のグローバル変数を初期化
+        window.__FL_ANCHORS__ = null;
+        window.__FL_STATE__ = this.state;
     }
     
     /**
@@ -331,6 +332,10 @@ class FaceMeshPreview {
                 }
             }
             
+            // Export用にグローバルに公開
+            window.__FL_ANCHORS__ = this.currentAnchors;
+            window.__FL_STATE__ = this.state;
+            
             this.lastDetectionTime = Date.now();
             this.undetectedStartTime = null;
             
@@ -381,10 +386,20 @@ class FaceMeshPreview {
         const rightBrowPoints = rightBrowIndices.map(i => landmarks[i]);
         const rightBrowBox = this.getBoundingBox(rightBrowPoints);
         
-        // 鼻アンカー
-        const noseIndices = [1, 2, 4, 5, 6, 98, 327];
+        // 鼻アンカー（鼻全体をカバーするように範囲を拡大）
+        const noseIndices = [
+            1, 2, 4, 5, 6,      // 鼻筋の中央
+            98, 97, 99, 100,    // 左の小鼻
+            327, 326, 328, 329, // 右の小鼻
+            19, 94, 3,          // 鼻先と根元
+            168, 6, 197         // 鼻の上部
+        ];
         const nosePoints = noseIndices.map(i => landmarks[i]);
         const noseBox = this.getBoundingBox(nosePoints);
+        
+        // 鼻のアンカーを縦方向に拡大（画像に合わせる）
+        noseBox.h = noseBox.h * 1.8; // 高さを1.8倍に拡大
+        noseBox.w = noseBox.w * 1.3; // 幅を1.3倍に拡大
         
         // 顔サイズを計算（左右の顔の端点）
         const faceWidth = Math.abs(landmarks[454].x - landmarks[234].x);
@@ -445,6 +460,12 @@ class FaceMeshPreview {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.drawImage(this.baseImage, 0, 0, this.canvas.width, this.canvas.height);
         
+        // Before モードの場合はパーツを描画せず、ベース画像のみ表示
+        if (this.compareMode === 'before') {
+            console.log('[DEBUG] Before モード: パーツ非表示');
+            return;
+        }
+        
         if (!this.currentAnchors) {
             return; // アンカーがない場合は描画しない
         }
@@ -453,43 +474,88 @@ class FaceMeshPreview {
         const effectiveState = this.getEffectiveState();
         const finalAnchors = {}; // Debug用
         
-        // 2. 右眉
-        if (this.partsImages.rightBrow && this.selectedParts.eyebrow) {
-            const anchor = this.currentAnchors.rightBrow;
-            const adjustment = effectiveState.parts.rightBrow;
-            
-            finalAnchors.rightBrow = this.drawPartWithAdjustment(
-                this.partsImages.rightBrow,
-                anchor,
-                adjustment,
-                { compositeOp: 'source-over' }
-            );
-        }
+        // デバッグログ
+        console.log('[DEBUG] renderComposite:', {
+            partsImages: {
+                leftBrow: !!this.partsImages.leftBrow,
+                rightBrow: !!this.partsImages.rightBrow,
+                nose: !!this.partsImages.nose
+            },
+            selectedParts: this.selectedParts,
+            anchors: {
+                leftBrow: this.currentAnchors.leftBrow,
+                rightBrow: this.currentAnchors.rightBrow,
+                nose: this.currentAnchors.nose
+            },
+            compareMode: this.compareMode
+        });
         
-        // 3. 左眉
-        if (this.partsImages.leftBrow && this.selectedParts.eyebrow) {
-            const anchor = this.currentAnchors.leftBrow;
-            const adjustment = effectiveState.parts.leftBrow;
+        // 2. 眉（両眉を1つの画像として配置）
+        if (this.partsImages.leftBrow && this.partsImages.rightBrow && 
+            (this.selectedParts.leftBrow || this.selectedParts.rightBrow)) {
+            const leftAnchor = this.currentAnchors.leftBrow;
+            const rightAnchor = this.currentAnchors.rightBrow;
             
-            finalAnchors.leftBrow = this.drawPartWithAdjustment(
-                this.partsImages.leftBrow,
-                anchor,
-                adjustment,
-                { compositeOp: 'source-over' }
-            );
+            if (leftAnchor && rightAnchor) {
+                // 左右の眉を含む全体のバウンディングボックスを計算（cx, cy形式に対応）
+                const leftX = leftAnchor.cx - leftAnchor.w / 2;
+                const leftMaxX = leftAnchor.cx + leftAnchor.w / 2;
+                const rightX = rightAnchor.cx - rightAnchor.w / 2;
+                const rightMaxX = rightAnchor.cx + rightAnchor.w / 2;
+                
+                const minX = Math.min(leftX, rightX);
+                const maxX = Math.max(leftMaxX, rightMaxX);
+                const minY = Math.min(leftAnchor.cy - leftAnchor.h / 2, rightAnchor.cy - rightAnchor.h / 2);
+                const maxY = Math.max(leftAnchor.cy + leftAnchor.h / 2, rightAnchor.cy + rightAnchor.h / 2);
+                
+                const combinedAnchor = {
+                    cx: (minX + maxX) / 2,
+                    cy: (minY + maxY) / 2,
+                    w: maxX - minX,
+                    h: maxY - minY
+                };
+                
+                // effectiveStateからeyebrowの調整を使用（両眉で共通）
+                // state.parts.eyebrowがない場合はleftBrowを使用
+                const adjustment = effectiveState.parts.eyebrow || effectiveState.parts.leftBrow || { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 };
+                
+                console.log('[DEBUG] 眉（両眉）を描画:', { 
+                    combinedAnchor,
+                    adjustment 
+                });
+                
+                finalAnchors.eyebrow = this.drawPartWithAdjustment(
+                    this.partsImages.leftBrow,
+                    combinedAnchor,
+                    adjustment,
+                    { compositeOp: 'source-over' }
+                );
+            }
+        } else {
+            console.log('[DEBUG] 眉スキップ:', {
+                hasLeftBrowImage: !!this.partsImages.leftBrow,
+                hasRightBrowImage: !!this.partsImages.rightBrow,
+                hasSelection: !!(this.selectedParts.leftBrow || this.selectedParts.rightBrow)
+            });
         }
         
         // 4. 鼻
         if (this.partsImages.nose && this.selectedParts.nose) {
             const anchor = this.currentAnchors.nose;
             const adjustment = effectiveState.parts.nose;
+            console.log('[DEBUG] 鼻を描画:', { anchor, adjustment });
             
             finalAnchors.nose = this.drawPartWithAdjustment(
                 this.partsImages.nose,
                 anchor,
                 adjustment,
-                { compositeOp: 'soft-light' }
+                { compositeOp: 'soft-light', partType: 'nose' }
             );
+        } else {
+            console.log('[DEBUG] 鼻スキップ:', {
+                hasImage: !!this.partsImages.nose,
+                hasSelection: !!this.selectedParts.nose
+            });
         }
         
         // Canvas状態を再度リセット
@@ -507,7 +573,7 @@ class FaceMeshPreview {
      * パーツ描画（Step2: adjustment適用）
      */
     drawPartWithAdjustment(img, anchor, adjustment, options = {}) {
-        const { compositeOp = 'source-over' } = options;
+        const { compositeOp = 'source-over', partType = 'default' } = options;
         
         // anchorsに adjustmentを加算して最終位置を計算
         const finalCx = anchor.cx + adjustment.dx;
@@ -521,10 +587,20 @@ class FaceMeshPreview {
         this.ctx.globalCompositeOperation = compositeOp;
         this.ctx.globalAlpha = finalOpacity;
         
-        // 画像サイズ計算（アンカー幅に合わせる）
-        const baseScale = finalW / img.width;
-        const w = img.width * baseScale;
-        const h = img.height * baseScale;
+        // 画像サイズ計算（パーツタイプに応じて調整）
+        let w, h;
+        
+        if (partType === 'nose') {
+            // 鼻：画像のアスペクト比を保持し、高さを基準にスケーリング
+            const imgAspect = img.width / img.height;
+            h = finalH;
+            w = h * imgAspect;
+        } else {
+            // 眉など：幅を基準にスケーリング
+            const baseScale = finalW / img.width;
+            w = img.width * baseScale;
+            h = img.height * baseScale;
+        }
         
         // 回転
         this.ctx.translate(finalCx, finalCy);
@@ -670,20 +746,30 @@ class FaceMeshPreview {
      * パーツ選択（既存UIとの統合）
      */
     selectPart(partType, partData, imgElement) {
+        console.log('[DEBUG] selectPart呼び出し:', { partType, partData, hasImage: !!imgElement });
+        
         this.selectedParts[partType] = partData;
         
-        // Step2: 左右別に管理
-        if (partType === 'eyebrow') {
-            // 眉は左右に複製
-            this.partsImages.leftBrow = imgElement;
-            this.partsImages.rightBrow = imgElement;
-        } else {
-            this.partsImages[partType] = imgElement;
+        // 眉は1つの画像として扱う（両眉セット）
+        this.partsImages[partType] = imgElement;
+        console.log(`[DEBUG] ${partType}画像を設定:`, !!this.partsImages[partType]);
+        
+        // partStateの初期化（互換性のため）
+        if (partType === 'leftBrow' || partType === 'rightBrow') {
+            if (!this.partState.eyebrow) {
+                this.partState.eyebrow = { offsetX: 0, offsetY: 0, rotation: 0 };
+            }
+        } else if (partType === 'nose') {
+            if (!this.partState.nose) {
+                this.partState.nose = { offsetX: 0, offsetY: 0, rotation: 0 };
+            }
         }
         
         // 描画
         if (this.currentAnchors) {
             this.renderComposite();
+        } else {
+            console.warn('[DEBUG] currentAnchorsがnullのため描画スキップ');
         }
     }
     
@@ -693,20 +779,16 @@ class FaceMeshPreview {
     updatePartState(partType, updates) {
         Object.assign(this.partState[partType], updates);
         
-        // Step2のstateと同期（既存UIとの互換性）
-        if (partType === 'eyebrow') {
-            // 眉の場合は左右両方に適用
+        // Step2のstateと同期（眉は1つの画像として扱う）
+        if (partType === 'eyebrow' && this.state.parts.eyebrow) {
             if (updates.offsetX !== undefined) {
-                this.state.parts.leftBrow.dx = updates.offsetX;
-                this.state.parts.rightBrow.dx = updates.offsetX;
+                this.state.parts.eyebrow.dx = updates.offsetX;
             }
             if (updates.offsetY !== undefined) {
-                this.state.parts.leftBrow.dy = updates.offsetY;
-                this.state.parts.rightBrow.dy = updates.offsetY;
+                this.state.parts.eyebrow.dy = updates.offsetY;
             }
             if (updates.rotation !== undefined) {
-                this.state.parts.leftBrow.rotate = updates.rotation;
-                this.state.parts.rightBrow.rotate = updates.rotation;
+                this.state.parts.eyebrow.rotate = updates.rotation;
             }
         } else if (partType === 'nose' && this.state.parts.nose) {
             if (updates.offsetX !== undefined) {
@@ -729,16 +811,33 @@ class FaceMeshPreview {
     }
     
     /**
+     * パーツの特定の値を更新（leftBrow, rightBrow, nose用）
+     */
+    updatePartStateValue(partType, key, value) {
+        if (!this.state.parts[partType]) {
+            this.state.parts[partType] = { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 };
+        }
+        
+        this.state.parts[partType][key] = value;
+        
+        // 再描画
+        if (this.currentAnchors) {
+            this.renderComposite();
+        }
+        
+        this.scheduleSaveState();
+    }
+    
+    /**
      * パーツリセット（Step1互換用 - 削除とは別）
      * ※Step2では各パーツごとにresetPartが定義されているため注意
      */
     resetPartLegacy(partType) {
         this.partState[partType] = { offsetX: 0, offsetY: 0, rotation: 0 };
         
-        // Step2のstateと同期
+        // Step2のstateと同期（眉は1つの画像として扱う）
         if (partType === 'eyebrow') {
-            this.state.parts.leftBrow = { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 };
-            this.state.parts.rightBrow = { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 };
+            this.state.parts.eyebrow = { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 };
         } else if (partType === 'nose' && this.state.parts.nose) {
             this.state.parts.nose = { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 };
         }
@@ -758,22 +857,11 @@ class FaceMeshPreview {
      */
     removePart(partType) {
         this.selectedParts[partType] = null;
+        this.partsImages[partType] = null;
         
-        // Step2: 左右別に削除
-        if (partType === 'eyebrow') {
-            this.partsImages.leftBrow = null;
-            this.partsImages.rightBrow = null;
-            
-            // 左右の調整をリセット
-            this.state.parts.leftBrow = { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 };
-            this.state.parts.rightBrow = { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 };
-        } else {
-            this.partsImages[partType] = null;
-            
-            // 調整をリセット
-            if (this.state.parts[partType]) {
-                this.state.parts[partType] = { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 };
-            }
+        // 調整をリセット
+        if (this.state.parts[partType]) {
+            this.state.parts[partType] = { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 };
         }
         
         // Step1互換
@@ -841,26 +929,26 @@ class FaceMeshPreview {
         window.__FL_STATE__ = {
             eyebrow: {
                 left: {
-                    dx: this.state.parts.leftBrow.dx,
-                    dy: this.state.parts.leftBrow.dy,
-                    scale: this.state.parts.leftBrow.scale,
-                    rotate: this.state.parts.leftBrow.rotate,
-                    opacity: this.state.parts.leftBrow.opacity
+                    dx: this.state.parts.eyebrow ? this.state.parts.eyebrow.dx : 0,
+                    dy: this.state.parts.eyebrow ? this.state.parts.eyebrow.dy : 0,
+                    scale: this.state.parts.eyebrow ? this.state.parts.eyebrow.scale : 1.0,
+                    rotate: this.state.parts.eyebrow ? this.state.parts.eyebrow.rotate : 0,
+                    opacity: this.state.parts.eyebrow ? this.state.parts.eyebrow.opacity : 1.0
                 },
                 right: {
-                    dx: this.state.parts.rightBrow.dx,
-                    dy: this.state.parts.rightBrow.dy,
-                    scale: this.state.parts.rightBrow.scale,
-                    rotate: this.state.parts.rightBrow.rotate,
-                    opacity: this.state.parts.rightBrow.opacity
+                    dx: this.state.parts.eyebrow ? this.state.parts.eyebrow.dx : 0,
+                    dy: this.state.parts.eyebrow ? this.state.parts.eyebrow.dy : 0,
+                    scale: this.state.parts.eyebrow ? this.state.parts.eyebrow.scale : 1.0,
+                    rotate: this.state.parts.eyebrow ? this.state.parts.eyebrow.rotate : 0,
+                    opacity: this.state.parts.eyebrow ? this.state.parts.eyebrow.opacity : 1.0
                 }
             },
             nose: {
-                dx: this.state.parts.nose.dx,
-                dy: this.state.parts.nose.dy,
-                scale: this.state.parts.nose.scale,
-                rotate: this.state.parts.nose.rotate,
-                opacity: this.state.parts.nose.opacity
+                dx: this.state.parts.nose ? this.state.parts.nose.dx : 0,
+                dy: this.state.parts.nose ? this.state.parts.nose.dy : 0,
+                scale: this.state.parts.nose ? this.state.parts.nose.scale : 1.0,
+                rotate: this.state.parts.nose ? this.state.parts.nose.rotate : 0,
+                opacity: this.state.parts.nose ? this.state.parts.nose.opacity : 1.0
             }
         };
     }
@@ -896,6 +984,16 @@ class FaceMeshPreview {
             if (this.state.parts[partKey]) {
                 Object.assign(this.state.parts[partKey], preset[partKey]);
             }
+            
+            // eyebrowの場合はleftBrow/rightBrowも同期
+            if (partKey === 'eyebrow') {
+                if (this.state.parts.leftBrow) {
+                    Object.assign(this.state.parts.leftBrow, preset[partKey]);
+                }
+                if (this.state.parts.rightBrow) {
+                    Object.assign(this.state.parts.rightBrow, preset[partKey]);
+                }
+            }
         }
         
         this.updateUIFromState();
@@ -914,6 +1012,17 @@ class FaceMeshPreview {
         }
         
         this.state.parts[partKey] = { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 };
+        
+        // eyebrowの場合はleftBrow/rightBrowも同期リセット
+        if (partKey === 'eyebrow') {
+            if (this.state.parts.leftBrow) {
+                this.state.parts.leftBrow = { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 };
+            }
+            if (this.state.parts.rightBrow) {
+                this.state.parts.rightBrow = { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 };
+            }
+        }
+        
         this.updateUIFromState();
         this.syncToWindowState(); // Step4-A
         this.scheduleRender();
@@ -926,6 +1035,7 @@ class FaceMeshPreview {
     resetAll() {
         this.state = {
             parts: {
+                eyebrow:   { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 },
                 leftBrow:  { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 },
                 rightBrow: { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 },
                 nose:      { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 }
@@ -1058,6 +1168,7 @@ class FaceMeshPreview {
             // Before: 微調整をOFFにした初期状態
             return {
                 parts: {
+                    eyebrow:   { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 },
                     leftBrow:  { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 },
                     rightBrow: { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 },
                     nose:      { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 }
@@ -1215,9 +1326,10 @@ class FaceMeshPreview {
             return { ok: false, error: '顔が検出できていません。顔が映る位置に調整してください。' };
         }
         
-        // 選択されたパーツIDを取得
+        // 選択されたパーツIDを取得（leftBrow/rightBrowも確認）
         const selectedPartIds = {
-            eyebrow_id: this.selectedParts.eyebrow ? this.selectedParts.eyebrow.id : null,
+            eyebrow_id: (this.selectedParts.leftBrow || this.selectedParts.rightBrow || this.selectedParts.eyebrow) ? 
+                       (this.selectedParts.leftBrow?.id || this.selectedParts.rightBrow?.id || this.selectedParts.eyebrow?.id) : null,
             nose_id: this.selectedParts.nose ? this.selectedParts.nose.id : null
         };
         
@@ -1227,6 +1339,15 @@ class FaceMeshPreview {
         
         // Step4: RenderStateのstateを同期
         this.syncToRenderState();
+        
+        // サーバーに送信する形式に変換（parts形式）
+        const stateForServer = {
+            parts: {
+                leftBrow: RenderState.state.eyebrow.left,
+                rightBrow: RenderState.state.eyebrow.right,
+                nose: RenderState.state.nose
+            }
+        };
         
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -1239,7 +1360,7 @@ class FaceMeshPreview {
                 },
                 body: JSON.stringify({
                     template_id: this.templateId,
-                    state: RenderState.state,
+                    state: stateForServer,  // 変換後のstate
                     anchors: {
                         leftBrow: a.leftBrow,
                         rightBrow: a.rightBrow,
@@ -1418,7 +1539,7 @@ class FaceMeshPreview {
      * タブUI更新
      */
     updateTabUI() {
-        const tabs = ['leftBrow', 'rightBrow', 'nose'];
+        const tabs = ['eyebrow', 'nose'];
         tabs.forEach(partKey => {
             const tab = document.getElementById(`tab-${partKey}`);
             if (tab) {
@@ -1431,8 +1552,8 @@ class FaceMeshPreview {
      * UIイベントをバインド（Step3: Undo/Redo/Before/After/保存追加）
      */
     bindControls() {
-        // タブ切り替え
-        const tabs = ['leftBrow', 'rightBrow', 'nose'];
+        // タブ切り替え（眉は統一、鼻は別）
+        const tabs = ['eyebrow', 'nose'];
         tabs.forEach(partKey => {
             const tab = document.getElementById(`tab-${partKey}`);
             if (tab) {
@@ -1447,7 +1568,16 @@ class FaceMeshPreview {
             if (slider) {
                 slider.addEventListener('input', (e) => {
                     const value = parseFloat(e.target.value);
-                    this.applyPatch(this.state.activePart, { [key]: value });
+                    
+                    // eyebrowの場合はleftBrow/rightBrowも同期更新
+                    if (this.state.activePart === 'eyebrow') {
+                        this.applyPatch('eyebrow', { [key]: value });
+                        this.applyPatch('leftBrow', { [key]: value });
+                        this.applyPatch('rightBrow', { [key]: value });
+                    } else {
+                        this.applyPatch(this.state.activePart, { [key]: value });
+                    }
+                    
                     this.setDisplayValue(key, key === 'scale' || key === 'opacity' ? value.toFixed(2) : value);
                 });
             }

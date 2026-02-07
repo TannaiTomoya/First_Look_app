@@ -308,7 +308,17 @@ def render_export(meta, output_png_path, upload_dir):
         if not part_path:
             continue
         
-        part_full_path = os.path.join(upload_dir, part_path)
+        # パーツ画像のパス解決
+        # images/で始まる場合はstaticディレクトリを、それ以外はupload_dirを使用
+        if part_path.startswith('images/'):
+            # staticディレクトリのパーツ（eyebrows, noses等）
+            # upload_dir が instance/uploads の場合、プロジェクトルートは2階層上
+            project_root = os.path.dirname(os.path.dirname(upload_dir))
+            part_full_path = os.path.join(project_root, 'static', part_path)
+        else:
+            # アップロードされたパーツ
+            part_full_path = os.path.join(upload_dir, part_path)
+        
         if not os.path.exists(part_full_path):
             print(f'[render_export] パーツ画像が見つかりません: {part_full_path}')
             continue
@@ -341,10 +351,17 @@ def _normalize_state_format(state_raw):
     """
     state形式を統一
     
-    Input: eyebrow.left/right 形式 or parts.leftBrow/rightBrow 形式
+    Input: 
+      - eyebrow.left/right 形式
+      - parts.leftBrow/rightBrow 形式
+      - state.parts.nose 形式（新フォーマット）
     Output: leftBrow/rightBrow/nose 形式
     """
-    # 既にparts形式ならそのまま
+    # state.parts構造の場合、partsを展開
+    if 'parts' in state_raw:
+        state_raw = state_raw['parts']
+    
+    # 既にleftBrow/rightBrow形式ならそのまま
     if 'leftBrow' in state_raw or 'rightBrow' in state_raw:
         return state_raw
     

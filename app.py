@@ -80,6 +80,36 @@ def load_user(user_id: str) -> Optional[User]:
     except (ValueError, TypeError):
         return None
 
+# データベースのテーブル作成（起動時に実行）
+app.logger.info("=" * 60)
+app.logger.info("📊 データベーステーブルの確認")
+app.logger.info("=" * 60)
+
+try:
+    from models.render_export import RenderExport
+    
+    # データベース接続
+    if db.is_closed():
+        db.connect()
+    
+    # render_exportsテーブルが存在するか確認
+    tables = db.get_tables()
+    if 'render_exports' not in tables:
+        app.logger.info("⚠️  render_exportsテーブルが存在しません。作成します...")
+        db.create_tables([RenderExport], safe=True)
+        app.logger.info("✅ render_exportsテーブル作成完了")
+    else:
+        app.logger.info("✅ render_exportsテーブルは既に存在します")
+    
+    # 接続を閉じる
+    if not db.is_closed():
+        db.close()
+        
+except Exception as e:
+    app.logger.error(f"❌ テーブル作成エラー: {str(e)}")
+
+app.logger.info("=" * 60)
+
 # データベース接続の初期化
 @app.before_request
 def before_request():
@@ -126,29 +156,6 @@ app.register_blueprint(system_bp)
 # ========================================
 
 @app.route('/uploads/<path:filename>')
-def uploaded_file(filename):
-    """
-    アップロード画像を配信
-    
-    face_templates/, face_parts/ などの画像にアクセスするため
-    """
-    from flask import send_from_directory, current_app
-    return send_from_directory(current_app.config['FIRSTLOOK_UPLOAD_DIR'], filename)
-
-
-# ========================================
-# ルート定義
-# ========================================
-
-@app.route('/')
-def index():
-    """
-    ホーム - FirstLookランディングページ
-    ログイン済みの場合は各ロールのダッシュボードへ誘導
-    """
-    return render_template('index.html')
-
-@app.route('/uploads/<path:filename>')
 def serve_upload(filename):
     """
     アップロードされた画像を配信
@@ -166,10 +173,46 @@ def serve_upload(filename):
         filename: ファイルパス（サブディレクトリを含む）
     
     Returns:
-        画像ファイル
+        画像ファイル（Cache-Control: max-age=86400付き）
     """
     upload_dir = app.config['FIRSTLOOK_UPLOAD_DIR']
-    return send_from_directory(upload_dir, filename)
+    response = send_from_directory(upload_dir, filename)
+    # キャッシュ設定（24時間）
+    response.headers['Cache-Control'] = 'public, max-age=86400'
+    # CORSヘッダー追加（canvas操作のため）
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response
+
+
+@app.route('/exports/<path:filename>')
+def serve_export(filename):
+    """
+    エクスポートされた画像を配信（Step4追加）
+    
+    Args:
+        filename: ファイル名
+    
+    Returns:
+        画像ファイル
+    """
+    export_dir = app.config['FIRSTLOOK_EXPORT_DIR']
+    response = send_from_directory(export_dir, filename)
+    # キャッシュ設定（24時間）
+    response.headers['Cache-Control'] = 'public, max-age=86400'
+    return response
+
+
+# ========================================
+# ルート定義
+# ========================================
+
+@app.route('/')
+def index():
+    """
+    ホーム - FirstLookランディングページ
+    ログイン済みの場合は各ロールのダッシュボードへ誘導
+    """
+    return render_template('index.html')
 
 @app.template_filter('image_url')
 def image_url_filter(path, category='profile'):

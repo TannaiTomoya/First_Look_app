@@ -32,7 +32,11 @@ from models import (
     DailyCheck,
     Photo,
     BeforeAfterPost,
+    FaceTemplate,
+    FacePart,
+    FaceComposition,
 )
+from models.render_export import RenderExport
 
 
 def init_db():
@@ -58,6 +62,10 @@ def init_db():
         DailyCheck,
         Photo,
         BeforeAfterPost,
+        FaceTemplate,
+        FacePart,
+        FaceComposition,
+        RenderExport,  # Step4追加
     ]
     db.create_tables(tables, safe=True)
 
@@ -96,6 +104,10 @@ def create_tables():
         DailyCheck,
         Photo,
         BeforeAfterPost,
+        FaceTemplate,
+        FacePart,
+        FaceComposition,
+        RenderExport,  # Step4追加
     ]
     db.create_tables(tables, safe=True)
 
@@ -111,6 +123,10 @@ def drop_tables():
     print("テーブルを削除中...")
     # 依存関係の逆順で削除（FirstLook専用）
     tables = [
+        RenderExport,  # Step4追加（外部キー制約があるので先に削除）
+        FaceComposition,
+        FacePart,
+        FaceTemplate,
         BeforeAfterPost,
         Photo,
         DailyCheck,
@@ -158,6 +174,9 @@ def show_tables():
     print(f"  daily_checks: {DailyCheck.select().count()}")
     print(f"  photos: {Photo.select().count()}")
     print(f"  before_after_posts: {BeforeAfterPost.select().count()}")
+    print(f"  face_templates: {FaceTemplate.select().count()}")
+    print(f"  face_parts: {FacePart.select().count()}")
+    print(f"  face_compositions: {FaceComposition.select().count()}")
 
     db.close()
 
@@ -335,6 +354,46 @@ def seed_data():
         DesiredFace.create(label=label, image_url=image, description=desc)
 
     print(f"✓ {DesiredFace.select().count()}件の印象カードを作成")
+
+    # 顔パーツ作成
+    print("顔パーツデータを作成中...")
+    
+    # 眉パーツ（実際のファイル名に合わせる）
+    eyebrow_parts = [
+        ("自然な眉", "images/face_parts/eyebrows/eyebrow_1.png"),
+        ("柔らかい眉1", "images/face_parts/eyebrows/eyebrow_2.png"),
+        ("柔らかい眉2", "images/face_parts/eyebrows/eyebrow_3.png"),
+        ("しっかりした眉", "images/face_parts/eyebrows/eyebrow_4.png"),
+    ]
+    
+    for label, image_path in eyebrow_parts:
+        FacePart.create(
+            part_type='eyebrow',
+            label=label,
+            image_url=image_path,
+            position_x=50,
+            position_y=30,
+            scale=1.0
+        )
+    
+    # 鼻パーツ（実際のファイル名に合わせる）
+    nose_parts = [
+        ("すっきり鼻", "images/face_parts/noses/nose_1.png"),
+        ("丸みのある鼻", "images/face_parts/noses/nose_2.png"),
+        ("高い鼻筋", "images/face_parts/noses/nose_3.png"),
+    ]
+    
+    for label, image_path in nose_parts:
+        FacePart.create(
+            part_type='nose',
+            label=label,
+            image_url=image_path,
+            position_x=50,
+            position_y=50,
+            scale=1.0
+        )
+    
+    print(f"✓ {FacePart.select().count()}件の顔パーツを作成")
 
     # 肌診断作成
     SkinCheck.create(user=client1, skin_type="combination", concerns="pores,tone")
