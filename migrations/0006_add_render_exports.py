@@ -2,13 +2,11 @@
 マイグレーション: render_exportsテーブル追加
 Step4: 高品質レンダリング確定版＋共有URL
 """
-from peewee import *
-from models import database
 
 
-def upgrade():
+def apply(db):
     """テーブル作成"""
-    database.execute_sql('''
+    db.execute_sql('''
         CREATE TABLE IF NOT EXISTS render_exports (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
@@ -25,20 +23,7 @@ def upgrade():
     ''')
     
     # インデックス作成
-    database.execute_sql('CREATE INDEX IF NOT EXISTS idx_render_exports_user ON render_exports (user_id)')
-    database.execute_sql('CREATE UNIQUE INDEX IF NOT EXISTS idx_render_exports_token ON render_exports (share_token)')
+    db.execute_sql('CREATE INDEX IF NOT EXISTS idx_render_exports_user ON render_exports (user_id)')
+    db.execute_sql('CREATE UNIQUE INDEX IF NOT EXISTS idx_render_exports_token ON render_exports (share_token)')
     
     print('✓ render_exportsテーブル作成完了')
-
-
-def downgrade():
-    """テーブル削除"""
-    database.execute_sql('DROP TABLE IF EXISTS render_exports')
-    print('✓ render_exportsテーブル削除完了')
-
-
-if __name__ == '__main__':
-    # テスト実行用
-    from models import init_db
-    init_db()
-    upgrade()
