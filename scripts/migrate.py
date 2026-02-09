@@ -114,6 +114,85 @@ def cmd_status():
     print("=" * 60)
 
 
+def auto_seed_master_data():
+    """
+    マスターデータが空の場合、自動で投入
+    """
+    try:
+        from models.impression import DesiredFace
+        from models.face_template import FacePart
+        
+        desired_face_count = DesiredFace.select().count()
+        face_part_count = FacePart.select().count()
+        
+        if desired_face_count == 0 or face_part_count == 0:
+            print("\n" + "=" * 60)
+            print("🌱 マスターデータ自動投入")
+            print("=" * 60)
+            
+            # 印象カードの投入
+            if desired_face_count == 0:
+                print("印象カードを作成中...")
+                faces = [
+                    ("知的", "images/impressions/intelligent_face.jpg", "知的で落ち着いた印象"),
+                    ("清潔感", "images/impressions/clean_face.jpg", "清潔感があり好印象"),
+                    ("自信", "images/impressions/confident_face.jpg", "自信に満ちた印象"),
+                    ("優しい", "images/impressions/gentle_face.jpg", "優しく温かい印象"),
+                ]
+                for label, image, desc in faces:
+                    DesiredFace.create(label=label, image_url=image, description=desc)
+                print(f"✓ {DesiredFace.select().count()}件の印象カードを作成")
+            
+            # 顔パーツの投入
+            if face_part_count == 0:
+                print("顔パーツを作成中...")
+                
+                # 眉パーツ
+                eyebrow_parts = [
+                    ("自然な眉", "images/face_parts/eyebrows/eyebrow_1.png"),
+                    ("柔らかい眉1", "images/face_parts/eyebrows/eyebrow_2.png"),
+                    ("柔らかい眉2", "images/face_parts/eyebrows/eyebrow_3.png"),
+                    ("しっかりした眉", "images/face_parts/eyebrows/eyebrow_4.png"),
+                ]
+                for label, image_path in eyebrow_parts:
+                    FacePart.create(
+                        part_type='eyebrow',
+                        label=label,
+                        image_url=image_path,
+                        position_x=50,
+                        position_y=30,
+                        scale=1.0
+                    )
+                
+                # 鼻パーツ
+                nose_parts = [
+                    ("すっきり鼻", "images/face_parts/noses/nose_1.png"),
+                    ("丸みのある鼻", "images/face_parts/noses/nose_2.png"),
+                    ("高い鼻筋", "images/face_parts/noses/nose_3.png"),
+                ]
+                for label, image_path in nose_parts:
+                    FacePart.create(
+                        part_type='nose',
+                        label=label,
+                        image_url=image_path,
+                        position_x=50,
+                        position_y=50,
+                        scale=1.0
+                    )
+                
+                print(f"✓ {FacePart.select().count()}件の顔パーツを作成")
+            
+            print("=" * 60)
+            print("✅ マスターデータ投入完了")
+            print("=" * 60)
+        else:
+            print(f"\n✓ マスターデータは既に存在（印象: {desired_face_count}件, パーツ: {face_part_count}件）")
+    
+    except Exception as e:
+        print(f"⚠️  マスターデータ投入でエラー: {e}")
+        print("   手動で実行してください: python db_manager.py seed")
+
+
 def cmd_up():
     """
     未適用マイグレーションを実行
@@ -161,6 +240,9 @@ def cmd_up():
             raise
     
     print("\n✅ DONE - 全マイグレーション適用完了")
+    
+    # マスターデータの自動投入チェック
+    auto_seed_master_data()
 
 
 def main():
