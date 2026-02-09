@@ -54,6 +54,16 @@ class RegisterForm(FlaskForm):
         validators=[DataRequired(message='性別を選択してください')]
     )
 
+    age_confirm = BooleanField(
+        '18歳以上確認',
+        validators=[DataRequired(message='18歳以上であることを確認してください')]
+    )
+
+    terms_agree = BooleanField(
+        '利用規約同意',
+        validators=[DataRequired(message='利用規約とプライバシーポリシーに同意してください')]
+    )
+
     submit = SubmitField('登録')
 
     def validate_username(self, username):

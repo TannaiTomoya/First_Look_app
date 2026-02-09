@@ -112,15 +112,33 @@
                         </small>
                     </div>
 
+                    <!-- 年齢確認・利用規約同意 -->
+                    <div class="mb-4">
+                        <div class="card border-danger">
+                            <div class="card-body">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="ageConfirm" name="age_confirm" required>
+                                    <label class="form-check-label" for="ageConfirm">
+                                        <strong class="text-danger">私は18歳以上です</strong>
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="termsAgree" name="terms_agree" required>
+                                    <label class="form-check-label" for="termsAgree">
+                                        <a href="{{ url_for('terms') }}" target="_blank" class="text-decoration-none">利用規約</a>と
+                                        <a href="{{ url_for('privacy') }}" target="_blank" class="text-decoration-none">プライバシーポリシー</a>に同意します
+                                    </label>
+                                </div>
+                                <small class="form-text text-muted d-block mt-2">
+                                    <i class="fas fa-exclamation-triangle text-danger"></i> 
+                                    18歳未満の方は本サービスを利用できません
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 登録ボタン -->
                     {{ form.submit(class="btn btn-primary btn-lg w-100 mb-3") }}
-
-                    <!-- 利用規約 -->
-                    <p class="text-center text-muted small mb-0">
-                        登録することで、FirstLookの
-                        <a href="#" class="text-decoration-none">利用規約</a>と
-                        <a href="#" class="text-decoration-none">プライバシーポリシー</a>に同意したことになります。
-                    </p>
                 </form>
             </div>
         </div>

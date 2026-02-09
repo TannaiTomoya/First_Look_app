@@ -127,11 +127,19 @@
     <!-- フッター -->
     <footer class="bg-light text-center py-4 mt-5 border-top">
         <div class="container">
-            <p class="text-muted mb-0">
+            <p class="text-muted mb-2">
                 <i class="fas fa-user-tie"></i> FirstLook &copy; 2026
             </p>
-            <p class="text-muted small mb-0">
+            <p class="text-muted small mb-2">
                 第一印象コンサルティングプラットフォーム
+            </p>
+            <p class="mb-0">
+                <a href="{{ url_for('terms') }}" class="text-muted me-3">
+                    <i class="fas fa-file-contract"></i> 利用規約
+                </a>
+                <a href="{{ url_for('privacy') }}" class="text-muted">
+                    <i class="fas fa-shield-alt"></i> プライバシーポリシー
+                </a>
             </p>
         </div>
     </footer>

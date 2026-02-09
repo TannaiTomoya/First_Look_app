@@ -1,0 +1,42 @@
+# Render.com 環境変数設定（コピペ用）
+
+## 必須環境変数（9個）
+
+FLASK_ENV=production
+SECRET_KEY=665365e117a93b074b4a9a62b4767a89fcaa82d8dbeb7ad35e056962c671abfb
+GOOGLE_GEMINI_API_KEY=<Gemini APIキーを入れてください>
+FIRSTLOOK_DB_PATH=/data/firstlook.db
+FIRSTLOOK_UPLOAD_DIR=/data/uploads
+FIRSTLOOK_EXPORT_DIR=/data/exports
+FIRSTLOOK_LOG_DIR=/data/logs
+SESSION_COOKIE_SECURE=True
+REMEMBER_COOKIE_SECURE=True
+
+## 設定方法
+
+1. Render Dashboard → Web Service → Environment タブ
+2. 上記の各行を「Add Environment Variable」で追加
+3. GOOGLE_GEMINI_API_KEY は実際のキーに置き換え
+4. 「Save Changes」をクリック
+
+## Persistent Disk設定
+
+Name: firstlook-data
+Mount Path: /data
+Size: 1 GB
+
+## Health Check Path
+
+/healthz
+
+## 初回セットアップコマンド（Deploy後にShellで実行）
+
+export FIRSTLOOK_DB_PATH=/data/firstlook.db
+python scripts/migrate.py up
+python db_manager.py seed
+
+## 注意事項
+
+⚠️ 必ず https:// でアクセスしてください
+⚠️ EXPORT_DIR / LOG_DIR は必須（未設定で起動失敗）
+⚠️ SECRET_KEYは生成された値を使用（.envの値を使わない）

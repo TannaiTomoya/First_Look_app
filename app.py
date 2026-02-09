@@ -214,6 +214,16 @@ def index():
     """
     return render_template('index.html')
 
+@app.route('/terms')
+def terms():
+    """利用規約ページ"""
+    return render_template('terms.html')
+
+@app.route('/privacy')
+def privacy():
+    """プライバシーポリシーページ"""
+    return render_template('privacy.html')
+
 @app.template_filter('image_url')
 def image_url_filter(path, category='profile'):
     """
