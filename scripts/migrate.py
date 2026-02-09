@@ -24,7 +24,7 @@ from peewee import Model, CharField, DateTimeField
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # DB設定をインポート
-from db import db
+from models.db import db
 
 # models を import して DeferredForeignKey を解決させる（重要）
 import models  # noqa: F401

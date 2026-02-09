@@ -5,7 +5,10 @@
 from peewee import Model
 
 # データベースインスタンスをインポート（単一ソース）
-from db import db
+from .db import db
+
+# マイグレーション互換性（migrations/0006 が from models import database を期待）
+database = db
 
 
 class BaseModel(Model):
@@ -31,6 +34,7 @@ from models.face_template import FaceTemplate, FacePart, FaceComposition
 
 __all__ = [
     "db",
+    "database",
     "BaseModel",
     "User",
     "Coach",
