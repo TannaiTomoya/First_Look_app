@@ -12,8 +12,8 @@ import secrets
 class RenderExport(BaseModel):
     """高品質レンダリング成果物"""
     id = AutoField(primary_key=True)
-    user = DeferredForeignKey('User', backref='render_exports', on_delete='CASCADE')
-    template = DeferredForeignKey('FaceTemplate', backref='exports', on_delete='CASCADE')
+    user = DeferredForeignKey('User', backref='render_exports', on_delete='CASCADE', column_name='user_id')
+    template = DeferredForeignKey('FaceTemplate', backref='exports', on_delete='CASCADE', column_name='template_id')
     state_json = TextField()  # レンダリング時点のstateを凍結
     output_path = TextField()  # 確定画像パス（uploads/exports/...）
     share_token = TextField(unique=True, index=True)  # 推測困難なランダム文字列

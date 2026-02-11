@@ -12,8 +12,8 @@ from models import BaseModel
 class Booking(BaseModel):
     """予約情報"""
     id = AutoField(primary_key=True)
-    client = DeferredForeignKey('User', backref='bookings_as_client', on_delete='CASCADE')
-    menu = DeferredForeignKey('Menu', backref='bookings', on_delete='CASCADE')
+    client = DeferredForeignKey('User', backref='bookings_as_client', on_delete='CASCADE', column_name='client_id')
+    menu = DeferredForeignKey('Menu', backref='bookings', on_delete='CASCADE', column_name='menu_id')
     booking_datetime = DateTimeField()  # 予約日時
     status = CharField(max_length=20, default='pending')  # pending, confirmed, completed, cancelled
     notes = CharField(max_length=500, null=True)  # 備考

@@ -12,7 +12,7 @@ from models import BaseModel
 class Chat(BaseModel):
     """1対1チャットルーム"""
     id = AutoField(primary_key=True)
-    booking = DeferredForeignKey('Booking', backref='chat', unique=True, on_delete='CASCADE')
+    booking = DeferredForeignKey('Booking', backref='chat', unique=True, on_delete='CASCADE', column_name='booking_id')
     created_at = DateTimeField(default=datetime.now)
     
     class Meta:
@@ -44,8 +44,8 @@ class Chat(BaseModel):
 class Message(BaseModel):
     """チャットメッセージ"""
     id = AutoField(primary_key=True)
-    chat = DeferredForeignKey('Chat', backref='messages', on_delete='CASCADE')
-    sender = DeferredForeignKey('User', backref='sent_messages', on_delete='CASCADE')
+    chat = DeferredForeignKey('Chat', backref='messages', on_delete='CASCADE', column_name='chat_id')
+    sender = DeferredForeignKey('User', backref='sent_messages', on_delete='CASCADE', column_name='sender_id')
     content = TextField()  # メッセージ内容
     image_path = CharField(max_length=255, null=True)  # 添付画像パス
     is_deleted = IntegerField(default=0)  # 削除フラグ（0: 通常, 1: 削除済み）

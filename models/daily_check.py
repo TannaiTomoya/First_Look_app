@@ -12,7 +12,7 @@ from models import BaseModel
 class DailyCheck(BaseModel):
     """当日5分チェック"""
     id = AutoField(primary_key=True)
-    user = DeferredForeignKey('User', backref='daily_checks', on_delete='CASCADE')
+    user = DeferredForeignKey('User', backref='daily_checks', on_delete='CASCADE', column_name='user_id')
     check_date = DateField(default=date.today)  # チェック日
     eyebrow_ok = IntegerField(default=0)  # 眉：0=未確認, 1=OK, 2=要改善
     eye_ok = IntegerField(default=0)  # 目：0=未確認, 1=OK, 2=要改善
@@ -46,7 +46,7 @@ class DailyCheck(BaseModel):
 class Photo(BaseModel):
     """写真保存（汎用）"""
     id = AutoField(primary_key=True)
-    user = DeferredForeignKey('User', backref='photos', on_delete='CASCADE')
+    user = DeferredForeignKey('User', backref='photos', on_delete='CASCADE', column_name='user_id')
     purpose = CharField(max_length=50)  # 用途：coach_profile, before, after, daily_check
     file_path = CharField(max_length=255)  # ファイルパス
     created_at = DateTimeField(default=datetime.now)
@@ -65,13 +65,13 @@ class Photo(BaseModel):
 class BeforeAfterPost(BaseModel):
     """Before/After投稿"""
     id = AutoField(primary_key=True)
-    user = DeferredForeignKey('User', backref='before_after_posts', on_delete='CASCADE')
-    before_photo = DeferredForeignKey('Photo', backref='before_posts', on_delete='CASCADE')
-    after_photo = DeferredForeignKey('Photo', backref='after_posts', on_delete='CASCADE')
-    before_photo_2 = DeferredForeignKey('Photo', backref='before_posts_2', null=True, on_delete='CASCADE')  # Before画像2（任意）
-    after_photo_2 = DeferredForeignKey('Photo', backref='after_posts_2', null=True, on_delete='CASCADE')  # After画像2（任意）
+    user = DeferredForeignKey('User', backref='before_after_posts', on_delete='CASCADE', column_name='user_id')
+    before_photo = DeferredForeignKey('Photo', backref='before_posts', on_delete='CASCADE', column_name='before_photo_id')
+    after_photo = DeferredForeignKey('Photo', backref='after_posts', on_delete='CASCADE', column_name='after_photo_id')
+    before_photo_2 = DeferredForeignKey('Photo', backref='before_posts_2', null=True, on_delete='CASCADE', column_name='before_photo_2_id')  # Before画像2（任意）
+    after_photo_2 = DeferredForeignKey('Photo', backref='after_posts_2', null=True, on_delete='CASCADE', column_name='after_photo_2_id')  # After画像2（任意）
     caption = TextField(null=True)  # キャプション
-    desired_face = DeferredForeignKey('DesiredFace', backref='posts', null=True, on_delete='SET NULL')  # 紐付け印象カード
+    desired_face = DeferredForeignKey('DesiredFace', backref='posts', null=True, on_delete='SET NULL', column_name='desired_face_id')  # 紐付け印象カード
     created_at = DateTimeField(default=datetime.now)
     
     class Meta:
