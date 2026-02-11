@@ -174,8 +174,8 @@ def create_export():
         # DBに保存
         try:
             export = RenderExport.create(
-                user_id=current_user.id,
-                template_id=template_id,
+                user=current_user,
+                template=template_id,
                 state_json=json.dumps(state),
                 output_path=output_path,
                 share_token=share_token,
