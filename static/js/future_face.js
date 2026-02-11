@@ -49,7 +49,7 @@ const NOSTRIL_IDX = [
 ];
 
 /**
- * Future Face適用（Phase1: Slim / Phase2: Skin）
+ * Future Face適用（Phase1: Slim / Phase2: Skin / Phase3: Young）
  */
 function applyFutureFaceMVP(imageData, canvas, landmarks, ff) {
     const preset = ff.preset || "all";
@@ -63,6 +63,10 @@ function applyFutureFaceMVP(imageData, canvas, landmarks, ff) {
     
     if (preset === "skin" || preset === "all") {
         out = skinEnhance(out, canvas, landmarks, s);
+    }
+    
+    if (preset === "young" || preset === "all") {
+        out = reduceNasolabialFolds(out, canvas, landmarks, s);
     }
     
     return out;
@@ -361,4 +365,137 @@ function adjustTone(imageData, W, H, strength01) {
     }
     
     return new ImageData(out, W, H);
+}
+
+// ========================================
+// Phase3: Young（ほうれい線軽減）
+// ========================================
+
+/**
+ * ほうれい線を目立たなくする（影を薄く、のっぺりさせない）
+ */
+function reduceNasolabialFolds(imageData, canvas, landmarks, strength01) {
+    const W = canvas.width, H = canvas.height;
+    
+    // 1. ほうれい線マスクを構築
+    const mask = buildNasolabialMask(canvas, landmarks);
+    
+    // 2. マスク領域のコントラストを軽減
+    const amount = lerp(0.15, 0.35, strength01); // 15-35%のコントラスト軽減
+    const out = reduceLocalContrast(imageData, mask, amount);
+    
+    return out;
+}
+
+/**
+ * ほうれい線マスクを構築（左右の帯状マスク + feather）
+ */
+function buildNasolabialMask(canvas, landmarks) {
+    const W = canvas.width, H = canvas.height;
+    const ctx = document.createElement('canvas').getContext('2d');
+    ctx.canvas.width = W;
+    ctx.canvas.height = H;
+    
+    // ほうれい線の主要ランドマーク
+    // 左側: 鼻の付け根 → 口角
+    const leftStart = landmarks[198];  // 鼻の付け根（左）
+    const leftEnd = landmarks[61];     // 口角（左）
+    
+    // 右側: 鼻の付け根 → 口角
+    const rightStart = landmarks[419]; // 鼻の付け根（右）
+    const rightEnd = landmarks[291];   // 口角（右）
+    
+    if (!leftStart || !leftEnd || !rightStart || !rightEnd) {
+        // ランドマークがない場合は空マスク
+        return new Uint8Array(W * H);
+    }
+    
+    // 左側の帯
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = W * 0.03; // 幅3%
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(leftStart.x * W, leftStart.y * H);
+    ctx.lineTo(leftEnd.x * W, leftEnd.y * H);
+    ctx.stroke();
+    
+    // 右側の帯
+    ctx.beginPath();
+    ctx.moveTo(rightStart.x * W, rightStart.y * H);
+    ctx.lineTo(rightEnd.x * W, rightEnd.y * H);
+    ctx.stroke();
+    
+    // マスクデータを取得（0-255）
+    const imgData = ctx.getImageData(0, 0, W, H);
+    const mask = new Uint8Array(W * H);
+    for (let i = 0; i < mask.length; i++) {
+        mask[i] = imgData.data[i * 4]; // R値
+    }
+    
+    // マスク境界をfeather（10-14pxのぼかし）
+    return featherMaskUint8(mask, W, H, 12);
+}
+
+/**
+ * Uint8マスク用のfeather（ボックスブラー）
+ */
+function featherMaskUint8(mask, W, H, radius) {
+    const out = new Uint8Array(mask.length);
+    const r = Math.floor(radius);
+    
+    for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+            let sum = 0, count = 0;
+            
+            for (let dy = -r; dy <= r; dy++) {
+                for (let dx = -r; dx <= r; dx++) {
+                    const nx = x + dx, ny = y + dy;
+                    if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+                    sum += mask[ny * W + nx];
+                    count++;
+                }
+            }
+            
+            out[y * W + x] = Math.round(sum / count);
+        }
+    }
+    
+    return out;
+}
+
+/**
+ * 局所コントラスト軽減（シワの影を薄くする、のっぺりさせない）
+ */
+function reduceLocalContrast(imageData, mask, amount) {
+    const data = imageData.data;
+    const out = new Uint8ClampedArray(data);
+    
+    // 各ピクセルの明度を取得して平均に近づける
+    for (let i = 0; i < data.length; i += 4) {
+        const pixelIdx = i / 4;
+        const m = mask[pixelIdx] / 255.0; // マスク強度（0.0-1.0）
+        
+        if (m < 0.01) {
+            // マスク外はスキップ
+            continue;
+        }
+        
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        
+        // 明度（簡易版）
+        const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+        
+        // 局所平均に向かってコントラストを下げる（のっぺりを防ぐため控えめ）
+        const blend = m * amount; // マスク × 効果量
+        
+        // 平均値との差を縮める
+        out[i]     = r + (luma - r) * blend * 0.15; // R成分の差を15%縮める
+        out[i + 1] = g + (luma - g) * blend * 0.15; // G成分の差を15%縮める
+        out[i + 2] = b + (luma - b) * blend * 0.15; // B成分の差を15%縮める
+        out[i + 3] = data[i + 3];
+    }
+    
+    return new ImageData(out, data.length / 4, imageData.height);
 }
