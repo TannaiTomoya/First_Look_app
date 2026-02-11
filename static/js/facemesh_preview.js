@@ -14,7 +14,14 @@ const RenderState = {
             left:  { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 },
             right: { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 }
         },
-        nose: { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 }
+        nose: { dx: 0, dy: 0, scale: 1.0, rotate: 0, opacity: 1.0 },
+        
+        // Future Face設定
+        futureFace: {
+            enabled: false,
+            preset: "all",   // "slim" | "skin" | "young" | "all"
+            strength: 40     // 0-100
+        }
     },
 
     // FaceMeshから計算されたアンカー（pixel座標）を"最後の安定値"として保持
@@ -32,6 +39,15 @@ const RenderState = {
     detection: {
         lastSeenAt: 0,
         lastGoodAnchorsAt: 0
+    },
+    
+    // Future Faceキャッシュ
+    cache: {
+        futureFace: {
+            dirty: true,
+            lastKey: "",
+            imageData: null
+        }
     }
 };
 
@@ -143,6 +159,7 @@ class FaceMeshPreview {
         this.lastDetectionTime = 0;
         this.undetectedStartTime = null;
         this.undetectedTimeout = 3000; // 3秒
+        this.lastLandmarks = null; // Future Face用
         
         // パーツ画像（眉は1つの画像として扱う）
         this.partsImages = {
@@ -205,6 +222,9 @@ class FaceMeshPreview {
         // Export用のグローバル変数を初期化
         window.__FL_ANCHORS__ = null;
         window.__FL_STATE__ = this.state;
+        
+        // Future Face用のグローバル関数を公開（デバッグ用）
+        window.setFutureFace = (patch) => this.setFutureFace(patch);
     }
     
     /**
@@ -339,6 +359,10 @@ class FaceMeshPreview {
             this.lastDetectionTime = Date.now();
             this.undetectedStartTime = null;
             
+            // Future Face用にランドマークを保持
+            this.lastLandmarks = landmarks;
+            this.maybeUpdateFutureFaceCache();
+            
             // ステータスを非表示
             const statusEl = document.getElementById('facemeshStatus');
             if (statusEl) {
@@ -456,9 +480,18 @@ class FaceMeshPreview {
         this.ctx.globalCompositeOperation = 'source-over';
         this.ctx.globalAlpha = 1.0;
         
-        // 1. ベース画像
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.drawImage(this.baseImage, 0, 0, this.canvas.width, this.canvas.height);
+        // 1. ベース画像（Future Face対応）
+        const ff = RenderState.state.futureFace;
+        const cache = RenderState.cache.futureFace;
+        
+        if (ff?.enabled && cache?.imageData) {
+            // Future Face適用済みのキャッシュを使用
+            this.ctx.putImageData(cache.imageData, 0, 0);
+        } else {
+            // 通常のベース画像
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.drawImage(this.baseImage, 0, 0, this.canvas.width, this.canvas.height);
+        }
         
         // Before モードの場合はパーツを描画せず、ベース画像のみ表示
         if (this.compareMode === 'before') {
@@ -1305,6 +1338,83 @@ class FaceMeshPreview {
         // 3. 初期値（何もしない）
         console.log('✓ 初期値を使用します');
         return false;
+    }
+    
+    // ========================================
+    // Future Face機能（Phase1: Slim）
+    // ========================================
+    
+    /**
+     * Future Face設定を更新
+     */
+    setFutureFace(patch) {
+        Object.assign(RenderState.state.futureFace, patch);
+        RenderState.cache.futureFace.dirty = true;
+        
+        // キャッシュを即座に更新
+        if (RenderState.state.futureFace.enabled && this.lastLandmarks) {
+            this.maybeUpdateFutureFaceCache();
+        }
+        
+        this.scheduleRender();
+        
+        console.log('✓ Future Face設定更新:', RenderState.state.futureFace);
+    }
+    
+    /**
+     * Future Faceキャッシュ更新（必要な場合のみ）
+     */
+    maybeUpdateFutureFaceCache() {
+        const ff = RenderState.state.futureFace;
+        const cache = RenderState.cache.futureFace;
+        const lm = this.lastLandmarks;
+        
+        if (!ff?.enabled) {
+            // 無効化された場合はキャッシュをクリア
+            cache.imageData = null;
+            cache.lastKey = "";
+            cache.dirty = false;
+            return;
+        }
+        
+        if (!lm) {
+            console.warn('[Future Face] ランドマークがありません');
+            return;
+        }
+        
+        // キャッシュキーを生成（設定が同じならスキップ）
+        const key = `${ff.preset}:${ff.strength}:${this.canvas.width}x${this.canvas.height}`;
+        if (!cache.dirty && cache.lastKey === key && cache.imageData) {
+            return; // キャッシュヒット
+        }
+        
+        console.log('[Future Face] キャッシュ更新開始:', key);
+        
+        try {
+            // 1) ベース画像を一時描画
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.drawImage(this.baseImage, 0, 0, this.canvas.width, this.canvas.height);
+            
+            // 2) ImageDataを取得
+            const img = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+            
+            // 3) Future Face加工（future_face.jsの関数を使用）
+            if (typeof applyFutureFaceMVP !== 'function') {
+                console.error('[Future Face] applyFutureFaceMVP関数が見つかりません');
+                return;
+            }
+            
+            cache.imageData = applyFutureFaceMVP(img, this.canvas, lm, ff);
+            cache.lastKey = key;
+            cache.dirty = false;
+            
+            console.log('[Future Face] キャッシュ更新完了');
+            
+        } catch (err) {
+            console.error('[Future Face] 加工エラー:', err);
+            cache.imageData = null;
+            cache.dirty = true;
+        }
     }
     
     // ========================================
