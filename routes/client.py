@@ -7,8 +7,18 @@ from functools import wraps
 from models.impression import DesiredFace, SkinCheck
 from models.user import User
 from models.daily_check import DailyCheck
-from datetime import datetime, date
+from models.look_record import LookRecord
+from models.daily_action import DailyAction
+from datetime import datetime, date, timedelta
 from utils.gemini_skin_analysis import analyze_skin_with_gemini
+from utils.look_score import compute_look_scores
+from utils.daily_actions import get_random_action, get_action_by_key
+from utils.progress_card import generate_progress_card
+import base64
+import os
+from PIL import Image
+import io
+from itertools import groupby
 
 client = Blueprint('client', __name__, url_prefix='/client')
 
@@ -25,10 +35,35 @@ def client_required(f):
     return decorated_function
 
 
+@client.route('/onboarding')
+@client_required
+def onboarding():
+    """オンボーディング（初回体験）"""
+    # 既にLookRecordがあればダッシュボードへ
+    has_record = LookRecord.select().where(LookRecord.user == current_user.id).exists()
+    if has_record:
+        return redirect(url_for('client.dashboard'))
+    
+    # テンプレート選択（最初のテンプレートを使用）
+    from models.face_template import FaceTemplate
+    default_template = FaceTemplate.select().order_by(FaceTemplate.id.asc()).first()
+    
+    if not default_template:
+        flash('テンプレートが見つかりません', 'danger')
+        return redirect(url_for('client.dashboard'))
+    
+    return render_template('client/onboarding.html', template=default_template)
+
+
 @client.route('/dashboard')
 @client_required
 def dashboard():
     """クライアントダッシュボード"""
+    # オンボーディングチェック（最初のLookRecordが無ければリダイレクト）
+    has_record = LookRecord.select().where(LookRecord.user == current_user.id).exists()
+    if not has_record:
+        return redirect(url_for('client.onboarding'))
+    
     # 肌質・悩みの変換辞書（英語 → 日本語 + 画像パス）
     skin_type_map = {
         'dry': {'label': '乾燥肌', 'image': 'images/skin_types/dry_skin.jpg'},
@@ -824,3 +859,465 @@ def api_retry_render(export_id):
         current_app.logger.exception("retry-render failed")
         # 500ではなく200で返す（フロントで判断可能に）
         return jsonify({"ok": False, "error": str(e)}), 200
+
+
+# ========================================
+# Look Records（見た目記録）機能
+# ========================================
+
+@client.route('/look-records')
+@client_required
+def look_records():
+    """見た目記録一覧（月別グループ化）"""
+    records = (LookRecord
+               .select()
+               .where(LookRecord.user == current_user.id)
+               .order_by(LookRecord.date.desc())
+               .limit(100))
+    
+    # 月別にグループ化
+    records_by_month = []
+    for month_key, group in groupby(records, key=lambda r: r.date.strftime('%Y-%m')):
+        records_list = list(group)
+        # 月表示用（例: 2026年2月）
+        month_display = datetime.strptime(month_key, '%Y-%m').strftime('%Y年%m月')
+        records_by_month.append({
+            'month': month_key,
+            'month_display': month_display,
+            'records': records_list
+        })
+    
+    return render_template('client/look_records.html', records_by_month=records_by_month)
+
+
+@client.route('/progress')
+@client_required
+def progress():
+    """進化の証明（Day0 vs Today）"""
+    # 最初の記録（Day0）
+    first_record = (LookRecord
+                   .select()
+                   .where(
+                       (LookRecord.user == current_user.id) &
+                       (LookRecord.score_total.is_null(False))
+                   )
+                   .order_by(LookRecord.date.asc())
+                   .first())
+    
+    # 最新の記録（Today）
+    latest_record = (LookRecord
+                    .select()
+                    .where(
+                        (LookRecord.user == current_user.id) &
+                        (LookRecord.score_total.is_null(False))
+                    )
+                    .order_by(LookRecord.date.desc())
+                    .first())
+    
+    # レコードが2件未満の場合
+    if not first_record or not latest_record or first_record.id == latest_record.id:
+        return render_template('client/progress.html', has_data=False)
+    
+    # スコア差分を計算
+    score_diff = {
+        'total': latest_record.score_total - first_record.score_total,
+        'contour': latest_record.score_contour - first_record.score_contour,
+        'skin': latest_record.score_skin - first_record.score_skin,
+        'young': latest_record.score_young - first_record.score_young,
+    }
+    
+    # 経過日数
+    days_elapsed = (latest_record.date - first_record.date).days
+    
+    return render_template(
+        'client/progress.html',
+        has_data=True,
+        first_record=first_record,
+        latest_record=latest_record,
+        score_diff=score_diff,
+        days_elapsed=days_elapsed
+    )
+
+
+@client.route('/progress/card')
+@client_required
+def progress_card():
+    """進化カード画像を生成して返却"""
+    # 最初の記録（Day0）
+    first_record = (LookRecord
+                   .select()
+                   .where(
+                       (LookRecord.user == current_user.id) &
+                       (LookRecord.score_total.is_null(False))
+                   )
+                   .order_by(LookRecord.date.asc())
+                   .first())
+    
+    # 最新の記録（Today）
+    latest_record = (LookRecord
+                    .select()
+                    .where(
+                        (LookRecord.user == current_user.id) &
+                        (LookRecord.score_total.is_null(False))
+                    )
+                    .order_by(LookRecord.date.desc())
+                    .first())
+    
+    # レコードが2件未満の場合
+    if not first_record or not latest_record or first_record.id == latest_record.id:
+        return jsonify({"ok": False, "error": "insufficient_records"}), 400
+    
+    # 出力先パス
+    export_dir = current_app.config.get('FIRSTLOOK_EXPORT_DIR', 'instance/exports')
+    card_dir = os.path.join(export_dir, 'progress_cards', str(current_user.id))
+    output_path = os.path.join(card_dir, 'latest.png')
+    
+    # 絶対パスに変換（相対パスの場合）
+    if not os.path.isabs(first_record.photo_path):
+        upload_dir = current_app.config.get('FIRSTLOOK_UPLOAD_DIR', 'instance/uploads')
+        first_record.photo_path = os.path.join(upload_dir, first_record.photo_path)
+    
+    if not os.path.isabs(latest_record.photo_path):
+        upload_dir = current_app.config.get('FIRSTLOOK_UPLOAD_DIR', 'instance/uploads')
+        latest_record.photo_path = os.path.join(upload_dir, latest_record.photo_path)
+    
+    # 進化カード生成
+    success = generate_progress_card(first_record, latest_record, output_path)
+    
+    if not success:
+        return jsonify({"ok": False, "error": "generation_failed"}), 500
+    
+    # 画像ファイルを返却
+    try:
+        return send_from_directory(
+            os.path.dirname(output_path),
+            os.path.basename(output_path),
+            mimetype='image/png',
+            as_attachment=True,
+            download_name=f'progress_card_{current_user.id}.png'
+        )
+    except Exception as e:
+        current_app.logger.exception("progress_card download failed")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@client.route('/api/look-records/save', methods=['POST'])
+@client_required
+def save_look_record():
+    """見た目記録を保存（After画像 + Future Face設定）"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"ok": False, "error": "invalid_request"}), 400
+        
+        image_base64 = data.get('image_base64')
+        preset = data.get('preset', 'all')
+        strength = data.get('strength', 40)
+        record_date = data.get('date')
+        
+        # ========================================
+        # バリデーション
+        # ========================================
+        
+        # 画像必須チェック
+        if not image_base64:
+            return jsonify({"ok": False, "error": "image_required"}), 400
+        
+        # dataURL形式チェック（PNG のみ）
+        if not image_base64.startswith('data:image/png;base64,'):
+            return jsonify({"ok": False, "error": "invalid_image_format_png_only"}), 400
+        
+        # プリセット検証
+        valid_presets = ['all', 'slim', 'skin', 'young']
+        if preset not in valid_presets:
+            return jsonify({"ok": False, "error": f"invalid_preset_must_be_{'/'.join(valid_presets)}"}), 400
+        
+        # 強度検証（0-100）
+        try:
+            strength = int(strength)
+            if not 0 <= strength <= 100:
+                return jsonify({"ok": False, "error": "invalid_strength_must_be_0_100"}), 400
+        except (ValueError, TypeError):
+            return jsonify({"ok": False, "error": "invalid_strength_not_integer"}), 400
+        
+        # 日付解析（省略時は今日）
+        if record_date:
+            try:
+                record_date = datetime.strptime(record_date, '%Y-%m-%d').date()
+            except ValueError:
+                return jsonify({"ok": False, "error": "invalid_date_format"}), 400
+        else:
+            record_date = date.today()
+        
+        # Base64デコード
+        image_base64 = image_base64.split(',')[1]
+        
+        try:
+            image_bytes = base64.b64decode(image_base64)
+        except Exception as e:
+            return jsonify({"ok": False, "error": f"base64_decode_failed: {str(e)}"}), 400
+        
+        # サイズ制限（5MB）
+        MAX_SIZE_MB = 5
+        if len(image_bytes) > MAX_SIZE_MB * 1024 * 1024:
+            return jsonify({"ok": False, "error": f"image_too_large_max_{MAX_SIZE_MB}MB"}), 400
+        
+        # ========================================
+        # 画像処理（Pillowでリサイズ）
+        # ========================================
+        
+        try:
+            # バイト列から画像読み込み
+            img = Image.open(io.BytesIO(image_bytes))
+            
+            # RGBA → RGB 変換（PNG透過対応）
+            if img.mode == 'RGBA':
+                # 白背景で合成
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                background.paste(img, mask=img.split()[3])  # アルファチャンネルをマスクに
+                img = background
+            elif img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # 最大辺1080pxにリサイズ（アスペクト比維持）
+            MAX_SIZE = 1080
+            if max(img.size) > MAX_SIZE:
+                img.thumbnail((MAX_SIZE, MAX_SIZE), Image.Resampling.LANCZOS)
+                current_app.logger.info(f"画像リサイズ実行: {img.size}")
+            
+            # BytesIOに再エンコード
+            output = io.BytesIO()
+            img.save(output, format='PNG', optimize=True, quality=85)
+            processed_image_bytes = output.getvalue()
+            
+        except Exception as e:
+            return jsonify({"ok": False, "error": f"image_processing_failed: {str(e)}"}), 400
+        
+        # ========================================
+        # 保存処理
+        # ========================================
+        
+        # 保存先ディレクトリ作成
+        # /data/records/<user_id>/<YYYY-MM>/
+        records_base_dir = os.path.join(current_app.config.get('FIRSTLOOK_UPLOAD_DIR', 'instance/uploads'), 'look_records')
+        user_dir = os.path.join(records_base_dir, str(current_user.id))
+        month_dir = os.path.join(user_dir, record_date.strftime('%Y-%m'))
+        os.makedirs(month_dir, exist_ok=True)
+        
+        # ファイル名: YYYY-MM-DD.png
+        filename = f"{record_date.strftime('%Y-%m-%d')}.png"
+        file_path = os.path.join(month_dir, filename)
+        
+        # PNG保存（リサイズ済み画像）
+        with open(file_path, 'wb') as f:
+            f.write(processed_image_bytes)
+        
+        # DB保存パスは相対パス
+        relative_path = f"look_records/{current_user.id}/{record_date.strftime('%Y-%m')}/{filename}"
+        
+        # Upsert（同日なら上書き）
+        record, created = LookRecord.get_or_create(
+            user=current_user.id,
+            date=record_date,
+            defaults={
+                'photo_path': relative_path,
+                'preset': preset,
+                'strength': strength
+            }
+        )
+        
+        if not created:
+            # 既存レコードを更新
+            record.photo_path = relative_path
+            record.preset = preset
+            record.strength = strength
+            record.created_at = datetime.now()
+            record.save()
+        
+        # ========================================
+        # AIコーチ判定（スコア算出）- Phase B
+        # ========================================
+        
+        try:
+            # 保存した画像からスコア算出
+            scores = compute_look_scores(file_path)
+            
+            # 前回レコード取得（今日以外の直近）
+            previous_record = (LookRecord
+                             .select()
+                             .where(
+                                 (LookRecord.user == current_user.id) &
+                                 (LookRecord.date < record_date) &
+                                 (LookRecord.score_total.is_null(False))
+                             )
+                             .order_by(LookRecord.date.desc())
+                             .first())
+            
+            # 前回比算出
+            score_diff = None
+            if previous_record and previous_record.score_total is not None:
+                score_diff = scores['total'] - previous_record.score_total
+            
+            # スコア保存
+            record.score_total = scores['total']
+            record.score_contour = scores['contour']
+            record.score_skin = scores['skin']
+            record.score_young = scores['young']
+            record.score_diff = score_diff
+            record.save()
+            
+            current_app.logger.info(
+                f"Look record scores: user={current_user.id}, date={record_date}, "
+                f"total={scores['total']}, diff={score_diff}, "
+                f"contour={scores['contour']}, skin={scores['skin']}, young={scores['young']}"
+            )
+            
+        except Exception as e:
+            # スコア算出失敗してもレコード保存は成功扱い
+            current_app.logger.error(f"Score computation failed: {e}")
+        
+        current_app.logger.info(f"Look record saved: user={current_user.id}, date={record_date}, preset={preset}, strength={strength}, is_updated={not created}")
+        
+        return jsonify({
+            "ok": True,
+            "record_id": record.id,
+            "date": record_date.strftime('%Y-%m-%d'),
+            "is_updated": not created,  # 上書き保存フラグ
+            "scores": {
+                "total": record.score_total,
+                "contour": record.score_contour,
+                "skin": record.score_skin,
+                "young": record.score_young,
+                "diff": record.score_diff
+            }
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.exception("save_look_record failed")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ========================================
+# Daily Loop（今日の一歩）機能
+# ========================================
+
+def calculate_streak(user_id: int) -> int:
+    """
+    連続達成日数を計算
+
+    Args:
+        user_id: ユーザーID
+
+    Returns:
+        連続達成日数
+    """
+    today = date.today()
+    streak = 0
+
+    # 今日から遡って連続completedを数える
+    current_date = today
+
+    while True:
+        action = (DailyAction
+                 .select()
+                 .where(
+                     (DailyAction.user == user_id) &
+                     (DailyAction.date == current_date)
+                 )
+                 .first())
+
+        if not action or not action.completed:
+            break
+
+        streak += 1
+        current_date -= timedelta(days=1)
+
+        # 安全装置（無限ループ防止）
+        if streak > 365:
+            break
+
+    return streak
+
+
+@client.route('/daily-action')
+@client_required
+def daily_action():
+    """今日の一歩を取得"""
+    today = date.today()
+
+    # 今日のアクション取得
+    action = (DailyAction
+             .select()
+             .where(
+                 (DailyAction.user == current_user.id) &
+                 (DailyAction.date == today)
+             )
+             .first())
+
+    # 今日のアクションが無ければランダム生成
+    if not action:
+        random_action = get_random_action()
+        action = DailyAction.create(
+            user=current_user.id,
+            date=today,
+            action_key=random_action['key'],
+            completed=False
+        )
+        current_app.logger.info(f"Daily action created: user={current_user.id}, action={random_action['key']}")
+
+    # アクション詳細取得
+    action_detail = get_action_by_key(action.action_key)
+
+    # ストリーク計算
+    streak = calculate_streak(current_user.id)
+
+    return render_template(
+        'client/daily_action.html',
+        action=action,
+        action_detail=action_detail,
+        streak=streak
+    )
+
+
+@client.route('/api/daily-action/complete', methods=['POST'])
+@client_required
+def complete_daily_action():
+    """今日の一歩を完了"""
+    today = date.today()
+
+    try:
+        # 今日のアクション取得
+        action = (DailyAction
+                 .select()
+                 .where(
+                     (DailyAction.user == current_user.id) &
+                     (DailyAction.date == today)
+                 )
+                 .first())
+
+        if not action:
+            return jsonify({"ok": False, "error": "today_action_not_found"}), 404
+
+        # 既に完了済みならエラー
+        if action.completed:
+            return jsonify({"ok": False, "error": "already_completed"}), 400
+
+        # 完了フラグを立てる
+        action.completed = True
+        action.save()
+
+        # ストリーク再計算
+        streak = calculate_streak(current_user.id)
+
+        current_app.logger.info(f"Daily action completed: user={current_user.id}, action={action.action_key}, streak={streak}")
+
+        return jsonify({
+            "ok": True,
+            "action_key": action.action_key,
+            "streak": streak
+        }), 200
+
+    except Exception as e:
+        current_app.logger.exception("complete_daily_action failed")
+        return jsonify({"ok": False, "error": str(e)}), 500

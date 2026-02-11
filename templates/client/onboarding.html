@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}はじめに - FirstLook{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-8">
+            <!-- ウェルカムメッセージ -->
+            <div class="text-center mb-5">
+                <h1 class="display-4 mb-3">
+                    <i class="fas fa-hand-sparkles text-primary"></i> ようこそ、FirstLookへ
+                </h1>
+                <p class="lead">まず最初の1枚を撮影しましょう</p>
+                <p class="text-muted">これがあなたの<strong>Day 0</strong>になります</p>
+            </div>
+
+            <!-- ステップ説明 -->
+            <div class="card shadow-lg mb-4">
+                <div class="card-body p-4">
+                    <h4 class="card-title mb-4 text-center">
+                        <i class="fas fa-list-ol"></i> 3つのステップ
+                    </h4>
+                    <div class="row text-center">
+                        <div class="col-md-4 mb-3">
+                            <div class="mb-3">
+                                <i class="fas fa-camera fa-3x text-primary"></i>
+                            </div>
+                            <h5>1. 撮影</h5>
+                            <p class="text-muted small">顔写真をアップロード</p>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="mb-3">
+                                <i class="fas fa-magic fa-3x text-success"></i>
+                            </div>
+                            <h5>2. プレビュー</h5>
+                            <p class="text-muted small">Future Face適用</p>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="mb-3">
+                                <i class="fas fa-save fa-3x text-info"></i>
+                            </div>
+                            <h5>3. 保存</h5>
+                            <p class="text-muted small">Day 0として記録</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 撮影ボタン -->
+            <div class="card shadow-lg mb-4">
+                <div class="card-body text-center p-5">
+                    <h3 class="mb-4">最初の1枚を撮影</h3>
+                    <a href="{{ url_for('face_template.preview', template_id=template.id) }}" 
+                       class="btn btn-primary btn-lg">
+                        <i class="fas fa-camera"></i> 撮影する
+                    </a>
+                    <p class="text-muted mt-3 mb-0">
+                        <small>
+                            <i class="fas fa-info-circle"></i> 
+                            撮影後、Future Face機能で軽く調整して保存してください
+                        </small>
+                    </p>
+                </div>
+            </div>
+
+            <!-- ヒント -->
+            <div class="alert alert-info" role="alert">
+                <h5 class="alert-heading">
+                    <i class="fas fa-lightbulb"></i> 撮影のコツ
+                </h5>
+                <ul class="mb-0">
+                    <li>明るい場所で撮影しましょう</li>
+                    <li>顔が正面を向いた状態で撮影しましょう</li>
+                    <li>自然な表情で撮影しましょう</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ページ離脱時の警告（未保存の場合）
+window.addEventListener('beforeunload', function(e) {
+    // Future Face保存済みなら警告しない
+    const saved = sessionStorage.getItem('onboarding_saved');
+    if (saved) {
+        return;
+    }
+    
+    // 警告表示
+    e.preventDefault();
+    e.returnValue = '';
+});
+</script>
+{% endblock %}

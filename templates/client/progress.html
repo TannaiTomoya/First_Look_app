@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}あなたの変化 - FirstLook{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12">
+            <!-- 戻るボタン -->
+            <div class="mb-3">
+                <a href="{{ url_for('client.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left"></i> ダッシュボードへ
+                </a>
+            </div>
+
+            <!-- タイトル -->
+            <div class="text-center mb-5">
+                <h1 class="display-4">
+                    <i class="fas fa-chart-line text-primary"></i> あなたの変化
+                </h1>
+                <p class="lead text-muted">Day0から今日までの進化</p>
+            </div>
+
+            {% if has_data %}
+                <!-- Before/After画像比較 -->
+                <div class="row mb-5">
+                    <!-- Day0 -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card shadow-lg h-100">
+                            <div class="card-header bg-secondary text-white text-center">
+                                <h4 class="mb-0">
+                                    <i class="fas fa-calendar-day"></i> Day 0
+                                </h4>
+                                <small>{{ first_record.date.strftime('%Y年%m月%d日') }}</small>
+                            </div>
+                            <div class="card-body p-0">
+                                <img src="{{ url_for('client.get_upload', filename=first_record.photo_path) }}" 
+                                     class="img-fluid w-100" 
+                                     alt="Day0"
+                                     style="object-fit: cover; max-height: 500px;">
+                            </div>
+                            <div class="card-footer bg-light">
+                                <div class="text-center">
+                                    <h5 class="mb-2">清潔感スコア</h5>
+                                    <h2 class="text-secondary mb-0">{{ first_record.score_total }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Today -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card shadow-lg h-100">
+                            <div class="card-header bg-primary text-white text-center">
+                                <h4 class="mb-0">
+                                    <i class="fas fa-star"></i> Today
+                                </h4>
+                                <small>{{ latest_record.date.strftime('%Y年%m月%d日') }}</small>
+                            </div>
+                            <div class="card-body p-0">
+                                <img src="{{ url_for('client.get_upload', filename=latest_record.photo_path) }}" 
+                                     class="img-fluid w-100" 
+                                     alt="Today"
+                                     style="object-fit: cover; max-height: 500px;">
+                            </div>
+                            <div class="card-footer bg-light">
+                                <div class="text-center">
+                                    <h5 class="mb-2">清潔感スコア</h5>
+                                    <h2 class="text-primary mb-0">{{ latest_record.score_total }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- スコア変化 -->
+                <div class="row mb-5">
+                    <div class="col-md-12">
+                        <div class="card shadow-lg">
+                            <div class="card-header bg-success text-white">
+                                <h4 class="mb-0 text-center">
+                                    <i class="fas fa-trophy"></i> スコア変化（{{ days_elapsed }}日間）
+                                </h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <!-- 清潔感スコア -->
+                                    <div class="col-md-3 col-6 mb-4">
+                                        <div class="p-3 {% if score_diff.total > 0 %}bg-success{% elif score_diff.total < 0 %}bg-danger{% else %}bg-secondary{% endif %} text-white rounded">
+                                            <h5 class="mb-3">清潔感</h5>
+                                            <h1 class="display-4 mb-0">
+                                                {% if score_diff.total > 0 %}+{% endif %}{{ score_diff.total }}
+                                            </h1>
+                                            <p class="mb-0">
+                                                {{ first_record.score_total }} → {{ latest_record.score_total }}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <!-- 輪郭 -->
+                                    <div class="col-md-3 col-6 mb-4">
+                                        <div class="p-3 {% if score_diff.contour > 0 %}bg-success{% elif score_diff.contour < 0 %}bg-danger{% else %}bg-secondary{% endif %} text-white rounded">
+                                            <h5 class="mb-3">輪郭</h5>
+                                            <h1 class="display-4 mb-0">
+                                                {% if score_diff.contour > 0 %}+{% endif %}{{ score_diff.contour }}
+                                            </h1>
+                                            <p class="mb-0">
+                                                {{ first_record.score_contour }} → {{ latest_record.score_contour }}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <!-- 肌 -->
+                                    <div class="col-md-3 col-6 mb-4">
+                                        <div class="p-3 {% if score_diff.skin > 0 %}bg-success{% elif score_diff.skin < 0 %}bg-danger{% else %}bg-secondary{% endif %} text-white rounded">
+                                            <h5 class="mb-3">肌</h5>
+                                            <h1 class="display-4 mb-0">
+                                                {% if score_diff.skin > 0 %}+{% endif %}{{ score_diff.skin }}
+                                            </h1>
+                                            <p class="mb-0">
+                                                {{ first_record.score_skin }} → {{ latest_record.score_skin }}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <!-- 若見え -->
+                                    <div class="col-md-3 col-6 mb-4">
+                                        <div class="p-3 {% if score_diff.young > 0 %}bg-success{% elif score_diff.young < 0 %}bg-danger{% else %}bg-secondary{% endif %} text-white rounded">
+                                            <h5 class="mb-3">若見え</h5>
+                                            <h1 class="display-4 mb-0">
+                                                {% if score_diff.young > 0 %}+{% endif %}{{ score_diff.young }}
+                                            </h1>
+                                            <p class="mb-0">
+                                                {{ first_record.score_young }} → {{ latest_record.score_young }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- メッセージ -->
+                <div class="alert alert-success text-center" role="alert">
+                    <h4 class="alert-heading">
+                        <i class="fas fa-check-circle"></i> 素晴らしい進化です！
+                    </h4>
+                    <p class="mb-0">
+                        {{ days_elapsed }}日間の努力が結果に表れています。この調子で続けましょう。
+                    </p>
+                </div>
+
+                <!-- 進化カードダウンロード -->
+                <div class="card shadow-lg mb-4">
+                    <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <h4 class="mb-0 text-center">
+                            <i class="fas fa-image"></i> 進化カード
+                        </h4>
+                    </div>
+                    <div class="card-body text-center">
+                        <p class="lead mb-3">
+                            あなたの変化を1枚の画像にまとめました
+                        </p>
+                        <a href="{{ url_for('client.progress_card') }}" 
+                           class="btn btn-primary btn-lg" 
+                           download="progress_card.png">
+                            <i class="fas fa-download"></i> 進化カードをダウンロード
+                        </a>
+                        <p class="text-muted mt-3 mb-0">
+                            <small>
+                                <i class="fas fa-info-circle"></i> 
+                                SNSで共有して、あなたの変化を友達に見せましょう
+                            </small>
+                        </p>
+                    </div>
+                </div>
+
+            {% else %}
+                <!-- データ不足の場合 -->
+                <div class="alert alert-info text-center" role="alert">
+                    <i class="fas fa-info-circle fa-3x mb-3"></i>
+                    <h4 class="alert-heading">まだ変化を表示できません</h4>
+                    <p>
+                        進化を確認するには、2回以上の記録が必要です。<br>
+                        Future Face機能で画像を保存すると、ここに変化が表示されます。
+                    </p>
+                    <hr>
+                    <a href="{{ url_for('face_template.list') }}" class="btn btn-primary">
+                        <i class="fas fa-face-smile"></i> 成りたい顔を選ぶ
+                    </a>
+                </div>
+            {% endif %}
+
+            <!-- ナビゲーション -->
+            <div class="text-center mt-5">
+                <a href="{{ url_for('client.look_records') }}" class="btn btn-outline-primary me-2">
+                    <i class="fas fa-history"></i> 全記録を見る
+                </a>
+                <a href="{{ url_for('client.daily_action') }}" class="btn btn-outline-success">
+                    <i class="fas fa-shoe-prints"></i> 今日の一歩
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

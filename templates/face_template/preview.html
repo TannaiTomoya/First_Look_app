@@ -343,12 +343,22 @@ canvas.concealer-off {
                     </div>
                     
                     <!-- ヒント -->
-                    <div class="alert alert-info mb-0 py-2 px-3" role="alert">
+                    <div class="alert alert-info mb-3 py-2 px-3" role="alert">
                         <small>
                             <i class="fas fa-lightbulb"></i> 
                             <strong>ヒント:</strong> 顔が正面を向いているときに最も効果的です。
                             強度は40-60が自然です。
                         </small>
+                    </div>
+                    
+                    <!-- 保存ボタン -->
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-success btn-lg" id="save-look-record-btn">
+                            <i class="fas fa-save"></i> 今日の記録として保存
+                        </button>
+                        <a href="{{ url_for('client.look_records') }}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-history"></i> 記録一覧を見る
+                        </a>
                     </div>
                 </div>
             </div>
@@ -1737,9 +1747,151 @@ function bindFutureFaceUI() {
     console.log('✓ Future Face UIをバインドしました');
 }
 
+/**
+ * トースト表示ヘルパー
+ */
+function showToast(message, type = 'success') {
+    // 既存のトーストを削除
+    const existingToast = document.getElementById('look-record-toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+    
+    // トースト作成
+    const toastHtml = `
+        <div id="look-record-toast" class="toast position-fixed bottom-0 end-0 m-3" role="alert" style="z-index: 9999;">
+            <div class="toast-header bg-${type === 'success' ? 'success' : 'danger'} text-white">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+                <strong class="me-auto">${type === 'success' ? '保存成功' : 'エラー'}</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                ${message}
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', toastHtml);
+    
+    // Bootstrap Toastとして表示
+    const toastElement = document.getElementById('look-record-toast');
+    const toast = new bootstrap.Toast(toastElement, { autohide: true, delay: 3000 });
+    toast.show();
+}
+
+/**
+ * 見た目記録保存ボタンのバインド
+ */
+function bindSaveLookRecordButton() {
+    const saveBtn = document.getElementById('save-look-record-btn');
+    
+    if (!saveBtn) {
+        console.warn('[Look Record] 保存ボタンが見つかりません');
+        return;
+    }
+    
+    // 初期状態を保存
+    const initialBtnHtml = saveBtn.innerHTML;
+    let savedToday = false;
+    
+    saveBtn.addEventListener('click', async () => {
+        try {
+            // Future Faceが有効かチェック
+            const toggle = document.getElementById('future-face-toggle');
+            if (!toggle || !toggle.checked) {
+                showToast('Future Faceを有効にしてから保存してください', 'danger');
+                return;
+            }
+            
+            // 合成結果キャンバスを取得
+            const canvas = document.getElementById('preview-canvas');
+            if (!canvas) {
+                showToast('プレビューキャンバスが見つかりません', 'danger');
+                return;
+            }
+            
+            // ボタン無効化（二重送信防止）
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+            
+            // PNG取得
+            const imageDataURL = canvas.toDataURL('image/png');
+            
+            // 現在のFuture Face設定を取得
+            const preset = document.getElementById('future-face-preset').value;
+            const strength = parseInt(document.getElementById('future-face-strength').value);
+            
+            // サーバーに送信
+            const response = await fetch('/client/api/look-records/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    image_base64: imageDataURL,
+                    preset: preset,
+                    strength: strength
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.ok) {
+                // 成功トースト（上書きか新規かで表示を変更）
+                const message = result.is_updated 
+                    ? `上書き保存しました（${result.date}）`
+                    : `保存しました（${result.date}）`;
+                
+                showToast(message, 'success');
+                console.log('[Look Record] 保存成功:', result);
+                
+                // ボタンを「保存済み」状態に変更
+                savedToday = true;
+                saveBtn.innerHTML = '<i class="fas fa-check-circle"></i> 今日の記録：保存済み';
+                saveBtn.classList.remove('btn-success');
+                saveBtn.classList.add('btn-outline-success');
+                saveBtn.disabled = false;
+                
+            } else {
+                showToast(`保存に失敗しました: ${result.error}`, 'danger');
+                console.error('[Look Record] 保存失敗:', result);
+                
+                // ボタン復元
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = initialBtnHtml;
+            }
+            
+        } catch (error) {
+            console.error('[Look Record] エラー:', error);
+            showToast('保存中にエラーが発生しました', 'danger');
+            
+            // ボタン復元
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = initialBtnHtml;
+        }
+    });
+    
+    // Future Face設定が変更されたら、ボタンを元に戻す
+    const resetButtonIfSaved = () => {
+        if (savedToday) {
+            savedToday = false;
+            saveBtn.innerHTML = initialBtnHtml;
+            saveBtn.classList.remove('btn-outline-success');
+            saveBtn.classList.add('btn-success');
+        }
+    };
+    
+    document.getElementById('future-face-toggle')?.addEventListener('change', resetButtonIfSaved);
+    document.getElementById('future-face-preset')?.addEventListener('change', resetButtonIfSaved);
+    document.getElementById('future-face-strength')?.addEventListener('change', resetButtonIfSaved);
+    
+    console.log('✓ Look Record保存ボタンをバインドしました');
+}
+
 // DOM ready
 document.addEventListener("DOMContentLoaded", bindExportButton);
 document.addEventListener("DOMContentLoaded", bindFutureFaceUI);
+document.addEventListener("DOMContentLoaded", bindSaveLookRecordButton);
 
 // anchors更新を追加（既存のアンカー計算の後に呼ぶ）
 window.__FL_ANCHORS__ = window.__FL_ANCHORS__ || null;

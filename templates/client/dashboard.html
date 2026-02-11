@@ -153,11 +153,20 @@
     <div class="row mb-4">
         <div class="col-md-12">
             <h5 class="mb-3"><i class="fas fa-bolt"></i> クイックアクション</h5>
+            <a href="{{ url_for('client.daily_action') }}" class="btn btn-primary me-2 mb-2" title="今日の一歩">
+                <i class="fas fa-shoe-prints"></i> 今日の一歩
+            </a>
+            <a href="{{ url_for('client.progress') }}" class="btn btn-success me-2 mb-2" title="変化を見る">
+                <i class="fas fa-chart-line"></i> 変化を見る
+            </a>
             <a href="{{ url_for('client.select_impression') }}" class="btn btn-outline-primary me-2 mb-2" title="なりたい印象を選択">
                 <i class="fas fa-smile"></i> なりたい印象
             </a>
             <a href="{{ url_for('client.skin_check') }}" class="btn btn-outline-primary me-2 mb-2" title="最新の肌質・肌悩み">
                 <i class="fas fa-check-circle"></i> 肌診断
+            </a>
+            <a href="{{ url_for('client.look_records') }}" class="btn btn-outline-primary me-2 mb-2" title="見た目記録">
+                <i class="fas fa-history"></i> 見た目記録
             </a>
         </div>
     </div>
