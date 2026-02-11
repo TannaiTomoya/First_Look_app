@@ -40,7 +40,7 @@ def client_required(f):
 def onboarding():
     """オンボーディング（初回体験）"""
     # 既にLookRecordがあればダッシュボードへ
-    has_record = LookRecord.select().where(LookRecord.user == current_user).exists()
+    has_record = LookRecord.select().where(LookRecord.user_id == current_user.id).exists()
     if has_record:
         return redirect(url_for('client.dashboard'))
     
@@ -60,7 +60,7 @@ def onboarding():
 def dashboard():
     """クライアントダッシュボード"""
     # オンボーディングチェック（最初のLookRecordが無ければリダイレクト）
-    has_record = LookRecord.select().where(LookRecord.user == current_user).exists()
+    has_record = LookRecord.select().where(LookRecord.user_id == current_user.id).exists()
     if not has_record:
         return redirect(url_for('client.onboarding'))
     
@@ -161,7 +161,7 @@ def skin_check():
             concerns = ','.join(request.form.getlist('concerns'))
             
             SkinCheck.create(
-                user=current_user,
+                user_id=current_user.id,
                 skin_type=skin_type,
                 concerns=concerns
             )
@@ -207,7 +207,7 @@ def daily_check():
             else:
                 # 新規作成
                 today_check = DailyCheck.create(
-                    user=current_user,
+                    user_id=current_user.id,
                     check_date=today,
                     eyebrow_ok=int(request.form.get('eyebrow_ok', 0)),
                     eye_ok=int(request.form.get('eye_ok', 0)),
@@ -260,7 +260,7 @@ def ai_skin_analysis():
         # データベースに保存
         try:
             skin_check = SkinCheck.create(
-                user=current_user,
+                user_id=current_user.id,
                 skin_type=result['skin_type'],
                 concerns=','.join(result['concerns']),
                 ai_analyzed=1,  # AI診断済みフラグ
@@ -508,7 +508,7 @@ def api_save_adjustments():
         
         # FaceCompositionにJSON形式で保存
         composition = FaceComposition.get_or_none(
-            FaceComposition.user == current_user,
+            FaceComposition.user_id == current_user.id,
             FaceComposition.template == template_id
         )
         
@@ -519,8 +519,8 @@ def api_save_adjustments():
         else:
             # 新規作成
             composition = FaceComposition.create(
-                user=current_user,
-                template=template_id,
+                user_id=current_user.id,
+                template_id=template_id,
                 adjustments=json.dumps(state)
             )
         
@@ -550,7 +550,7 @@ def api_load_adjustments():
         from models import FaceComposition
         
         composition = FaceComposition.get_or_none(
-            FaceComposition.user == current_user,
+            FaceComposition.user_id == current_user.id,
             FaceComposition.template == int(template_id)
         )
         
@@ -871,7 +871,7 @@ def look_records():
     """見た目記録一覧（月別グループ化）"""
     records = (LookRecord
                .select()
-               .where(LookRecord.user == current_user)
+               .where(LookRecord.user_id == current_user.id)
                .order_by(LookRecord.date.desc())
                .limit(100))
     
@@ -898,7 +898,7 @@ def progress():
     first_record = (LookRecord
                    .select()
                    .where(
-                       (LookRecord.user == current_user) &
+                       (LookRecord.user_id == current_user.id) &
                        (LookRecord.score_total.is_null(False))
                    )
                    .order_by(LookRecord.date.asc())
@@ -908,7 +908,7 @@ def progress():
     latest_record = (LookRecord
                     .select()
                     .where(
-                        (LookRecord.user == current_user) &
+                        (LookRecord.user_id == current_user.id) &
                         (LookRecord.score_total.is_null(False))
                     )
                     .order_by(LookRecord.date.desc())
@@ -947,7 +947,7 @@ def progress_card():
     first_record = (LookRecord
                    .select()
                    .where(
-                       (LookRecord.user == current_user) &
+                       (LookRecord.user_id == current_user.id) &
                        (LookRecord.score_total.is_null(False))
                    )
                    .order_by(LookRecord.date.asc())
@@ -957,7 +957,7 @@ def progress_card():
     latest_record = (LookRecord
                     .select()
                     .where(
-                        (LookRecord.user == current_user) &
+                        (LookRecord.user_id == current_user.id) &
                         (LookRecord.score_total.is_null(False))
                     )
                     .order_by(LookRecord.date.desc())
@@ -1118,7 +1118,7 @@ def save_look_record():
         
         # Upsert（同日なら上書き）
         record, created = LookRecord.get_or_create(
-            user=current_user,
+            user_id=current_user.id,
             date=record_date,
             defaults={
                 'photo_path': relative_path,
@@ -1147,7 +1147,7 @@ def save_look_record():
             previous_record = (LookRecord
                              .select()
                              .where(
-                                 (LookRecord.user == current_user) &
+                                 (LookRecord.user_id == current_user.id) &
                                  (LookRecord.date < record_date) &
                                  (LookRecord.score_total.is_null(False))
                              )
@@ -1250,7 +1250,7 @@ def daily_action():
     action = (DailyAction
              .select()
              .where(
-                 (DailyAction.user == current_user) &
+                 (DailyAction.user_id == current_user.id) &
                  (DailyAction.date == today)
              )
              .first())
@@ -1259,7 +1259,7 @@ def daily_action():
     if not action:
         random_action = get_random_action()
         action = DailyAction.create(
-            user=current_user,
+            user_id=current_user.id,
             date=today,
             action_key=random_action['key'],
             completed=False
@@ -1291,7 +1291,7 @@ def complete_daily_action():
         action = (DailyAction
                  .select()
                  .where(
-                     (DailyAction.user == current_user) &
+                     (DailyAction.user_id == current_user.id) &
                      (DailyAction.date == today)
                  )
                  .first())

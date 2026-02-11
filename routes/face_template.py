@@ -44,8 +44,8 @@ def save_base_image():
         # データベースに保存
         # impression は現時点では null（後から紐付け機能を追加可能）
         template = FaceTemplate.create(
-            user=current_user.id,
-            impression=None,
+            user_id=current_user.id,
+            impression_id=None,
             base_image_path=image_path
         )
         
@@ -88,8 +88,8 @@ def preview(template_id):
     
     # 既存の合成があれば取得
     composition = FaceComposition.get_or_none(
-        FaceComposition.user == current_user.id,
-        FaceComposition.template == template_id
+        FaceComposition.user_id == current_user.id,
+        FaceComposition.template_id == template_id
     )
     
     # compositionがある場合、関連を解決
@@ -128,8 +128,8 @@ def save_composition():
         
         # 既存の合成があれば更新、なければ作成
         composition = FaceComposition.get_or_none(
-            FaceComposition.user == current_user.id,
-            FaceComposition.template == template_id
+            FaceComposition.user_id == current_user.id,
+            FaceComposition.template_id == template_id
         )
         
         if composition:
@@ -139,10 +139,10 @@ def save_composition():
             composition.save()
         else:
             composition = FaceComposition.create(
-                user=current_user.id,
-                template=template_id,
-                eyebrow_part=eyebrow_id,
-                nose_part=nose_id
+                user_id=current_user.id,
+                template_id=template_id,
+                eyebrow_part_id=eyebrow_id,
+                nose_part_id=nose_id
             )
         
         return jsonify({'success': True, 'composition_id': composition.id})
