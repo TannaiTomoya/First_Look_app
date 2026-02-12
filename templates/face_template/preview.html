@@ -85,11 +85,22 @@ canvas.concealer-off {
 {% block content %}
 <div class="container-fluid mt-4" data-template-id="{{ template.id }}">
     <!-- オンボーディング進捗UI -->
-    <div id="onboarding-progress" style="display: none;">
-        <div class="alert alert-info text-center mb-3">
-            <strong>セットアップ中</strong> - ステップ 2/4
+    {% if is_onboarding %}
+    <div class="alert alert-info text-center mb-3">
+        <div class="mb-2">
+            <strong>セットアップ中（あと1分）</strong>
+        </div>
+        <div class="d-flex justify-content-center align-items-center gap-2 small">
+            <span class="text-muted"><i class="fas fa-check-circle text-success"></i> 撮影</span>
+            <i class="fas fa-arrow-right text-muted"></i>
+            <span class="fw-bold"><i class="fas fa-circle text-primary"></i> 未来確認</span>
+            <i class="fas fa-arrow-right text-muted"></i>
+            <span class="text-muted"><i class="fas fa-circle"></i> 保存</span>
+            <i class="fas fa-arrow-right text-muted"></i>
+            <span class="text-muted"><i class="fas fa-circle"></i> 完了</span>
         </div>
     </div>
+    {% endif %}
     
     <h1 class="mb-4 text-center"><i class="fas fa-magic"></i> なりたい顔のイメージを作成</h1>
     
@@ -1800,18 +1811,11 @@ function bindSaveLookRecordButton() {
         return;
     }
     
-    // onboardingモードを判定
-    const urlParams = new URLSearchParams(window.location.search);
-    const isOnboarding = urlParams.get('onboarding') === '1';
+    // onboardingモードを判定（サーバーから渡された値を使用）
+    const isOnboarding = {{ 'true' if is_onboarding else 'false' }};
     
     // onboardingモードの場合、UIを調整
     if (isOnboarding) {
-        // 進捗UIを表示
-        const progressUI = document.getElementById('onboarding-progress');
-        if (progressUI) {
-            progressUI.style.display = 'block';
-        }
-        
         // ボタン文言を変更
         const btnText = document.getElementById('save-btn-text');
         if (btnText) {
@@ -1872,7 +1876,16 @@ function bindSaveLookRecordButton() {
             if (!response.ok) {
                 // HTTPエラーの場合、サーバーからのエラーメッセージを表示
                 const errorMsg = result.error || `HTTPエラー: ${response.status}`;
-                showToast(`保存に失敗しました: ${errorMsg}`, 'danger');
+                
+                // エラータイプに応じたメッセージ
+                let userMessage = `保存に失敗しました: ${errorMsg}`;
+                if (errorMsg.includes('image') || errorMsg.includes('画像')) {
+                    userMessage += '<br><small>画像に問題があります。撮影画面に戻って再撮影してください。</small>';
+                } else if (errorMsg.includes('network') || errorMsg.includes('ネットワーク')) {
+                    userMessage += '<br><small>ネット接続を確認して、もう一度お試しください。</small>';
+                }
+                
+                showToast(userMessage, 'danger');
                 console.error('[Look Record] HTTPエラー:', response.status, result);
                 
                 // ボタン復元
@@ -1914,7 +1927,15 @@ function bindSaveLookRecordButton() {
                 saveBtn.disabled = false;
                 
             } else {
-                showToast(`保存に失敗しました: ${result.error}`, 'danger');
+                const errorMsg = result.error || '不明なエラー';
+                let userMessage = `保存に失敗しました: ${errorMsg}`;
+                
+                // 画像関連エラーの場合
+                if (errorMsg.includes('image') || errorMsg.includes('画像')) {
+                    userMessage += '<br><small>→ 撮影画面に戻って再撮影してください</small>';
+                }
+                
+                showToast(userMessage, 'danger');
                 console.error('[Look Record] 保存失敗:', result);
                 
                 // ボタン復元
@@ -1924,7 +1945,14 @@ function bindSaveLookRecordButton() {
             
         } catch (error) {
             console.error('[Look Record] エラー:', error);
-            showToast(`保存中にエラーが発生しました: ${error.message}`, 'danger');
+            let userMessage = `保存中にエラーが発生しました: ${error.message}`;
+            
+            // ネットワークエラーの可能性
+            if (error.message.includes('fetch') || error.message.includes('network')) {
+                userMessage += '<br><small>→ ネット接続を確認してもう一度お試しください</small>';
+            }
+            
+            showToast(userMessage, 'danger');
             
             // ボタン復元
             saveBtn.disabled = false;

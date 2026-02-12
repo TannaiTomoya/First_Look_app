@@ -200,6 +200,10 @@ def dashboard():
         if day0_record.score_total and latest_record.score_total:
             day0_progress = latest_record.score_total - day0_record.score_total
 
+    # 初回ユーザー判定（記録が1件のみ）
+    record_count = LookRecord.select().where(LookRecord.user_id == current_user.id).count()
+    is_first_day = (record_count == 1)
+
     return render_template(
         "client/dashboard.html",
         selected_impression=selected_impression,
@@ -216,6 +220,7 @@ def dashboard():
         day0_record=day0_record,
         latest_record=latest_record,
         day0_progress=day0_progress,
+        is_first_day=is_first_day,
     )
 
 

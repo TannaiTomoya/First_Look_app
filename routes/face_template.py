@@ -88,6 +88,15 @@ def preview(template_id):
         flash('テンプレートが見つかりません', 'error')
         return redirect(url_for('client.dashboard'))
     
+    # onboarding=1の悪用防止：既存ユーザーは無効化
+    from models.look_record import LookRecord
+    is_onboarding = request.args.get('onboarding') == '1'
+    if is_onboarding:
+        # 既にLookRecordが存在する場合は通常モードに強制
+        has_record = LookRecord.select().where(LookRecord.user_id == current_user.id).exists()
+        if has_record:
+            is_onboarding = False
+    
     # パーツ取得
     eyebrows = FacePart.select().where(FacePart.part_type == 'eyebrow').order_by(FacePart.id)
     noses = FacePart.select().where(FacePart.part_type == 'nose').order_by(FacePart.id)
@@ -115,7 +124,8 @@ def preview(template_id):
         template=template,
         eyebrows=eyebrows,
         noses=noses,
-        composition=composition
+        composition=composition,
+        is_onboarding=is_onboarding
     )
 
 

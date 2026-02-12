@@ -65,6 +65,27 @@
         </div>
     </div>
     
+    <!-- 初回ユーザー向けの誘導カード -->
+    {% if is_first_day %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-lg" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none;">
+                <div class="card-body text-center py-5">
+                    <h2 class="text-white mb-3 fw-bold" style="font-size: 1.75rem;">
+                        <i class="fas fa-shoe-prints"></i> 次は「今日の一歩」
+                    </h2>
+                    <p class="text-white mb-4 fs-5">
+                        毎日1つ、セルフケアのアクションを実行しましょう
+                    </p>
+                    <a href="{{ url_for('client.daily_action') }}" class="btn btn-light btn-lg px-5 py-3 shadow" style="font-size: 1.25rem; font-weight: 600;">
+                        <i class="fas fa-play-circle"></i> 今日の一歩を見る
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
     <!-- LookRecordストリーク表示（コンパクト版） -->
     <div class="row mb-4">
         <div class="col-12">
