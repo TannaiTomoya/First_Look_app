@@ -27,7 +27,7 @@ class DesiredFace(BaseModel):
 class SkinCheck(BaseModel):
     """肌診断情報（AI診断対応）"""
     id = AutoField(primary_key=True)
-    user = DeferredForeignKey('User', backref='skin_checks', on_delete='CASCADE')
+    user_id = DeferredForeignKey('User', backref='skin_checks', on_delete='CASCADE')
     skin_type = CharField(max_length=20)  # 肌質：dry（乾燥）, oily（脂性）, combination（混合）, normal（普通）
     concerns = TextField()  # 悩み（カンマ区切り）：pores（毛穴）, dark_spots（黒ずみ）, tone（肌トーン）, acne（ニキビ）
     
@@ -43,7 +43,7 @@ class SkinCheck(BaseModel):
     class Meta:
         table_name = 'skin_checks'
         indexes = (
-            (('user',), False),
+            (('user_id',), False),
             (('created_at',), False),
         )
     
@@ -56,4 +56,4 @@ class SkinCheck(BaseModel):
         return self.ai_analyzed == 1
     
     def __repr__(self):
-        return f'<SkinCheck {self.user.username} - {self.skin_type}>'
+        return f'<SkinCheck {self.user_id.username} - {self.skin_type}>'

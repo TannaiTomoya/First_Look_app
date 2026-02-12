@@ -13,7 +13,7 @@ from models import BaseModel
 class DailyAction(BaseModel):
     """今日の一歩（1日1タスク）"""
     id = AutoField(primary_key=True)
-    user = DeferredForeignKey('User', backref='daily_actions', on_delete='CASCADE')
+    user_id = DeferredForeignKey('User', backref='daily_actions', on_delete='CASCADE')
     date = DateField(default=date.today)  # タスク日（YYYY-MM-DD）
     action_key = CharField(max_length=50)  # アクションキー（face_wash, moisturizeなど）
     completed = BooleanField(default=False)  # 完了フラグ
@@ -22,11 +22,11 @@ class DailyAction(BaseModel):
     class Meta:
         table_name = 'daily_actions'
         indexes = (
-            (('user', 'date'), True),  # UNIQUE(user_id, date) - 同日1件のみ
-            (('user',), False),
+            (('user_id', 'date'), True),  # UNIQUE(user_id, date) - 同日1件のみ
+            (('user_id',), False),
             (('date',), False),
             (('completed',), False),
         )
 
     def __repr__(self):
-        return f'<DailyAction {self.user.username} - {self.date} - {self.action_key}>'
+        return f'<DailyAction {self.user_id.username} - {self.date} - {self.action_key}>'

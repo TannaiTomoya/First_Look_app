@@ -12,7 +12,7 @@ from models import BaseModel
 class FaceTemplate(BaseModel):
     """顔のベース画像"""
     id = AutoField(primary_key=True)
-    user = DeferredForeignKey('User', backref='face_templates', on_delete='CASCADE')
+    user_id = DeferredForeignKey('User', backref='face_templates', on_delete='CASCADE')
     impression = DeferredForeignKey('DesiredFace', backref='templates', null=True, on_delete='SET NULL')
     base_image_path = CharField(max_length=255)  # ベース画像パス
     created_at = DateTimeField(default=datetime.now)
@@ -20,11 +20,11 @@ class FaceTemplate(BaseModel):
     class Meta:
         table_name = 'face_templates'
         indexes = (
-            (('user',), False),
+            (('user_id',), False),
         )
     
     def __repr__(self):
-        return f'<FaceTemplate {self.id} by User {self.user}>'
+        return f'<FaceTemplate {self.id} by User {self.user_id}>'
 
 
 class FacePart(BaseModel):
@@ -52,7 +52,7 @@ class FacePart(BaseModel):
 class FaceComposition(BaseModel):
     """ユーザーの顔パーツ選択・合成"""
     id = AutoField(primary_key=True)
-    user = DeferredForeignKey('User', backref='face_compositions', on_delete='CASCADE')
+    user_id = DeferredForeignKey('User', backref='face_compositions', on_delete='CASCADE')
     template = DeferredForeignKey('FaceTemplate', backref='compositions', on_delete='CASCADE')
     eyebrow_part = DeferredForeignKey('FacePart', backref='eyebrow_uses', null=True, on_delete='SET NULL')
     nose_part = DeferredForeignKey('FacePart', backref='nose_uses', null=True, on_delete='SET NULL')
@@ -63,8 +63,8 @@ class FaceComposition(BaseModel):
     class Meta:
         table_name = 'face_compositions'
         indexes = (
-            (('user',), False),
+            (('user_id',), False),
         )
     
     def __repr__(self):
-        return f'<FaceComposition {self.id} by User {self.user}>'
+        return f'<FaceComposition {self.id} by User {self.user_id}>'
