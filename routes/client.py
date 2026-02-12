@@ -1117,7 +1117,7 @@ def save_look_record():
         
         # Upsert（同日なら上書き）
         record, created = LookRecord.get_or_create(
-            user=current_user,
+            user_id=current_user.id,
             date=record_date,
             defaults={
                 'photo_path': relative_path,
