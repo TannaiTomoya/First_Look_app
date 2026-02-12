@@ -40,7 +40,7 @@ def client_required(f):
 def onboarding():
     """オンボーディング（初回体験）"""
     # 既にLookRecordがあればダッシュボードへ
-    has_record = LookRecord.select().where(LookRecord.user == current_user).exists()
+    has_record = LookRecord.select().where(LookRecord.user_id == current_user.id).exists()
     if has_record:
         return redirect(url_for('client.dashboard'))
     
@@ -61,7 +61,7 @@ def onboarding():
 def dashboard():
     """クライアントダッシュボード"""
     # オンボーディングチェック（最初のLookRecordが無ければリダイレクト）
-    has_record = LookRecord.select().where(LookRecord.user == current_user).exists()
+    has_record = LookRecord.select().where(LookRecord.user_id == current_user.id).exists()
     if not has_record:
         return redirect(url_for('client.onboarding'))
     
@@ -872,7 +872,7 @@ def look_records():
     """見た目記録一覧（月別グループ化）"""
     records = (LookRecord
                .select()
-               .where(LookRecord.user == current_user)
+               .where(LookRecord.user_id == current_user.id)
                .order_by(LookRecord.date.desc())
                .limit(100))
     
@@ -899,7 +899,7 @@ def progress():
     first_record = (LookRecord
                   .select()
                   .where(
-                      (LookRecord.user == current_user) &
+                      (LookRecord.user_id == current_user.id) &
                       (LookRecord.score_total.is_null(False))
                   )
                    .order_by(LookRecord.date.asc())
@@ -909,7 +909,7 @@ def progress():
     latest_record = (LookRecord
                   .select()
                   .where(
-                      (LookRecord.user == current_user) &
+                      (LookRecord.user_id == current_user.id) &
                       (LookRecord.score_total.is_null(False))
                   )
                     .order_by(LookRecord.date.desc())
@@ -948,7 +948,7 @@ def progress_card():
     first_record = (LookRecord
                   .select()
                   .where(
-                      (LookRecord.user == current_user) &
+                      (LookRecord.user_id == current_user.id) &
                       (LookRecord.score_total.is_null(False))
                   )
                    .order_by(LookRecord.date.asc())
@@ -958,7 +958,7 @@ def progress_card():
     latest_record = (LookRecord
                   .select()
                   .where(
-                      (LookRecord.user == current_user) &
+                      (LookRecord.user_id == current_user.id) &
                       (LookRecord.score_total.is_null(False))
                   )
                     .order_by(LookRecord.date.desc())
@@ -1148,7 +1148,7 @@ def save_look_record():
             previous_record = (LookRecord
                              .select()
                              .where(
-                                 (LookRecord.user == current_user) &
+                                 (LookRecord.user_id == current_user.id) &
                                  (LookRecord.date < record_date) &
                                  (LookRecord.score_total.is_null(False))
                              )

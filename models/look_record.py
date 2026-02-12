@@ -13,7 +13,7 @@ from models import BaseModel
 class LookRecord(BaseModel):
     """見た目記録（1日1件）"""
     id = AutoField(primary_key=True)
-    user = DeferredForeignKey('User', backref='look_records', on_delete='CASCADE', db_column='user_id')
+    user_id = DeferredForeignKey('User', backref='look_records', on_delete='CASCADE')
     date = DateField(default=date.today)  # 記録日（YYYY-MM-DD）
     photo_path = CharField(max_length=255)  # 保存した画像パス
     preset = CharField(max_length=20)  # all/slim/skin/young
@@ -30,10 +30,10 @@ class LookRecord(BaseModel):
     class Meta:
         table_name = 'look_records'
         indexes = (
-            (('user', 'date'), True),  # UNIQUE(user_id, date) - 同日1件のみ
-            (('user',), False),
+            (('user_id', 'date'), True),  # UNIQUE(user_id, date) - 同日1件のみ
+            (('user_id',), False),
             (('date',), False),
         )
 
     def __repr__(self):
-        return f'<LookRecord {self.user.username} - {self.date}>'
+        return f'<LookRecord {self.user_id.username} - {self.date}>'
