@@ -1834,6 +1834,10 @@ function bindSaveLookRecordButton() {
                 })
             });
             
+            if (!response.ok) {
+                throw new Error(`HTTPエラー: ${response.status}`);
+            }
+            
             const result = await response.json();
             
             if (result.ok) {
@@ -1863,7 +1867,7 @@ function bindSaveLookRecordButton() {
             
         } catch (error) {
             console.error('[Look Record] エラー:', error);
-            showToast('保存中にエラーが発生しました', 'danger');
+            showToast(`保存中にエラーが発生しました: ${error.message}`, 'danger');
             
             // ボタン復元
             saveBtn.disabled = false;
