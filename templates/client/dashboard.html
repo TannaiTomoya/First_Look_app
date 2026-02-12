@@ -376,31 +376,55 @@
         </div>
     </div>
     
-    <!-- ナビゲーションリンク（コンパクト版） -->
+    <!-- ツールセクション（折りたたみ式） -->
     <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="d-flex flex-wrap gap-2 justify-content-center">
-                <a href="{{ url_for('client.daily_action') }}" class="btn btn-sm btn-outline-dark" title="今日の一歩">
-                    <i class="fas fa-shoe-prints"></i> 今日の一歩
-                </a>
-                <a href="{{ url_for('client.weekly_summary') }}" class="btn btn-sm btn-outline-dark" title="週間サマリー">
-                    <i class="fas fa-chart-bar"></i> 週間サマリー
-                </a>
-                <a href="{{ url_for('client.progress') }}" class="btn btn-sm btn-outline-success" title="変化を見る">
-                    <i class="fas fa-chart-line"></i> 変化を見る
-                </a>
-                <a href="{{ url_for('client.look_records') }}" class="btn btn-sm btn-outline-dark" title="見た目記録">
-                    <i class="fas fa-history"></i> 見た目記録
-                </a>
-                <a href="{{ url_for('client.look_records_calendar') }}" class="btn btn-sm btn-outline-dark" title="カレンダー">
-                    <i class="fas fa-calendar-alt"></i> カレンダー
-                </a>
-                <a href="{{ url_for('client.referral') }}" class="btn btn-sm btn-success" title="友達を招待">
-                    <i class="fas fa-gift"></i> 招待
-                </a>
-                <a href="{{ url_for('client.settings') }}" class="btn btn-sm btn-outline-secondary" title="設定">
-                    <i class="fas fa-cog"></i> 設定
-                </a>
+        <div class="col-12">
+            <div class="text-center">
+                <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#toolsCollapse" aria-expanded="false" aria-controls="toolsCollapse">
+                    <i class="fas fa-tools"></i> ツールを開く
+                </button>
+            </div>
+            <div class="collapse mt-3" id="toolsCollapse">
+                <div class="card card-body">
+                    <div class="row g-3">
+                        <div class="col-6 col-md-4">
+                            <a href="{{ url_for('client.weekly_summary') }}" class="btn btn-outline-dark w-100">
+                                <i class="fas fa-chart-bar d-block mb-2" style="font-size: 1.5rem;"></i>
+                                週間サマリー
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <a href="{{ url_for('client.look_records_calendar') }}" class="btn btn-outline-dark w-100">
+                                <i class="fas fa-calendar-alt d-block mb-2" style="font-size: 1.5rem;"></i>
+                                カレンダー
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <a href="{{ url_for('client.skin_check') }}" class="btn btn-outline-dark w-100">
+                                <i class="fas fa-check-circle d-block mb-2" style="font-size: 1.5rem;"></i>
+                                肌診断
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <a href="{{ url_for('client.select_impression') }}" class="btn btn-outline-dark w-100">
+                                <i class="fas fa-smile d-block mb-2" style="font-size: 1.5rem;"></i>
+                                なりたい印象
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <a href="{{ url_for('client.referral') }}" class="btn btn-success w-100">
+                                <i class="fas fa-gift d-block mb-2" style="font-size: 1.5rem;"></i>
+                                招待
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <a href="{{ url_for('client.settings') }}" class="btn btn-outline-secondary w-100">
+                                <i class="fas fa-cog d-block mb-2" style="font-size: 1.5rem;"></i>
+                                設定
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
