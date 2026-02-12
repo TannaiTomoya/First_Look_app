@@ -47,16 +47,7 @@ def onboarding():
     if has_record:
         return redirect(url_for('client.dashboard'))
     
-    # テンプレート選択（最初のテンプレートを使用）
-    from models.face_template import FaceTemplate
-    # DeferredForeignKeyの自動JOINを避けるため、シンプルなクエリを使用
-    default_template = FaceTemplate.select(FaceTemplate).order_by(FaceTemplate.id.asc()).first()
-    
-    if not default_template:
-        flash('テンプレートが見つかりません', 'danger')
-        return redirect(url_for('client.dashboard'))
-    
-    return render_template('client/onboarding.html', template=default_template)
+    return render_template('client/onboarding.html')
 
 
 @client.route('/dashboard')
