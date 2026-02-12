@@ -40,7 +40,7 @@ def client_required(f):
 def onboarding():
     """オンボーディング（初回体験）"""
     # 既にLookRecordがあればダッシュボードへ
-    has_record = LookRecord.select().where(LookRecord.user == current_user).exists()
+    has_record = LookRecord.select().where(LookRecord.user_id == current_user.id).exists()
     if has_record:
         return redirect(url_for('client.dashboard'))
     
@@ -61,7 +61,7 @@ def onboarding():
 def dashboard():
     """クライアントダッシュボード"""
     # オンボーディングチェック（最初のLookRecordが無ければリダイレクト）
-    has_record = LookRecord.select().where(LookRecord.user == current_user).exists()
+    has_record = LookRecord.select().where(LookRecord.user_id == current_user.id).exists()
     if not has_record:
         return redirect(url_for('client.onboarding'))
     
@@ -91,7 +91,7 @@ def dashboard():
     
     # 最新の肌診断
     latest_skin_check = SkinCheck.select().where(
-        SkinCheck.user == current_user
+        SkinCheck.user_id == current_user.id
     ).order_by(SkinCheck.created_at.desc()).first()
     
     # 肌診断データを整形（画像と日本語表示用）
@@ -113,7 +113,7 @@ def dashboard():
     
     # 今日のチェック
     today_check = DailyCheck.select().where(
-        (DailyCheck.user == current_user) &
+        (DailyCheck.user_id == current_user.id) &
         (DailyCheck.check_date == date.today())
     ).first()
     
@@ -174,7 +174,7 @@ def skin_check():
     
     # 最新の肌診断を取得
     latest_check = SkinCheck.select().where(
-        SkinCheck.user == current_user
+        SkinCheck.user_id == current_user.id
     ).order_by(SkinCheck.created_at.desc()).first()
     
     return render_template('client/skin_check.html', latest_check=latest_check)
@@ -187,7 +187,7 @@ def daily_check():
     # 今日のチェックを取得
     today = date.today()
     today_check = DailyCheck.select().where(
-        (DailyCheck.user == current_user) &
+        (DailyCheck.user_id == current_user.id) &
         (DailyCheck.check_date == today)
     ).first()
     
@@ -509,7 +509,7 @@ def api_save_adjustments():
         
         # FaceCompositionにJSON形式で保存
         composition = FaceComposition.get_or_none(
-            FaceComposition.user == current_user,
+            FaceComposition.user_id == current_user.id,
             FaceComposition.template == template_id
         )
         
@@ -551,7 +551,7 @@ def api_load_adjustments():
         from models import FaceComposition
         
         composition = FaceComposition.get_or_none(
-            FaceComposition.user == current_user,
+            FaceComposition.user_id == current_user.id,
             FaceComposition.template == int(template_id)
         )
         
@@ -872,7 +872,7 @@ def look_records():
     """見た目記録一覧（月別グループ化）"""
     records = (LookRecord
                .select()
-               .where(LookRecord.user == current_user)
+               .where(LookRecord.user_id == current_user.id)
                .order_by(LookRecord.date.desc())
                .limit(100))
     
@@ -897,21 +897,21 @@ def progress():
     """進化の証明（Day0 vs Today）"""
     # 最初の記録（Day0）
     first_record = (LookRecord
-                   .select()
-                   .where(
-                       (LookRecord.user == current_user) &
-                       (LookRecord.score_total.is_null(False))
-                   )
+                  .select()
+                  .where(
+                      (LookRecord.user_id == current_user.id) &
+                      (LookRecord.score_total.is_null(False))
+                  )
                    .order_by(LookRecord.date.asc())
                    .first())
     
     # 最新の記録（Today）
     latest_record = (LookRecord
-                    .select()
-                    .where(
-                        (LookRecord.user == current_user) &
-                        (LookRecord.score_total.is_null(False))
-                    )
+                  .select()
+                  .where(
+                      (LookRecord.user_id == current_user.id) &
+                      (LookRecord.score_total.is_null(False))
+                  )
                     .order_by(LookRecord.date.desc())
                     .first())
     
@@ -946,21 +946,21 @@ def progress_card():
     """進化カード画像を生成して返却"""
     # 最初の記録（Day0）
     first_record = (LookRecord
-                   .select()
-                   .where(
-                       (LookRecord.user == current_user) &
-                       (LookRecord.score_total.is_null(False))
-                   )
+                  .select()
+                  .where(
+                      (LookRecord.user_id == current_user.id) &
+                      (LookRecord.score_total.is_null(False))
+                  )
                    .order_by(LookRecord.date.asc())
                    .first())
     
     # 最新の記録（Today）
     latest_record = (LookRecord
-                    .select()
-                    .where(
-                        (LookRecord.user == current_user) &
-                        (LookRecord.score_total.is_null(False))
-                    )
+                  .select()
+                  .where(
+                      (LookRecord.user_id == current_user.id) &
+                      (LookRecord.score_total.is_null(False))
+                  )
                     .order_by(LookRecord.date.desc())
                     .first())
     
@@ -1148,7 +1148,7 @@ def save_look_record():
             previous_record = (LookRecord
                              .select()
                              .where(
-                                 (LookRecord.user == current_user) &
+                                 (LookRecord.user_id == current_user.id) &
                                  (LookRecord.date < record_date) &
                                  (LookRecord.score_total.is_null(False))
                              )
@@ -1251,7 +1251,7 @@ def daily_action():
     action = (DailyAction
              .select()
              .where(
-                 (DailyAction.user == current_user) &
+                 (DailyAction.user_id == current_user.id) &
                  (DailyAction.date == today)
              )
              .first())
@@ -1292,7 +1292,7 @@ def complete_daily_action():
         action = (DailyAction
                  .select()
                  .where(
-                     (DailyAction.user == current_user) &
+                     (DailyAction.user_id == current_user.id) &
                      (DailyAction.date == today)
                  )
                  .first())
