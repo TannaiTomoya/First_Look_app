@@ -29,6 +29,9 @@ def client_required(f):
     @login_required
     def decorated_function(*args, **kwargs):
         if not current_user.is_client():
+            # AJAXリクエストの場合はJSON形式で返す
+            if request.is_json or request.headers.get('Content-Type') == 'application/json':
+                return jsonify({"ok": False, "error": "client_only"}), 403
             flash('この機能はクライアントのみ利用できます', 'warning')
             return redirect(url_for('index'))
         return f(*args, **kwargs)

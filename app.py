@@ -64,6 +64,17 @@ login_manager.login_message_category = 'warning'
 login_manager.session_protection = app.config['SESSION_PROTECTION']
 
 
+@login_manager.unauthorized_handler
+def unauthorized():
+    """未認証ユーザーの処理（AJAX対応）"""
+    # AJAXリクエストの場合はJSON形式で返す
+    if request.is_json or request.headers.get('Content-Type') == 'application/json':
+        return jsonify({"ok": False, "error": "unauthorized", "message": "ログインが必要です"}), 401
+    # 通常のリクエストの場合はログインページにリダイレクト
+    flash('ログインが必要です', 'warning')
+    return redirect(url_for('auth.login', next=request.url))
+
+
 @login_manager.user_loader
 def load_user(user_id: str) -> Optional[User]:
     """
