@@ -2,6 +2,11 @@
 
 {% block title %}今日の一歩 - FirstLook{% endblock %}
 
+{% block head %}
+<!-- CSRF Token -->
+<meta name="csrf-token" content="{{ csrf_token() }}">
+{% endblock %}
+
 {% block content %}
 <div class="container mt-5">
     <div class="row justify-content-center">
@@ -86,10 +91,13 @@ document.addEventListener('DOMContentLoaded', function() {
             completeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 処理中...';
 
             try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                
                 const response = await fetch('/client/api/daily-action/complete', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
                     }
                 });
 
