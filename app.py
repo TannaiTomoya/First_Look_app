@@ -223,7 +223,12 @@ def index():
     ホーム - FirstLookランディングページ
     ログイン済みの場合は各ロールのダッシュボードへ誘導
     """
-    return render_template('index.html')
+    # ログイン済みユーザーはダッシュボードへリダイレクト
+    if current_user.is_authenticated:
+        return redirect(url_for('client.dashboard'))
+    
+    # 未ログインユーザーには新しいLPを表示
+    return render_template('landing/lp.html')
 
 @app.route('/terms')
 def terms():

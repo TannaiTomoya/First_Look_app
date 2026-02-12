@@ -28,6 +28,8 @@ from models.daily_check import DailyCheck, Photo, BeforeAfterPost
 from models.face_template import FaceTemplate, FacePart, FaceComposition
 from models.look_record import LookRecord
 from models.daily_action import DailyAction
+from models.achievement import Achievement
+from models.event_log import EventLog
 
 # NOTE: Step4-B 時点では Export は JSON/PNG で成立しており、DBモデルは不要。
 # 未実装モデルを import すると起動不能になるため、一旦外す。
@@ -54,6 +56,8 @@ __all__ = [
     "FaceComposition",
     "LookRecord",
     "DailyAction",
+    "Achievement",
+    "EventLog",
     # "FaceAdjustment",  # Step4-B: 未実装のため一旦外す
     # "RenderExport",    # Step4-B: 未実装のため一旦外す
 ]

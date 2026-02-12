@@ -1864,6 +1864,14 @@ function bindSaveLookRecordButton() {
                 showToast(message, 'success');
                 console.log('[Look Record] 保存成功:', result);
                 
+                // バッジ獲得チェック（Phase D4）
+                if (result.new_achievement) {
+                    const achievementMessage = `🎉 ${result.new_achievement}日連続記録達成！\n習慣が定着しました。`;
+                    setTimeout(() => {
+                        showToast(achievementMessage, 'warning');
+                    }, 1000);
+                }
+                
                 // ボタンを「保存済み」状態に変更
                 savedToday = true;
                 saveBtn.innerHTML = '<i class="fas fa-check-circle"></i> 今日の記録：保存済み';

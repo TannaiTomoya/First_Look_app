@@ -32,6 +32,9 @@ def register():
 
     if form.validate_on_submit():
         try:
+            from utils.referral import generate_referral_code, process_referral
+            from utils.event_logger import log_event, EVENT_SIGNUP
+
             # 新規ユーザーの作成（クライアントのみ）
             user = User(
                 username=form.username.data,
@@ -41,9 +44,26 @@ def register():
             )
             # パスワードのハッシュ化
             user.set_password(form.password.data)
+            
+            # 招待コード生成
+            user.referral_code = generate_referral_code()
+            
             user.save()
 
-            flash('登録が完了しました。ログインしてください。', 'success')
+            # イベントログ記録
+            log_event(user, EVENT_SIGNUP)
+
+            # 招待コードが入力されている場合
+            referral_code = request.form.get('referral_code', '').strip()
+            if referral_code:
+                success = process_referral(user, referral_code)
+                if success:
+                    flash('登録が完了しました。紹介ボーナスでFreeze +1を獲得！', 'success')
+                else:
+                    flash('登録が完了しました。（招待コードが無効でした）', 'warning')
+            else:
+                flash('登録が完了しました。ログインしてください。', 'success')
+            
             return redirect(url_for('auth.login'))
 
         except Exception as e:

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}見た目記録カレンダー - FirstLook{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <a href="{{ url_for('client.look_records') }}" class="btn btn-outline-secondary">
+      <i class="fas fa-list"></i> 一覧表示に戻る
+    </a>
+    <h2>
+      <i class="fas fa-calendar-alt"></i> 見た目記録カレンダー
+    </h2>
+    <div></div>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <a href="?month={{ prev_month }}" class="btn btn-outline-secondary">
+      <i class="fas fa-chevron-left"></i> 前月
+    </a>
+    <h3>{{ year }}年 {{ month }}月</h3>
+    <a href="?month={{ next_month }}" class="btn btn-outline-secondary">
+      次月 <i class="fas fa-chevron-right"></i>
+    </a>
+  </div>
+
+  <table class="table table-bordered text-center">
+    <thead class="table-light">
+      <tr>
+        <th style="width: 14.28%;">日</th>
+        <th style="width: 14.28%;">月</th>
+        <th style="width: 14.28%;">火</th>
+        <th style="width: 14.28%;">水</th>
+        <th style="width: 14.28%;">木</th>
+        <th style="width: 14.28%;">金</th>
+        <th style="width: 14.28%;">土</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for week in month_days %}
+      <tr>
+      {% for day in week %}
+        {% set record = record_map.get(day) %}
+        {% set is_current_month = day.month == month %}
+        {% set is_today = day == today %}
+        <td style="height:110px; vertical-align:top; padding: 8px;"
+            class="{% if is_today %}bg-light{% endif %} {% if not is_current_month %}text-muted{% endif %}">
+
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <small class="{% if not is_current_month %}text-muted{% endif %}">
+              {{ day.day }}
+            </small>
+            {% if is_today %}
+              <span class="badge bg-info" style="font-size: 0.6rem;">今日</span>
+            {% endif %}
+          </div>
+
+          {% if record and is_current_month %}
+            <div class="mt-2">
+              {% if record.score_total %}
+                <div class="mb-1">
+                  {% if not hide_scores %}
+                  <span class="badge bg-success fs-6">
+                    <i class="fas fa-star"></i> {{ record.score_total }}
+                  </span>
+                  {% else %}
+                  <span class="badge bg-success fs-6">
+                    <i class="fas fa-check"></i> 記録済
+                  </span>
+                  {% endif %}
+                </div>
+
+                {% if record.score_diff %}
+                  <div class="small {% if record.score_diff > 0 %}text-success{% elif record.score_diff < 0 %}text-danger{% else %}text-secondary{% endif %}">
+                    {% if not hide_scores %}
+                      {% if record.score_diff > 0 %}
+                        +{{ record.score_diff }} <i class="fas fa-arrow-up"></i>
+                      {% elif record.score_diff < 0 %}
+                        {{ record.score_diff }} <i class="fas fa-arrow-down"></i>
+                      {% else %}
+                        {{ record.score_diff }} <i class="fas fa-minus"></i>
+                      {% endif %}
+                    {% else %}
+                      {% if record.score_diff > 0 %}
+                        <i class="fas fa-arrow-up"></i> UP
+                      {% elif record.score_diff < 0 %}
+                        <i class="fas fa-arrow-down"></i> DOWN
+                      {% else %}
+                        <i class="fas fa-minus"></i> SAME
+                      {% endif %}
+                    {% endif %}
+                  </div>
+                {% endif %}
+              {% else %}
+                <span class="badge bg-secondary" style="font-size: 0.7rem;">記録あり</span>
+              {% endif %}
+            </div>
+          {% endif %}
+
+        </td>
+      {% endfor %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="card mt-4">
+    <div class="card-body">
+      <h5 class="card-title"><i class="fas fa-info-circle"></i> カレンダーの見方</h5>
+      <ul class="mb-0">
+        <li><span class="badge bg-success"><i class="fas fa-star"></i> 数字</span> = Self Care Score（AIが変化を分析）</li>
+        <li><span class="text-success">+数字 <i class="fas fa-arrow-up"></i></span> = 前回比プラス</li>
+        <li><span class="text-danger">-数字 <i class="fas fa-arrow-down"></i></span> = 前回比マイナス</li>
+        <li><span class="badge bg-light">今日</span> = 本日の日付</li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

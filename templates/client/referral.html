@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}友達を招待 - FirstLook{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="fas fa-user-plus"></i> 友達を招待
+        </h2>
+        <a href="{{ url_for('client.dashboard') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> ダッシュボードへ
+        </a>
+    </div>
+
+    <!-- メインカード -->
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow border-0">
+                <div class="card-body p-5 text-center">
+                    <!-- アイコン -->
+                    <div class="mb-4">
+                        <i class="fas fa-snowflake fa-4x text-info"></i>
+                    </div>
+
+                    <!-- メッセージ -->
+                    <h3 class="mb-3">友達を招待して<br>Freeze +1を獲得！</h3>
+                    <p class="text-muted mb-4">
+                        あなたの招待コードを友達に共有すると、<br>
+                        あなたと友達の両方がFreeze +1を獲得できます。
+                    </p>
+
+                    <!-- 招待コード表示 -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold text-start d-block mb-2">
+                            あなたの招待コード
+                        </label>
+                        <div class="input-group input-group-lg">
+                            <input type="text" 
+                                   class="form-control text-center fw-bold fs-3" 
+                                   id="referral-code" 
+                                   value="{{ referral_code }}" 
+                                   readonly 
+                                   style="letter-spacing: 3px;">
+                            <button class="btn btn-primary" 
+                                    id="copy-btn" 
+                                    type="button"
+                                    onclick="copyReferralCode()">
+                                <i class="fas fa-copy"></i> コピー
+                            </button>
+                        </div>
+                        <small class="text-success d-block mt-2" id="copy-success" style="display: none !important;">
+                            <i class="fas fa-check-circle"></i> コピーしました！
+                        </small>
+                    </div>
+
+                    <!-- 招待URL -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold text-start d-block mb-2">
+                            招待URL
+                        </label>
+                        <div class="input-group">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="referral-url" 
+                                   value="{{ referral_url }}" 
+                                   readonly>
+                            <button class="btn btn-outline-primary" 
+                                    id="copy-url-btn" 
+                                    type="button"
+                                    onclick="copyReferralUrl()">
+                                <i class="fas fa-copy"></i> URLコピー
+                            </button>
+                        </div>
+                        <small class="text-success d-block mt-2" id="url-copy-success" style="display: none !important;">
+                            <i class="fas fa-check-circle"></i> URLをコピーしました！
+                        </small>
+                    </div>
+
+                    <!-- 統計 -->
+                    <div class="alert alert-info">
+                        <i class="fas fa-users"></i> 
+                        <strong>{{ referred_count }}人</strong>があなたの招待コードを使用しました
+                    </div>
+
+                    <!-- 説明 -->
+                    <hr class="my-4">
+                    <div class="text-start">
+                        <h5 class="mb-3"><i class="fas fa-question-circle"></i> Freezeとは？</h5>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success"></i> 
+                                記録を忘れた日もストリークを守ります
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success"></i> 
+                                1週間（7日）継続ごとに1つ回復
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success"></i> 
+                                最大3つまで保持可能
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyReferralCode() {
+    const codeInput = document.getElementById('referral-code');
+    codeInput.select();
+    document.execCommand('copy');
+    
+    // イベントログ記録
+    fetch('/client/api/referral/track-copy', {method: 'POST'});
+    
+    // 成功メッセージ表示
+    const successMsg = document.getElementById('copy-success');
+    successMsg.style.display = 'block';
+    setTimeout(() => {
+        successMsg.style.display = 'none';
+    }, 2000);
+    
+    // ボタン変更
+    const btn = document.getElementById('copy-btn');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-check"></i> コピー済み';
+    setTimeout(() => {
+        btn.innerHTML = originalHtml;
+    }, 2000);
+}
+
+function copyReferralUrl() {
+    const urlInput = document.getElementById('referral-url');
+    urlInput.select();
+    document.execCommand('copy');
+    
+    // イベントログ記録
+    fetch('/client/api/referral/track-copy', {method: 'POST'});
+    
+    // 成功メッセージ表示
+    const successMsg = document.getElementById('url-copy-success');
+    successMsg.style.display = 'block';
+    setTimeout(() => {
+        successMsg.style.display = 'none';
+    }, 2000);
+    
+    // ボタン変更
+    const btn = document.getElementById('copy-url-btn');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-check"></i> コピー済み';
+    setTimeout(() => {
+        btn.innerHTML = originalHtml;
+    }, 2000);
+}
+</script>
+{% endblock %}

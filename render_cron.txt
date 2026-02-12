@@ -1,0 +1,17 @@
+# Render.com Cron Jobs設定
+# https://render.com/docs/cronjobs
+
+# 日次リマインダー送信（毎日21時JST = 12時UTC）
+# 0 12 * * * python scripts/send_reminders.py
+
+# 設定方法:
+# 1. Render Dashboard → 「New +」→ 「Cron Job」
+# 2. Name: firstlook-daily-reminder
+# 3. Environment: 本番環境と同じ
+# 4. Build Command: (空欄)
+# 5. Command: python scripts/send_reminders.py
+# 6. Schedule: 0 12 * * * (UTC)
+# 7. 環境変数を本番環境からコピー
+
+# 注意: Renderのcronジョブは別プロセスとして実行されます
+# データベースパスや環境変数が正しく設定されているか確認してください

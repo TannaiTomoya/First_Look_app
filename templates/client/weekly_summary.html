@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}週間サマリー - FirstLook{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+      <i class="fas fa-chart-bar"></i> 週間サマリー
+    </h2>
+    <a href="{{ url_for('client.dashboard') }}" class="btn btn-outline-secondary">
+      <i class="fas fa-arrow-left"></i> ダッシュボードへ
+    </a>
+  </div>
+
+  <!-- 期間表示 -->
+  <div class="alert alert-info mb-4">
+    <i class="fas fa-calendar-week"></i> 
+    <strong>期間:</strong> {{ start.strftime('%Y年%m月%d日') }} 〜 {{ end.strftime('%Y年%m月%d日') }}
+  </div>
+
+  {% if count == 0 %}
+    <!-- データなし -->
+    <div class="alert alert-warning">
+      <i class="fas fa-exclamation-triangle"></i> 
+      直近7日間の記録がありません。
+      <a href="{{ url_for('face_template.capture') }}" class="alert-link">今すぐ記録を作成</a>
+    </div>
+  {% else %}
+
+    <!-- AIコーチコメント（最上部・強調） -->
+    {% if comment %}
+    <div class="card border-primary mb-4 shadow">
+      <div class="card-body bg-light">
+        <h5 class="card-title">
+          <i class="fas fa-comment-dots text-primary"></i> AIからの変化分析
+        </h5>
+        <p class="card-text fs-5 mb-0 text-dark">
+          <strong>{{ comment }}</strong>
+        </p>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 来週のフォーカス -->
+    {% if next_focus %}
+    <div class="card border-warning mb-4 shadow">
+      <div class="card-body" style="background: linear-gradient(135deg, #fff9e6 0%, #ffe6b3 100%);">
+        <h5 class="card-title">
+          <i class="fas fa-bullseye text-warning"></i> 来週の重点
+        </h5>
+        <h3 class="mb-2 text-dark">
+          <strong>{{ next_focus.focus }}</strong>
+        </h3>
+        <p class="card-text fs-6 mb-0 text-dark">
+          {{ next_focus.tip }}
+        </p>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 主要指標（3カラム） -->
+    <div class="row mb-4">
+      <!-- 記録日数 -->
+      <div class="col-md-4 mb-3">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body text-center">
+            <div class="text-muted mb-2">
+              <i class="fas fa-calendar-check"></i> 記録日数
+            </div>
+            <h2 class="display-4 mb-0">
+              {{ count }}<small class="fs-5 text-muted">/7</small>
+            </h2>
+          </div>
+        </div>
+      </div>
+
+      <!-- 平均スコア -->
+      <div class="col-md-4 mb-3">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body text-center">
+            <div class="text-muted mb-2">
+              <i class="fas fa-star"></i> 平均スコア
+            </div>
+            {% if not hide_scores %}
+              {% if avg_total is not none %}
+                <h2 class="display-4 mb-0 text-success">
+                  {{ avg_total }}
+                </h2>
+              {% else %}
+                <h2 class="display-4 mb-0 text-secondary">
+                  --
+                </h2>
+              {% endif %}
+            {% else %}
+              <div class="text-muted">
+                <i class="fas fa-eye-slash"></i><br>
+                <small>非表示設定中</small>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- 週間の伸び -->
+      <div class="col-md-4 mb-3">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body text-center">
+            <div class="text-muted mb-2">
+              <i class="fas fa-chart-line"></i> 週間の伸び
+            </div>
+            {% if not hide_scores %}
+              <h2 class="display-4 mb-0 
+                  {% if week_delta > 0 %}text-success
+                  {% elif week_delta < 0 %}text-danger
+                  {% else %}text-secondary{% endif %}">
+                {% if week_delta > 0 %}+{% endif %}{{ week_delta }}
+                {% if week_delta > 0 %}
+                  <i class="fas fa-arrow-up fs-4"></i>
+                {% elif week_delta < 0 %}
+                  <i class="fas fa-arrow-down fs-4"></i>
+                {% else %}
+                  <i class="fas fa-minus fs-4"></i>
+                {% endif %}
+              </h2>
+            {% else %}
+              <h2 class="display-4 mb-0 
+                  {% if week_delta > 0 %}text-success
+                  {% elif week_delta < 0 %}text-danger
+                  {% else %}text-secondary{% endif %}">
+                {% if week_delta > 0 %}
+                  <i class="fas fa-arrow-up"></i><br>UP
+                {% elif week_delta < 0 %}
+                  <i class="fas fa-arrow-down"></i><br>DOWN
+                {% else %}
+                  <i class="fas fa-minus"></i><br>SAME
+                {% endif %}
+              </h2>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ベスト/ワースト（2カラム） -->
+    <div class="row mb-4">
+      <!-- ベスト日 -->
+      <div class="col-md-6 mb-3">
+        <div class="card border-success shadow-sm">
+          <div class="card-header bg-success text-white">
+            <i class="fas fa-trophy"></i> ベスト日
+          </div>
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="mb-1">{{ best.date.strftime('%m月%d日') }}</h5>
+                <small class="text-muted">{{ best.date.strftime('%Y年%m月%d日') }}</small>
+              </div>
+              {% if not hide_scores %}
+              <div class="text-end">
+                <h3 class="mb-0 text-success">
+                  <i class="fas fa-star"></i> {{ best.score_total }}
+                </h3>
+                {% if best.score_diff %}
+                  <small class="{% if best.score_diff > 0 %}text-success{% else %}text-muted{% endif %}">
+                    前回比: {% if best.score_diff > 0 %}+{% endif %}{{ best.score_diff }}
+                  </small>
+                {% endif %}
+              </div>
+              {% else %}
+              <div class="text-end">
+                <h3 class="mb-0 text-success">
+                  <i class="fas fa-trophy"></i>
+                </h3>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ワースト日 -->
+      <div class="col-md-6 mb-3">
+        <div class="card border-warning shadow-sm">
+          <div class="card-header bg-warning text-dark">
+            <i class="fas fa-exclamation-triangle"></i> ワースト日
+          </div>
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="mb-1">{{ worst.date.strftime('%m月%d日') }}</h5>
+                <small class="text-muted">{{ worst.date.strftime('%Y年%m月%d日') }}</small>
+              </div>
+              {% if not hide_scores %}
+              <div class="text-end">
+                <h3 class="mb-0 text-warning">
+                  <i class="fas fa-star"></i> {{ worst.score_total }}
+                </h3>
+                {% if worst.score_diff %}
+                  <small class="{% if worst.score_diff < 0 %}text-danger{% else %}text-muted{% endif %}">
+                    前回比: {% if worst.score_diff > 0 %}+{% endif %}{{ worst.score_diff }}
+                  </small>
+                {% endif %}
+              </div>
+              {% else %}
+              <div class="text-end">
+                <h3 class="mb-0 text-warning">
+                  <i class="fas fa-exclamation-triangle"></i>
+                </h3>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- クイックアクション -->
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">
+          <i class="fas fa-compass"></i> 次のステップ
+        </h5>
+        <div class="d-flex flex-wrap gap-2">
+          <a href="{{ url_for('client.look_records') }}" class="btn btn-outline-primary">
+            <i class="fas fa-history"></i> 記録一覧を見る
+          </a>
+          <a href="{{ url_for('client.look_records_calendar') }}" class="btn btn-outline-primary">
+            <i class="fas fa-calendar-alt"></i> カレンダーを見る
+          </a>
+          <a href="{{ url_for('client.progress') }}" class="btn btn-outline-success">
+            <i class="fas fa-chart-line"></i> 長期の変化を見る
+          </a>
+          <a href="{{ url_for('face_template.capture') }}" class="btn btn-primary">
+            <i class="fas fa-camera"></i> 今日の記録を作成
+          </a>
+        </div>
+      </div>
+    </div>
+
+  {% endif %}
+</div>
+{% endblock %}

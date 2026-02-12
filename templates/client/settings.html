@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}設定 - FirstLook{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="fas fa-cog"></i> 設定
+        </h2>
+        <a href="{{ url_for('client.dashboard') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> ダッシュボードへ
+        </a>
+    </div>
+
+    <!-- スコア表示設定 -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-chart-bar"></i> スコア表示設定
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('client.settings') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" 
+                           type="checkbox" 
+                           id="hide_scores" 
+                           name="hide_scores"
+                           {% if current_user.hide_scores %}checked{% endif %}>
+                    <label class="form-check-label" for="hide_scores">
+                        <strong>スコア表示をオフ</strong>
+                    </label>
+                </div>
+                
+                <p class="text-muted small mb-3">
+                    <i class="fas fa-info-circle"></i> 
+                    数値ではなく変化のみ表示します。数値がストレスになる場合にご利用ください。
+                </p>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> 保存
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 免責事項 -->
+    <div class="card border-warning">
+        <div class="card-header bg-warning">
+            <h5 class="mb-0">
+                <i class="fas fa-exclamation-triangle"></i> 重要なお知らせ
+            </h5>
+        </div>
+        <div class="card-body">
+            <p class="mb-2">
+                <strong>本アプリは美容・医療・心理評価を目的としたものではありません。</strong>
+            </p>
+            <ul class="mb-0 small">
+                <li>表示される指標は画像分析に基づく参考値です</li>
+                <li>医学的・美容的な診断や評価ではありません</li>
+                <li>個人の価値を数値化するものではありません</li>
+                <li>セルフケア習慣の記録ツールとしてご利用ください</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

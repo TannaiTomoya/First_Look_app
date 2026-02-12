@@ -1,7 +1,7 @@
 """
 ユーザーモデル
 """
-from peewee import AutoField, CharField, TextField, DateTimeField, IntegerField, DeferredForeignKey
+from peewee import AutoField, CharField, TextField, DateTimeField, IntegerField, DateField, DeferredForeignKey, ForeignKeyField
 from flask_login import UserMixin
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -19,6 +19,11 @@ class User(BaseModel, UserMixin):
     role = CharField(max_length=20, default='client')  # 'client' or 'coach'
     gender = CharField(max_length=10, default='male')  # 'male' or 'female'
     desired_face = DeferredForeignKey('DesiredFace', null=True, backref='users', on_delete='SET NULL')  # 選択中の印象カード
+    streak_freeze = IntegerField(default=2)  # Freeze残数（最大2）
+    last_freeze_used_at = DateField(null=True)  # 最後にFreezeを使用した日
+    referral_code = CharField(max_length=16, unique=True, null=True)  # 招待コード
+    referred_by_id = IntegerField(null=True)  # 紹介者のユーザーID
+    hide_scores = IntegerField(default=0)  # スコア非表示設定（0=表示、1=非表示）
     created_at = DateTimeField(default=datetime.now)
     updated_at = DateTimeField(default=datetime.now)
 
@@ -56,6 +61,16 @@ class User(BaseModel, UserMixin):
     def is_male(self):
         """男性ユーザーかどうか"""
         return self.gender == 'male'
+    
+    def get_referrer(self):
+        """紹介者を取得"""
+        if self.referred_by_id:
+            return User.get_by_id(self.referred_by_id)
+        return None
+    
+    def get_referred_users(self):
+        """このユーザーが紹介したユーザー一覧"""
+        return User.select().where(User.referred_by_id == self.id)
     
     def save(self, *args, **kwargs):
         """保存時にupdated_atを更新"""

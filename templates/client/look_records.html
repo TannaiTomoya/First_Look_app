@@ -10,9 +10,14 @@
                 <h2>
                     <i class="fas fa-history"></i> 見た目記録
                 </h2>
-                <a href="{{ url_for('client.dashboard') }}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left"></i> ダッシュボードへ
-                </a>
+                <div>
+                    <a href="{{ url_for('client.look_records_calendar') }}" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-calendar-alt"></i> カレンダー表示
+                    </a>
+                    <a href="{{ url_for('client.dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> ダッシュボードへ
+                    </a>
+                </div>
             </div>
 
             {% if records_by_month %}
@@ -45,36 +50,46 @@
                                         {{ record.date.strftime('%m月%d日') }}
                                     </h5>
                                     
-                                    <!-- AIコーチ判定スコア -->
+                                    <!-- Self Care Score -->
                                     {% if record.score_total is not none %}
                                     <div class="alert alert-success mb-2 py-2 px-3" role="alert">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <div>
-                                                <strong>清潔感スコア</strong>
+                                                <strong>Self Care Score</strong>
+                                                <small class="text-muted d-block">セルフケア指標</small>
+                                                {% if not hide_scores %}
                                                 <h4 class="mb-0 d-inline ms-2">{{ record.score_total }}</h4>
+                                                {% endif %}
                                             </div>
                                             {% if record.score_diff is not none %}
                                             <div>
                                                 {% if record.score_diff > 0 %}
                                                     <span class="badge bg-success">
-                                                        <i class="fas fa-arrow-up"></i> +{{ record.score_diff }}
+                                                        <i class="fas fa-arrow-up"></i> 
+                                                        {% if not hide_scores %}+{{ record.score_diff }}{% else %}UP{% endif %}
                                                     </span>
                                                 {% elif record.score_diff < 0 %}
                                                     <span class="badge bg-danger">
-                                                        <i class="fas fa-arrow-down"></i> {{ record.score_diff }}
+                                                        <i class="fas fa-arrow-down"></i> 
+                                                        {% if not hide_scores %}{{ record.score_diff }}{% else %}DOWN{% endif %}
                                                     </span>
                                                 {% else %}
                                                     <span class="badge bg-secondary">
-                                                        <i class="fas fa-minus"></i> 0
+                                                        <i class="fas fa-minus"></i> 
+                                                        {% if not hide_scores %}0{% else %}SAME{% endif %}
                                                     </span>
                                                 {% endif %}
                                             </div>
                                             {% endif %}
                                         </div>
+                                        {% if not hide_scores %}
                                         <hr class="my-2">
                                         <small class="text-muted">
                                             輪郭 <strong>{{ record.score_contour }}</strong> / 
                                             肌 <strong>{{ record.score_skin }}</strong> / 
+                                            若見え <strong>{{ record.score_young }}</strong>
+                                        </small>
+                                        {% endif %}
                                             若見え <strong>{{ record.score_young }}</strong>
                                         </small>
                                     </div>
