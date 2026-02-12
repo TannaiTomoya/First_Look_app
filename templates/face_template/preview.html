@@ -3,6 +3,9 @@
 {% block title %}イメージを作成 - FirstLook{% endblock %}
 
 {% block head %}
+<!-- CSRF Token -->
+<meta name="csrf-token" content="{{ csrf_token() }}">
+
 <!-- MediaPipe FaceMesh (Step1: ランドマーク追従) -->
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -1821,11 +1824,15 @@ function bindSaveLookRecordButton() {
             const preset = document.getElementById('future-face-preset').value;
             const strength = parseInt(document.getElementById('future-face-strength').value);
             
+            // CSRFトークン取得
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            
             // サーバーに送信
             const response = await fetch('/client/api/look-records/save', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
                 },
                 body: JSON.stringify({
                     image_base64: imageDataURL,
