@@ -1,0 +1,12 @@
+<!-- フォーカスモードフッター（逃げ道リンク） -->
+<div class="text-center mt-5 pt-5">
+    <button id="revealToolsBtn" class="btn btn-link text-muted small">
+        <i class="fas fa-chevron-down"></i> 他の機能を見る
+    </button>
+</div>
+
+<script>
+document.getElementById("revealToolsBtn").onclick = () => {
+    window.location.href = "/client/dashboard?tools=1";
+};
+</script>

@@ -43,6 +43,9 @@ from itertools import groupby
 
 client = Blueprint("client", __name__, url_prefix="/client")
 
+# ダッシュボード表示制御フラグ
+HIDE_TOOLS_UNTIL_RECORDED = True
+
 
 def client_required(f):
     """クライアント専用デコレーター"""
@@ -212,6 +215,14 @@ def dashboard():
         day_index = get_day_index(day0_record.date, date.today())
         daily_cta_copy = get_daily_cta_copy(day_index)
 
+    # フォーカスモード判定（未記録時は集中モード）
+    tools_override = request.args.get("tools") == "1"
+    show_focus_mode = (
+        HIDE_TOOLS_UNTIL_RECORDED
+        and not has_today_record
+        and not tools_override
+    )
+
     return render_template(
         "client/dashboard.html",
         selected_impression=selected_impression,
@@ -231,6 +242,7 @@ def dashboard():
         is_first_day=is_first_day,
         day_index=day_index,
         daily_cta_copy=daily_cta_copy,
+        show_focus_mode=show_focus_mode,
     )
 
 
