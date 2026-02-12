@@ -36,4 +36,4 @@ class LookRecord(BaseModel):
         )
 
     def __repr__(self):
-        return f'<LookRecord {self.user_id.username} - {self.date}>'
+        return f'<LookRecord user_id={self.user_id_id} date={self.date}>'
