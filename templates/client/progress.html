@@ -34,7 +34,7 @@
                                 <small>{{ first_record.date.strftime('%Y年%m月%d日') }}</small>
                             </div>
                             <div class="card-body p-0">
-                                <img src="{{ url_for('client.get_upload', filename=first_record.photo_path) }}" 
+                                <img src="{{ url_for('serve_upload', filename=first_record.photo_path) }}" 
                                      class="img-fluid w-100" 
                                      alt="Day0"
                                      style="object-fit: cover; max-height: 500px;">
@@ -58,7 +58,7 @@
                                 <small>{{ latest_record.date.strftime('%Y年%m月%d日') }}</small>
                             </div>
                             <div class="card-body p-0">
-                                <img src="{{ url_for('client.get_upload', filename=latest_record.photo_path) }}" 
+                                <img src="{{ url_for('serve_upload', filename=latest_record.photo_path) }}" 
                                      class="img-fluid w-100" 
                                      alt="Today"
                                      style="object-fit: cover; max-height: 500px;">

@@ -33,7 +33,7 @@
                         <div class="col-md-6 col-lg-4 mb-4">
                             <div class="card h-100 shadow-sm">
                                 <!-- サムネイル -->
-                                <img src="{{ url_for('client.get_upload', filename=record.photo_path) }}" 
+                                <img src="{{ url_for('serve_upload', filename=record.photo_path) }}" 
                                      class="card-img-top" 
                                      alt="記録: {{ record.date }}"
                                      style="height: 300px; object-fit: cover;">
