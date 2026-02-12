@@ -1834,11 +1834,19 @@ function bindSaveLookRecordButton() {
                 })
             });
             
-            if (!response.ok) {
-                throw new Error(`HTTPエラー: ${response.status}`);
-            }
-            
             const result = await response.json();
+            
+            if (!response.ok) {
+                // HTTPエラーの場合、サーバーからのエラーメッセージを表示
+                const errorMsg = result.error || `HTTPエラー: ${response.status}`;
+                showToast(`保存に失敗しました: ${errorMsg}`, 'danger');
+                console.error('[Look Record] HTTPエラー:', response.status, result);
+                
+                // ボタン復元
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = initialBtnHtml;
+                return;
+            }
             
             if (result.ok) {
                 // 成功トースト（上書きか新規かで表示を変更）

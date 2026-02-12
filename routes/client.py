@@ -1008,8 +1008,10 @@ def save_look_record():
     """見た目記録を保存（After画像 + Future Face設定）"""
     try:
         data = request.get_json()
+        current_app.logger.info(f"[save_look_record] リクエスト受信: user={current_user.id}")
         
         if not data:
+            current_app.logger.warning("[save_look_record] データなし")
             return jsonify({"ok": False, "error": "invalid_request"}), 400
         
         image_base64 = data.get('image_base64')
@@ -1023,10 +1025,12 @@ def save_look_record():
         
         # 画像必須チェック
         if not image_base64:
+            current_app.logger.warning("[save_look_record] 画像データなし")
             return jsonify({"ok": False, "error": "image_required"}), 400
         
         # dataURL形式チェック（PNG のみ）
         if not image_base64.startswith('data:image/png;base64,'):
+            current_app.logger.warning(f"[save_look_record] 無効な画像形式: {image_base64[:50]}...")
             return jsonify({"ok": False, "error": "invalid_image_format_png_only"}), 400
         
         # プリセット検証
