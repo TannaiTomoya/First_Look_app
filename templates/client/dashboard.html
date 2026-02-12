@@ -65,6 +65,70 @@
         </div>
     </div>
     
+    <!-- LookRecordストリーク表示（コンパクト版） -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm" style="border: none; background: #f8f9fa;">
+                <div class="card-body py-3">
+                    <div class="d-flex flex-wrap align-items-center justify-content-center gap-3">
+                        <!-- 連続記録 -->
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-fire text-danger me-2"></i>
+                            <span class="fw-bold">{{ current_streak }}</span>
+                            <span class="text-muted small ms-1">日</span>
+                        </div>
+                        
+                        <div class="vr" style="height: 24px;"></div>
+                        
+                        <!-- 最長記録 -->
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-trophy text-warning me-2"></i>
+                            <span class="fw-bold">{{ longest_streak }}</span>
+                            <span class="text-muted small ms-1">日</span>
+                        </div>
+                        
+                        <div class="vr" style="height: 24px;"></div>
+                        
+                        <!-- 今日のステータス -->
+                        {% if has_today %}
+                        <div class="badge bg-success px-3 py-2">
+                            <i class="fas fa-check-circle"></i> 記録完了
+                        </div>
+                        {% elif freeze_used_today %}
+                        <div class="badge bg-info px-3 py-2">
+                            <i class="fas fa-snowflake"></i> Freeze使用
+                        </div>
+                        {% else %}
+                        <div class="badge bg-danger px-3 py-2">
+                            <i class="fas fa-exclamation-triangle"></i> 未記録
+                        </div>
+                        {% endif %}
+                        
+                        <div class="vr" style="height: 24px;"></div>
+                        
+                        <!-- Freeze残数 -->
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-snowflake text-info me-2"></i>
+                            <span class="fw-bold">{{ current_user.streak_freeze }}/2</span>
+                        </div>
+                        
+                        <!-- 達成バッジ -->
+                        {% if achievements %}
+                        <div class="vr" style="height: 24px;"></div>
+                        <div class="d-flex align-items-center gap-1">
+                            {% for badge in achievements %}
+                            <span class="badge bg-warning text-dark" style="font-size: 0.75rem;">
+                                🏅 {{ badge.label }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- 変化カード（Day0 → 最新） -->
     {% if day0_record and latest_record and day0_record.id != latest_record.id %}
     <div class="row mb-4">
@@ -171,87 +235,6 @@
         </div>
     </div>
     {% endif %}
-    
-    <!-- LookRecordストリーク表示 -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card shadow {% if not has_today %}border-danger{% else %}border-success{% endif %}" style="border-width: 2px;">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <!-- 現在ストリーク -->
-                        <div class="col-md-4 text-center mb-3 mb-md-0">
-                            <div class="d-flex align-items-center justify-content-center">
-                                <i class="fas fa-fire fa-2x text-danger me-2"></i>
-                                <div class="text-start">
-                                    <div class="text-muted small">連続記録</div>
-                                    <h3 class="mb-0">{{ current_streak }}<small class="fs-6 text-muted">日</small></h3>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- 最長ストリーク -->
-                        <div class="col-md-4 text-center mb-3 mb-md-0">
-                            <div class="d-flex align-items-center justify-content-center">
-                                <i class="fas fa-trophy fa-2x text-warning me-2"></i>
-                                <div class="text-start">
-                                    <div class="text-muted small">最長記録</div>
-                                    <h3 class="mb-0">{{ longest_streak }}<small class="fs-6 text-muted">日</small></h3>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- 今日の記録ステータス -->
-                        <div class="col-md-4 text-center">
-                            {% if has_today %}
-                                <div class="alert alert-success mb-0 py-2" role="alert">
-                                    <i class="fas fa-check-circle"></i> <strong>今日の記録完了！</strong>
-                                </div>
-                            {% elif freeze_used_today %}
-                                <div class="alert alert-info mb-0 py-2" role="alert">
-                                    <i class="fas fa-snowflake"></i> <strong>Freezeが使用されました</strong>
-                                    <br>
-                                    <small>連続記録は守られました</small>
-                                </div>
-                            {% else %}
-                                <div class="alert alert-danger mb-0 py-2" role="alert">
-                                    <i class="fas fa-exclamation-triangle"></i> <strong>今日の記録がまだありません</strong>
-                                </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    
-                    <!-- Freeze残数表示 -->
-                    <div class="row mt-3">
-                        <div class="col-12">
-                            <div class="text-center p-2" style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-radius: 6px;">
-                                <i class="fas fa-snowflake text-info"></i>
-                                <strong>Freeze: {{ current_user.streak_freeze }}/2</strong>
-                                <span class="text-muted ms-2" style="font-size: 0.9rem;">連続記録を守ります</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 達成バッジ表示（Phase D4） -->
-                    {% if achievements %}
-                    <div class="row mt-3">
-                        <div class="col-12">
-                            <div class="text-center p-2" style="background: linear-gradient(135deg, #fff8e1 0%, #ffe082 100%); border-radius: 6px;">
-                                <strong><i class="fas fa-trophy text-warning"></i> Achievements</strong>
-                                <div class="mt-1">
-                                    {% for badge in achievements %}
-                                        <span class="badge bg-warning text-dark me-1" style="font-size: 0.85rem;">
-                                            🏅 {{ badge.label }}
-                                        </span>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
     
     <!-- 当日チェックへの導線（目立つカード） -->
     <div class="row mb-4">
