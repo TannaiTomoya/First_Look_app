@@ -12,7 +12,7 @@ from models import BaseModel
 class DailyCheck(BaseModel):
     """当日5分チェック"""
     id = AutoField(primary_key=True)
-    user_id = DeferredForeignKey('User', backref='daily_checks', on_delete='CASCADE')
+    user = DeferredForeignKey('User', backref='daily_checks', on_delete='CASCADE')
     check_date = DateField(default=date.today)  # チェック日
     eyebrow_ok = IntegerField(default=0)  # 眉：0=未確認, 1=OK, 2=要改善
     eye_ok = IntegerField(default=0)  # 目：0=未確認, 1=OK, 2=要改善
@@ -25,7 +25,7 @@ class DailyCheck(BaseModel):
     class Meta:
         table_name = 'daily_checks'
         indexes = (
-            (('user_id',), False),
+            (('user',), False),
             (('check_date',), False),
         )
     
@@ -40,13 +40,13 @@ class DailyCheck(BaseModel):
         ])
     
     def __repr__(self):
-        return f'<DailyCheck {self.user_id.username} - {self.check_date}>'
+        return f'<DailyCheck {self.user.username} - {self.check_date}>'
 
 
 class Photo(BaseModel):
     """写真保存（汎用）"""
     id = AutoField(primary_key=True)
-    user_id = DeferredForeignKey('User', backref='photos', on_delete='CASCADE')
+    user = DeferredForeignKey('User', backref='photos', on_delete='CASCADE')
     purpose = CharField(max_length=50)  # 用途：coach_profile, before, after, daily_check
     file_path = CharField(max_length=255)  # ファイルパス
     created_at = DateTimeField(default=datetime.now)
@@ -54,7 +54,7 @@ class Photo(BaseModel):
     class Meta:
         table_name = 'photos'
         indexes = (
-            (('user_id',), False),
+            (('user',), False),
             (('purpose',), False),
         )
     
@@ -65,7 +65,7 @@ class Photo(BaseModel):
 class BeforeAfterPost(BaseModel):
     """Before/After投稿"""
     id = AutoField(primary_key=True)
-    user_id = DeferredForeignKey('User', backref='before_after_posts', on_delete='CASCADE')
+    user = DeferredForeignKey('User', backref='before_after_posts', on_delete='CASCADE')
     before_photo = DeferredForeignKey('Photo', backref='before_posts', on_delete='CASCADE')
     after_photo = DeferredForeignKey('Photo', backref='after_posts', on_delete='CASCADE')
     before_photo_2 = DeferredForeignKey('Photo', backref='before_posts_2', null=True, on_delete='CASCADE')  # Before画像2（任意）
@@ -77,9 +77,9 @@ class BeforeAfterPost(BaseModel):
     class Meta:
         table_name = 'before_after_posts'
         indexes = (
-            (('user_id',), False),
+            (('user',), False),
             (('created_at',), False),
         )
     
     def __repr__(self):
-        return f'<BeforeAfterPost {self.id} by {self.user_id.username}>'
+        return f'<BeforeAfterPost {self.id} by {self.user.username}>'

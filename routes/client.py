@@ -91,7 +91,7 @@ def dashboard():
     
     # 最新の肌診断
     latest_skin_check = SkinCheck.select().where(
-        SkinCheck.user_id == current_user.id
+        SkinCheck.user == current_user.id
     ).order_by(SkinCheck.created_at.desc()).first()
     
     # 肌診断データを整形（画像と日本語表示用）
@@ -113,7 +113,7 @@ def dashboard():
     
     # 今日のチェック
     today_check = DailyCheck.select().where(
-        (DailyCheck.user_id == current_user.id) &
+        (DailyCheck.user == current_user.id) &
         (DailyCheck.check_date == date.today())
     ).first()
     
@@ -174,7 +174,7 @@ def skin_check():
     
     # 最新の肌診断を取得
     latest_check = SkinCheck.select().where(
-        SkinCheck.user_id == current_user.id
+        SkinCheck.user == current_user.id
     ).order_by(SkinCheck.created_at.desc()).first()
     
     return render_template('client/skin_check.html', latest_check=latest_check)
@@ -187,7 +187,7 @@ def daily_check():
     # 今日のチェックを取得
     today = date.today()
     today_check = DailyCheck.select().where(
-        (DailyCheck.user_id == current_user.id) &
+        (DailyCheck.user == current_user.id) &
         (DailyCheck.check_date == today)
     ).first()
     
@@ -509,7 +509,7 @@ def api_save_adjustments():
         
         # FaceCompositionにJSON形式で保存
         composition = FaceComposition.get_or_none(
-            FaceComposition.user_id == current_user.id,
+            FaceComposition.user == current_user.id,
             FaceComposition.template == template_id
         )
         
@@ -551,7 +551,7 @@ def api_load_adjustments():
         from models import FaceComposition
         
         composition = FaceComposition.get_or_none(
-            FaceComposition.user_id == current_user.id,
+            FaceComposition.user == current_user.id,
             FaceComposition.template == int(template_id)
         )
         

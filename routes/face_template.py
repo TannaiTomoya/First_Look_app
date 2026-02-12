@@ -88,7 +88,7 @@ def preview(template_id):
     
     # 既存の合成があれば取得
     composition = FaceComposition.get_or_none(
-        FaceComposition.user_id == current_user.id,
+        FaceComposition.user == current_user.id,
         FaceComposition.template == template_id
     )
     
@@ -128,7 +128,7 @@ def save_composition():
         
         # 既存の合成があれば更新、なければ作成
         composition = FaceComposition.get_or_none(
-            FaceComposition.user_id == current_user.id,
+            FaceComposition.user == current_user.id,
             FaceComposition.template == template_id
         )
         
