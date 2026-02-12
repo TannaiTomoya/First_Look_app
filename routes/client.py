@@ -204,6 +204,14 @@ def dashboard():
     record_count = LookRecord.select().where(LookRecord.user_id == current_user.id).count()
     is_first_day = (record_count == 1)
 
+    # Daily CTA（Day1〜Day30専用）
+    from utils.onboarding_copy import get_day_index, get_daily_cta_copy
+    day_index = None
+    daily_cta_copy = None
+    if day0_record:
+        day_index = get_day_index(day0_record.date, date.today())
+        daily_cta_copy = get_daily_cta_copy(day_index)
+
     return render_template(
         "client/dashboard.html",
         selected_impression=selected_impression,
@@ -221,6 +229,8 @@ def dashboard():
         latest_record=latest_record,
         day0_progress=day0_progress,
         is_first_day=is_first_day,
+        day_index=day_index,
+        daily_cta_copy=daily_cta_copy,
     )
 
 

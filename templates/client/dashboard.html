@@ -9,6 +9,31 @@
         <small class="text-muted fs-6">ようこそ、{{ current_user.username }}さん</small>
     </h1>
     
+    <!-- Daily CTA Card (Day1〜Day30専用) -->
+    {% if daily_cta_copy %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-lg" style="background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); border: none;">
+                <div class="card-body py-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="flex-grow-1">
+                            <div class="small text-uppercase text-white-50 fw-bold mb-1">DAY {{ day_index }}</div>
+                            <h3 class="text-white mb-2 fw-bold">今日の1枚を記録</h3>
+                            <p class="text-white mb-0" style="font-size: 1.1rem;">{{ daily_cta_copy }}</p>
+                        </div>
+                        <div class="text-white-50 small text-end">
+                            <i class="fas fa-clock"></i> 所要: 30秒
+                        </div>
+                    </div>
+                    <a href="{{ url_for('face_template.capture') }}" class="btn btn-light btn-lg w-100 shadow-sm" style="font-weight: 600;">
+                        <i class="fas fa-camera"></i> 今日の記録を撮る
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
     <!-- 今日の記録 Hero Card -->
     <div class="row mb-4">
         <div class="col-12">
@@ -65,26 +90,6 @@
         </div>
     </div>
     
-    <!-- 初回ユーザー向けの誘導カード -->
-    {% if is_first_day %}
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card shadow-lg" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none;">
-                <div class="card-body text-center py-5">
-                    <h2 class="text-white mb-3 fw-bold" style="font-size: 1.75rem;">
-                        <i class="fas fa-shoe-prints"></i> 次は「今日の一歩」
-                    </h2>
-                    <p class="text-white mb-4 fs-5">
-                        毎日1つ、セルフケアのアクションを実行しましょう
-                    </p>
-                    <a href="{{ url_for('client.daily_action') }}" class="btn btn-light btn-lg px-5 py-3 shadow" style="font-size: 1.25rem; font-weight: 600;">
-                        <i class="fas fa-play-circle"></i> 今日の一歩を見る
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
     
     <!-- LookRecordストリーク表示（コンパクト版） -->
     <div class="row mb-4">
@@ -401,13 +406,25 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="text-center">
-                <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#toolsCollapse" aria-expanded="false" aria-controls="toolsCollapse">
-                    <i class="fas fa-tools"></i> ツールを開く
+                <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#toolsCollapse" aria-expanded="false" aria-controls="toolsCollapse">
+                    <i class="fas fa-tools"></i> {% if daily_cta_copy %}他の機能{% else %}ツールを開く{% endif %}
                 </button>
             </div>
             <div class="collapse mt-3" id="toolsCollapse">
                 <div class="card card-body">
                     <div class="row g-3">
+                        <div class="col-6 col-md-4">
+                            <a href="{{ url_for('client.daily_action') }}" class="btn btn-primary w-100">
+                                <i class="fas fa-shoe-prints d-block mb-2" style="font-size: 1.5rem;"></i>
+                                今日の一歩
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <a href="{{ url_for('client.progress') }}" class="btn btn-outline-success w-100">
+                                <i class="fas fa-chart-line d-block mb-2" style="font-size: 1.5rem;"></i>
+                                変化を見る
+                            </a>
+                        </div>
                         <div class="col-6 col-md-4">
                             <a href="{{ url_for('client.weekly_summary') }}" class="btn btn-outline-dark w-100">
                                 <i class="fas fa-chart-bar d-block mb-2" style="font-size: 1.5rem;"></i>
@@ -430,6 +447,12 @@
                             <a href="{{ url_for('client.select_impression') }}" class="btn btn-outline-dark w-100">
                                 <i class="fas fa-smile d-block mb-2" style="font-size: 1.5rem;"></i>
                                 なりたい印象
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <a href="{{ url_for('client.look_records') }}" class="btn btn-outline-dark w-100">
+                                <i class="fas fa-history d-block mb-2" style="font-size: 1.5rem;"></i>
+                                記録一覧
                             </a>
                         </div>
                         <div class="col-6 col-md-4">
