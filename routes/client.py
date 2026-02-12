@@ -46,7 +46,8 @@ def onboarding():
     
     # テンプレート選択（最初のテンプレートを使用）
     from models.face_template import FaceTemplate
-    default_template = FaceTemplate.select().order_by(FaceTemplate.id.asc()).first()
+    # DeferredForeignKeyの自動JOINを避けるため、シンプルなクエリを使用
+    default_template = FaceTemplate.select(FaceTemplate).order_by(FaceTemplate.id.asc()).first()
     
     if not default_template:
         flash('テンプレートが見つかりません', 'danger')

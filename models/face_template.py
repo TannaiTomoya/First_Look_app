@@ -12,8 +12,8 @@ from models import BaseModel
 class FaceTemplate(BaseModel):
     """顔のベース画像"""
     id = AutoField(primary_key=True)
-    user = DeferredForeignKey('User', backref='face_templates', on_delete='CASCADE', column_name='user_id')
-    impression = DeferredForeignKey('DesiredFace', backref='templates', null=True, on_delete='SET NULL', column_name='impression_id')
+    user = DeferredForeignKey('User', backref='face_templates', on_delete='CASCADE')
+    impression = DeferredForeignKey('DesiredFace', backref='templates', null=True, on_delete='SET NULL')
     base_image_path = CharField(max_length=255)  # ベース画像パス
     created_at = DateTimeField(default=datetime.now)
     
@@ -52,10 +52,10 @@ class FacePart(BaseModel):
 class FaceComposition(BaseModel):
     """ユーザーの顔パーツ選択・合成"""
     id = AutoField(primary_key=True)
-    user = DeferredForeignKey('User', backref='face_compositions', on_delete='CASCADE', column_name='user_id')
-    template = DeferredForeignKey('FaceTemplate', backref='compositions', on_delete='CASCADE', column_name='template_id')
-    eyebrow_part = DeferredForeignKey('FacePart', backref='eyebrow_uses', null=True, on_delete='SET NULL', column_name='eyebrow_part_id')
-    nose_part = DeferredForeignKey('FacePart', backref='nose_uses', null=True, on_delete='SET NULL', column_name='nose_part_id')
+    user = DeferredForeignKey('User', backref='face_compositions', on_delete='CASCADE')
+    template = DeferredForeignKey('FaceTemplate', backref='compositions', on_delete='CASCADE')
+    eyebrow_part = DeferredForeignKey('FacePart', backref='eyebrow_uses', null=True, on_delete='SET NULL')
+    nose_part = DeferredForeignKey('FacePart', backref='nose_uses', null=True, on_delete='SET NULL')
     adjustments = TextField(null=True)  # JSON形式で微調整データを保存
     created_at = DateTimeField(default=datetime.now)
     updated_at = DateTimeField(default=datetime.now)

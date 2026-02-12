@@ -12,7 +12,7 @@ from models import BaseModel
 class Coach(BaseModel):
     """コーチプロフィール情報を管理（User拡張）"""
     id = AutoField(primary_key=True)
-    user = DeferredForeignKey('User', backref='coach_profile', unique=True, on_delete='CASCADE', column_name='user_id')
+    user = DeferredForeignKey('User', backref='coach_profile', unique=True, on_delete='CASCADE')
     bio = TextField(null=True)  # 自己紹介
     expertise = TextField(null=True)  # 得意分野
     area = CharField(max_length=100, null=True)  # 対応エリア
@@ -41,7 +41,7 @@ class Coach(BaseModel):
 class Menu(BaseModel):
     """コーチのメニュー管理"""
     id = AutoField(primary_key=True)
-    coach = DeferredForeignKey('Coach', backref='menus', on_delete='CASCADE', column_name='coach_id')
+    coach = DeferredForeignKey('Coach', backref='menus', on_delete='CASCADE')
     title = CharField(max_length=100)  # メニュータイトル
     description = TextField(null=True)  # メニュー内容
     price = IntegerField()  # 価格（円）
