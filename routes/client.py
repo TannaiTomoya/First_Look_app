@@ -73,6 +73,13 @@ def onboarding():
     return render_template("client/onboarding.html")
 
 
+@client.route("/onboarding/done")
+@client_required
+def onboarding_done():
+    """オンボーディング完了画面"""
+    return render_template("client/onboarding_done.html")
+
+
 @client.route("/dashboard")
 @client_required
 def dashboard():

@@ -49,10 +49,16 @@ def save_base_image():
             base_image_path=image_path
         )
         
+        # onboardingクエリを引き継ぐ
+        onboarding_param = request.args.get('onboarding')
+        redirect_url = url_for('face_template.preview', template_id=template.id)
+        if onboarding_param:
+            redirect_url += f'?onboarding={onboarding_param}'
+        
         return jsonify({
             'success': True,
             'template_id': template.id,
-            'redirect_url': url_for('face_template.preview', template_id=template.id)
+            'redirect_url': redirect_url
         })
     
     except Exception as e:
