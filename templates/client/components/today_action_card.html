@@ -1,4 +1,24 @@
 <!-- TodayActionCard（最優先・最上部） -->
+<script>
+function trackCaptureClick(e) {
+    // イベント記録（非同期・非ブロッキング）
+    try {
+        const payload = JSON.stringify({event: "dashboard_capture_clicked"});
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon("/client/api/event", payload);
+        } else {
+            fetch("/client/api/event", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: payload,
+                keepalive: true
+            }).catch(() => {}); // サイレントエラー
+        }
+    } catch(err) {}
+    // リンクの遷移は標準動作で継続
+}
+</script>
+
 <div class="row mb-4">
     <div class="col-12">
         <div class="card shadow-lg" style="border: none;">
@@ -26,7 +46,10 @@
                     1分で終わります。連続記録を守りましょう。
                 </p>
                 {% endif %}
-                <a href="{{ url_for('face_template.capture') }}" class="btn btn-light btn-lg px-5 py-3 shadow" style="font-size: 1.25rem; font-weight: 600;">
+                <a href="{{ url_for('face_template.capture') }}" 
+                   class="btn btn-light btn-lg px-5 py-3 shadow" 
+                   style="font-size: 1.25rem; font-weight: 600;"
+                   onclick="trackCaptureClick(event)">
                     <i class="fas fa-camera"></i> 今日の1枚を撮る
                 </a>
             </div>

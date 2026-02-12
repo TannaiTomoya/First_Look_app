@@ -223,6 +223,14 @@ def dashboard():
         and not tools_override
     )
 
+    # Focus Mode表示イベント記録
+    if show_focus_mode:
+        try:
+            from utils.event_logger import log_event
+            log_event(current_user, "dashboard_focus_shown")
+        except:
+            pass  # サイレントエラー
+
     return render_template(
         "client/dashboard.html",
         selected_impression=selected_impression,
@@ -1452,11 +1460,12 @@ def save_look_record():
         new_achievement = check_streak_achievements(current_user, current_streak)
 
         # ========================================
-        # イベントログ記録（Phase E2）
+        # イベントログ記録（Phase E2 + Focus Mode計測）
         # ========================================
         from utils.event_logger import log_event, EVENT_SAVED_RECORD
 
         log_event(current_user, EVENT_SAVED_RECORD)
+        log_event(current_user, "look_record_saved")  # Focus Mode計測用
 
         current_app.logger.info(
             f"Look record saved: user={current_user.id}, date={record_date}, preset={preset}, strength={strength}, is_updated={not created}"
@@ -1485,6 +1494,43 @@ def save_look_record():
     except Exception as e:
         current_app.logger.exception("save_look_record failed")
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@client.route("/api/event", methods=["POST"])
+@login_required
+@client_required
+def log_client_event():
+    """
+    クライアント側イベントログ記録API（Focus Mode計測用）
+    
+    POST /client/api/event
+    Body: {"event": "dashboard_capture_clicked"}
+    """
+    try:
+        data = request.get_json()
+        if not data or "event" not in data:
+            return jsonify({"ok": False, "error": "event_required"}), 400
+        
+        event_name = data["event"]
+        
+        # allowlist（セキュリティ）
+        ALLOWED_EVENTS = [
+            "dashboard_capture_clicked",
+            "dashboard_tools_override_clicked",
+        ]
+        
+        if event_name not in ALLOWED_EVENTS:
+            return jsonify({"ok": False, "error": "invalid_event"}), 400
+        
+        # イベント記録
+        from utils.event_logger import log_event
+        log_event(current_user, event_name)
+        
+        return jsonify({"ok": True}), 200
+    
+    except Exception as e:
+        current_app.logger.error(f"log_client_event failed: {e}")
+        return jsonify({"ok": False, "error": "internal_error"}), 500
 
 
 # ========================================
