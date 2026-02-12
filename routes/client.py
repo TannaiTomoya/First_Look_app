@@ -1608,10 +1608,10 @@ def daily_action():
     )
 
 
-@client.route("/complete_daily_action")
+@client.route("/api/daily-action/complete", methods=["POST"])
 @client_required
 def complete_daily_action():
-    """今日の一歩を完了"""
+    """今日の一歩を完了（API）"""
     today = date.today()
 
     try:
@@ -1635,6 +1635,13 @@ def complete_daily_action():
 
         # ストリーク再計算
         streak = calculate_streak(current_user.id)
+
+        # イベントログ記録
+        try:
+            from utils.event_logger import log_event, EVENT_COMPLETED_DAILY_ACTION
+            log_event(current_user, EVENT_COMPLETED_DAILY_ACTION)
+        except:
+            pass  # サイレントエラー
 
         current_app.logger.info(
             f"Daily action completed: user={current_user.id}, action={action.action_key}, streak={streak}"
