@@ -297,8 +297,16 @@ saveImageBtn.addEventListener('click', async () => {
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         formData.append('csrf_token', csrfToken);
         
+        // onboardingパラメータを引き継ぐ
+        const urlParams = new URLSearchParams(window.location.search);
+        const onboardingParam = urlParams.get('onboarding');
+        let fetchUrl = '{{ url_for("face_template.save_base_image") }}';
+        if (onboardingParam) {
+            fetchUrl += `?onboarding=${onboardingParam}`;
+        }
+        
         try {
-            const response = await fetch('{{ url_for("face_template.save_base_image") }}', {
+            const response = await fetch(fetchUrl, {
                 method: 'POST',
                 body: formData
             });
