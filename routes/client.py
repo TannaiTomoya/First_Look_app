@@ -151,11 +151,11 @@ def dashboard():
     # LookRecordストリーク（Freeze考慮版）
     current_streak = calculate_current_streak_with_freeze(current_user)
     longest_streak = calculate_longest_streak(current_user.id)
-    has_today = has_record_today(current_user.id)
+    has_today_record = has_record_today(current_user.id)
 
     # Freeze使用チェック（今日使用されたか）
     freeze_used_today = (
-        not has_today and current_user.last_freeze_used_at == date.today()
+        not has_today_record and current_user.last_freeze_used_at == date.today()
     )
 
     # 達成バッジ取得（Phase D4）
@@ -220,7 +220,7 @@ def dashboard():
         today_check=today_check,
         current_streak=current_streak,
         longest_streak=longest_streak,
-        has_today=has_today,
+        has_today_record=has_today_record,
         freeze_used_today=freeze_used_today,
         achievements=achievements,
         hide_scores=current_user.hide_scores,
