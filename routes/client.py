@@ -1258,7 +1258,7 @@ def daily_action():
     if not action:
         random_action = get_random_action()
         action = DailyAction.create(
-            user=current_user,
+            user_id=current_user.id,
             date=today,
             action_key=random_action['key'],
             completed=False
