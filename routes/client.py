@@ -173,6 +173,26 @@ def dashboard():
     if today_record and yesterday_record and today_record.score_total and yesterday_record.score_total:
         score_change = today_record.score_total - yesterday_record.score_total
 
+    # Day0と最新の記録を取得（変化カード用）
+    day0_record = (
+        LookRecord.select()
+        .where(LookRecord.user_id == current_user.id)
+        .order_by(LookRecord.record_date.asc())
+        .first()
+    )
+    latest_record = (
+        LookRecord.select()
+        .where(LookRecord.user_id == current_user.id)
+        .order_by(LookRecord.record_date.desc())
+        .first()
+    )
+    
+    # Day0からの変化量を計算
+    day0_progress = None
+    if day0_record and latest_record and day0_record.id != latest_record.id:
+        if day0_record.score_total and latest_record.score_total:
+            day0_progress = latest_record.score_total - day0_record.score_total
+
     return render_template(
         "client/dashboard.html",
         selected_impression=selected_impression,
@@ -186,6 +206,9 @@ def dashboard():
         achievements=achievements,
         hide_scores=current_user.hide_scores,
         score_change=score_change,
+        day0_record=day0_record,
+        latest_record=latest_record,
+        day0_progress=day0_progress,
     )
 
 

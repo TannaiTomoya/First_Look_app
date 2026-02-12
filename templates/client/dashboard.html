@@ -65,6 +65,113 @@
         </div>
     </div>
     
+    <!-- 変化カード（Day0 → 最新） -->
+    {% if day0_record and latest_record and day0_record.id != latest_record.id %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-lg" style="border: none; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+                <div class="card-body py-4">
+                    <h4 class="text-center mb-4 fw-bold">
+                        <i class="fas fa-chart-area text-primary"></i> あなたの変化
+                    </h4>
+                    <div class="row align-items-center">
+                        <!-- Day0画像 -->
+                        <div class="col-md-5 text-center mb-3 mb-md-0">
+                            <div class="position-relative d-inline-block">
+                                {% if day0_record.image_path %}
+                                <img src="{{ url_for('client.serve_upload', filename=day0_record.image_path) }}" 
+                                     alt="Day0" 
+                                     class="img-fluid rounded shadow"
+                                     style="max-width: 250px; max-height: 250px; object-fit: cover;">
+                                <div class="position-absolute bottom-0 start-0 bg-dark text-white px-2 py-1 rounded" style="font-size: 0.75rem;">
+                                    Day0
+                                </div>
+                                {% else %}
+                                <div class="bg-secondary rounded d-flex align-items-center justify-content-center" style="width: 250px; height: 250px;">
+                                    <i class="fas fa-image fa-3x text-white"></i>
+                                </div>
+                                {% endif %}
+                                <div class="mt-2 text-muted small">
+                                    {{ day0_record.record_date.strftime('%Y年%m月%d日') }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 矢印 + 変化量 -->
+                        <div class="col-md-2 text-center mb-3 mb-md-0">
+                            <div class="d-flex flex-column align-items-center">
+                                <i class="fas fa-arrow-right fa-2x text-primary mb-2"></i>
+                                {% if day0_progress is not none and not hide_scores %}
+                                <div class="mt-2">
+                                    {% if day0_progress > 0 %}
+                                    <div class="badge bg-success fs-5 px-3 py-2">
+                                        <i class="fas fa-arrow-up"></i> +{{ day0_progress }}
+                                    </div>
+                                    {% elif day0_progress < 0 %}
+                                    <div class="badge bg-warning fs-5 px-3 py-2">
+                                        <i class="fas fa-arrow-down"></i> {{ day0_progress }}
+                                    </div>
+                                    {% else %}
+                                    <div class="badge bg-secondary fs-5 px-3 py-2">
+                                        <i class="fas fa-equals"></i> 0
+                                    </div>
+                                    {% endif %}
+                                    <div class="text-muted small mt-2">
+                                        Self Care Score
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="text-muted small mt-2">
+                                    継続記録中
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- 最新画像 -->
+                        <div class="col-md-5 text-center">
+                            <div class="position-relative d-inline-block">
+                                {% if latest_record.image_path %}
+                                <img src="{{ url_for('client.serve_upload', filename=latest_record.image_path) }}" 
+                                     alt="最新" 
+                                     class="img-fluid rounded shadow"
+                                     style="max-width: 250px; max-height: 250px; object-fit: cover;">
+                                <div class="position-absolute bottom-0 start-0 bg-primary text-white px-2 py-1 rounded" style="font-size: 0.75rem;">
+                                    最新
+                                </div>
+                                {% else %}
+                                <div class="bg-secondary rounded d-flex align-items-center justify-content-center" style="width: 250px; height: 250px;">
+                                    <i class="fas fa-image fa-3x text-white"></i>
+                                </div>
+                                {% endif %}
+                                <div class="mt-2 text-muted small">
+                                    {{ latest_record.record_date.strftime('%Y年%m月%d日') }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- テキスト表示 -->
+                    {% if day0_progress is not none and not hide_scores %}
+                    <div class="text-center mt-4">
+                        <p class="mb-0 fs-5 fw-bold text-dark">
+                            Day0から 
+                            {% if day0_progress > 0 %}
+                                <span class="text-success">+{{ day0_progress }}</span>
+                            {% elif day0_progress < 0 %}
+                                <span class="text-warning">{{ day0_progress }}</span>
+                            {% else %}
+                                <span class="text-secondary">変化なし</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
     <!-- LookRecordストリーク表示 -->
     <div class="row mb-4">
         <div class="col-12">
