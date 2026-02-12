@@ -155,6 +155,24 @@ def dashboard():
     from utils.achievement import get_user_achievements
     achievements = get_user_achievements(current_user)
 
+    # 昨日からの変化を計算
+    yesterday = date.today() - timedelta(days=1)
+    yesterday_record = (
+        LookRecord.select()
+        .where((LookRecord.user_id == current_user.id) & (LookRecord.record_date == yesterday))
+        .first()
+    )
+    today_record = (
+        LookRecord.select()
+        .where((LookRecord.user_id == current_user.id) & (LookRecord.record_date == date.today()))
+        .first()
+    )
+    
+    # 変化量を計算（今日 - 昨日）
+    score_change = None
+    if today_record and yesterday_record and today_record.score_total and yesterday_record.score_total:
+        score_change = today_record.score_total - yesterday_record.score_total
+
     return render_template(
         "client/dashboard.html",
         selected_impression=selected_impression,
@@ -167,6 +185,7 @@ def dashboard():
         freeze_used_today=freeze_used_today,
         achievements=achievements,
         hide_scores=current_user.hide_scores,
+        score_change=score_change,
     )
 
 

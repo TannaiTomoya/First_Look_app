@@ -9,6 +9,62 @@
         <small class="text-muted fs-6">ようこそ、{{ current_user.username }}さん</small>
     </h1>
     
+    <!-- 今日の記録 Hero Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            {% if not has_today %}
+            <!-- 未記録：CTAカード -->
+            <div class="card shadow-lg" style="background: linear-gradient(135deg, #ff6b35 0%, #ff8f5f 100%); border: none;">
+                <div class="card-body text-center py-5">
+                    <h2 class="text-white mb-3 fw-bold" style="font-size: 2rem;">
+                        <i class="fas fa-camera"></i> 今日の1枚を撮影
+                    </h2>
+                    <p class="text-white mb-4 fs-5">
+                        今日の変化を記録しましょう
+                    </p>
+                    <a href="{{ url_for('face_template.capture') }}" class="btn btn-light btn-lg px-5 py-3 shadow" style="font-size: 1.25rem; font-weight: 600;">
+                        <i class="fas fa-play-circle"></i> 今日の記録をする
+                    </a>
+                </div>
+            </div>
+            {% else %}
+            <!-- 記録済み：完了カード -->
+            <div class="card shadow-lg" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border: none;">
+                <div class="card-body text-center py-5">
+                    <h2 class="text-white mb-3 fw-bold" style="font-size: 2rem;">
+                        <i class="fas fa-check-circle"></i> 今日の記録完了！
+                    </h2>
+                    {% if score_change is not none and not hide_scores %}
+                    <p class="text-white mb-4 fs-5">
+                        昨日からの変化: 
+                        {% if score_change > 0 %}
+                            <span class="badge bg-light text-success fs-5 px-3 py-2">
+                                <i class="fas fa-arrow-up"></i> +{{ score_change }}
+                            </span>
+                        {% elif score_change < 0 %}
+                            <span class="badge bg-light text-warning fs-5 px-3 py-2">
+                                <i class="fas fa-arrow-down"></i> {{ score_change }}
+                            </span>
+                        {% else %}
+                            <span class="badge bg-light text-dark fs-5 px-3 py-2">
+                                <i class="fas fa-equals"></i> 変化なし
+                            </span>
+                        {% endif %}
+                    </p>
+                    {% else %}
+                    <p class="text-white mb-4 fs-5">
+                        お疲れ様でした！継続が力になります
+                    </p>
+                    {% endif %}
+                    <a href="{{ url_for('client.progress') }}" class="btn btn-light btn-lg px-5 py-3 shadow" style="font-size: 1.25rem; font-weight: 600;">
+                        <i class="fas fa-chart-line"></i> 変化を確認する
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
     <!-- LookRecordストリーク表示 -->
     <div class="row mb-4">
         <div class="col-12">
@@ -230,37 +286,32 @@
         </div>
     </div>
     
-    <!-- クイックアクション -->
+    <!-- ナビゲーションリンク（コンパクト版） -->
     <div class="row mb-4">
         <div class="col-md-12">
-            <h5 class="mb-3"><i class="fas fa-bolt"></i> クイックアクション</h5>
-            <a href="{{ url_for('client.daily_action') }}" class="btn btn-primary me-2 mb-2" title="今日の一歩">
-                <i class="fas fa-shoe-prints"></i> 今日の一歩
-            </a>
-            <a href="{{ url_for('client.weekly_summary') }}" class="btn btn-outline-dark me-2 mb-2" title="週間サマリー">
-                <i class="fas fa-chart-bar"></i> 週間サマリー
-            </a>
-            <a href="{{ url_for('client.progress') }}" class="btn btn-success me-2 mb-2" title="変化を見る">
-                <i class="fas fa-chart-line"></i> 変化を見る
-            </a>
-            <a href="{{ url_for('client.select_impression') }}" class="btn btn-outline-primary me-2 mb-2" title="なりたい印象を選択">
-                <i class="fas fa-smile"></i> なりたい印象
-            </a>
-            <a href="{{ url_for('client.skin_check') }}" class="btn btn-outline-primary me-2 mb-2" title="最新の肌質・肌悩み">
-                <i class="fas fa-check-circle"></i> 肌診断
-            </a>
-            <a href="{{ url_for('client.look_records') }}" class="btn btn-outline-primary me-2 mb-2" title="見た目記録">
-                <i class="fas fa-history"></i> 見た目記録
-            </a>
-            <a href="{{ url_for('client.look_records_calendar') }}" class="btn btn-outline-primary me-2 mb-2" title="カレンダー表示">
-                <i class="fas fa-calendar-alt"></i> カレンダー
-            </a>
-            <a href="{{ url_for('client.referral') }}" class="btn btn-success me-2 mb-2" title="友達を招待">
-                <i class="fas fa-gift"></i> 友達を招待
-            </a>
-            <a href="{{ url_for('client.settings') }}" class="btn btn-outline-secondary me-2 mb-2" title="設定">
-                <i class="fas fa-cog"></i> 設定
-            </a>
+            <div class="d-flex flex-wrap gap-2 justify-content-center">
+                <a href="{{ url_for('client.daily_action') }}" class="btn btn-sm btn-outline-dark" title="今日の一歩">
+                    <i class="fas fa-shoe-prints"></i> 今日の一歩
+                </a>
+                <a href="{{ url_for('client.weekly_summary') }}" class="btn btn-sm btn-outline-dark" title="週間サマリー">
+                    <i class="fas fa-chart-bar"></i> 週間サマリー
+                </a>
+                <a href="{{ url_for('client.progress') }}" class="btn btn-sm btn-outline-success" title="変化を見る">
+                    <i class="fas fa-chart-line"></i> 変化を見る
+                </a>
+                <a href="{{ url_for('client.look_records') }}" class="btn btn-sm btn-outline-dark" title="見た目記録">
+                    <i class="fas fa-history"></i> 見た目記録
+                </a>
+                <a href="{{ url_for('client.look_records_calendar') }}" class="btn btn-sm btn-outline-dark" title="カレンダー">
+                    <i class="fas fa-calendar-alt"></i> カレンダー
+                </a>
+                <a href="{{ url_for('client.referral') }}" class="btn btn-sm btn-success" title="友達を招待">
+                    <i class="fas fa-gift"></i> 招待
+                </a>
+                <a href="{{ url_for('client.settings') }}" class="btn btn-sm btn-outline-secondary" title="設定">
+                    <i class="fas fa-cog"></i> 設定
+                </a>
+            </div>
         </div>
     </div>
     
