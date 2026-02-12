@@ -27,8 +27,8 @@
             --primary-orange: #ff6b35;
             --dark-bg: #1a1a2e;
             --darker-bg: #16213e;
-            --text-light: #e6e6e6;
-            --text-muted: #b0b0b0;
+            --text-light: #ffffff;
+            --text-muted: #d4d4d4;
         }
         
         body {
@@ -77,7 +77,7 @@
         
         .hero-subtitle {
             font-size: clamp(1.25rem, 4vw, 1.75rem);
-            color: var(--text-muted);
+            color: #e8e8e8;
             margin-bottom: 2rem;
         }
         
@@ -126,6 +126,14 @@
             transition: all 0.3s ease;
         }
         
+        .feature-card h4 {
+            color: #ffffff;
+        }
+        
+        .feature-card p {
+            color: #d4d4d4;
+        }
+        
         .feature-card:hover {
             transform: translateY(-5px);
             border-color: var(--primary-orange);
@@ -162,6 +170,10 @@
             border-bottom: none;
         }
         
+        .benefit-item h5 {
+            color: #ffffff;
+        }
+        
         /* FAQ */
         .accordion-button {
             background: rgba(255,255,255,0.05);
@@ -181,7 +193,8 @@
         
         .accordion-body {
             background: rgba(255,255,255,0.03);
-            color: var(--text-muted);
+            color: #e0e0e0;
+            font-size: 1rem;
         }
         
         /* Footer */
@@ -205,6 +218,10 @@
             padding: 1.5rem;
             text-align: center;
             height: 100%;
+        }
+        
+        .step-card h5 {
+            color: #ffffff;
         }
         
         /* PWA Install Button */
@@ -269,7 +286,7 @@
                     <p class="hero-subtitle">
                         AIがあなたの変化を記録・分析・加速させる。
                     </p>
-                    <p class="mb-4 text-muted" style="font-size: 1.125rem;">
+                    <p class="mb-4" style="font-size: 1.125rem; color: #d8d8d8;">
                         写真を撮るだけ。<br>
                         未来の顔を確認し、変化を数値で可視化。<br>
                         1日1分のセルフケアを習慣に。
@@ -291,7 +308,7 @@
                         <h2 class="h1 fw-bold mb-3">
                             1分で未来の自分を確認
                         </h2>
-                        <p class="text-muted mb-4" style="font-size: 1.125rem;">
+                        <p class="mb-4" style="font-size: 1.125rem; color: #d8d8d8;">
                             写真をアップロードするだけで、<br>
                             Future Faceが変化をシミュレーションします。
                         </p>
@@ -402,8 +419,8 @@
                 <div class="col-md-6 col-lg-3">
                     <div class="text-center">
                         <div class="step-number">1</div>
-                        <h4 class="h5 fw-bold mb-2">撮影する</h4>
-                        <p class="text-muted">
+                        <h4 class="h5 fw-bold mb-2" style="color: #ffffff;">撮影する</h4>
+                        <p style="color: #d4d4d4;">
                             顔写真をアップロード。
                         </p>
                     </div>
@@ -411,8 +428,8 @@
                 <div class="col-md-6 col-lg-3">
                     <div class="text-center">
                         <div class="step-number">2</div>
-                        <h4 class="h5 fw-bold mb-2">Future Face適用</h4>
-                        <p class="text-muted">
+                        <h4 class="h5 fw-bold mb-2" style="color: #ffffff;">Future Face適用</h4>
+                        <p style="color: #d4d4d4;">
                             AIが変化をシミュレーション。
                         </p>
                     </div>
@@ -420,8 +437,8 @@
                 <div class="col-md-6 col-lg-3">
                     <div class="text-center">
                         <div class="step-number">3</div>
-                        <h4 class="h5 fw-bold mb-2">記録する</h4>
-                        <p class="text-muted">
+                        <h4 class="h5 fw-bold mb-2" style="color: #ffffff;">記録する</h4>
+                        <p style="color: #d4d4d4;">
                             毎日1枚保存。
                         </p>
                     </div>
@@ -429,8 +446,8 @@
                 <div class="col-md-6 col-lg-3">
                     <div class="text-center">
                         <div class="step-number">4</div>
-                        <h4 class="h5 fw-bold mb-2">変化を確認</h4>
-                        <p class="text-muted">
+                        <h4 class="h5 fw-bold mb-2" style="color: #ffffff;">変化を確認</h4>
+                        <p style="color: #d4d4d4;">
                             Day0とTodayを比較。
                         </p>
                     </div>
@@ -550,7 +567,7 @@
                     <h2 class="display-5 fw-bold mb-4">
                         変化を記録しない人は、変化しない。
                     </h2>
-                    <p class="lead text-muted mb-5">
+                    <p class="lead mb-5" style="color: #d8d8d8;">
                         今日の1枚から始めましょう。
                     </p>
                     <a href="{{ url_for('auth.register') }}" class="btn btn-cta btn-lg">
