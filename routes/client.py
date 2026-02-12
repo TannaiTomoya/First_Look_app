@@ -159,12 +159,12 @@ def dashboard():
     yesterday = date.today() - timedelta(days=1)
     yesterday_record = (
         LookRecord.select()
-        .where((LookRecord.user_id == current_user.id) & (LookRecord.record_date == yesterday))
+        .where((LookRecord.user_id == current_user.id) & (LookRecord.date == yesterday))
         .first()
     )
     today_record = (
         LookRecord.select()
-        .where((LookRecord.user_id == current_user.id) & (LookRecord.record_date == date.today()))
+        .where((LookRecord.user_id == current_user.id) & (LookRecord.date == date.today()))
         .first()
     )
     
@@ -177,13 +177,13 @@ def dashboard():
     day0_record = (
         LookRecord.select()
         .where(LookRecord.user_id == current_user.id)
-        .order_by(LookRecord.record_date.asc())
+        .order_by(LookRecord.date.asc())
         .first()
     )
     latest_record = (
         LookRecord.select()
         .where(LookRecord.user_id == current_user.id)
-        .order_by(LookRecord.record_date.desc())
+        .order_by(LookRecord.date.desc())
         .first()
     )
     
