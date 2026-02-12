@@ -57,7 +57,7 @@
                     </p>
                     {% endif %}
                     <a href="{{ url_for('client.progress') }}" class="btn btn-light btn-lg px-5 py-3 shadow" style="font-size: 1.25rem; font-weight: 600;">
-                        <i class="fas fa-chart-line"></i> 変化を確認する
+                        <i class="fas fa-chart-line"></i> Before / Today
                     </a>
                 </div>
             </div>
@@ -316,7 +316,7 @@
                 <div class="card border-primary shadow-lg" style="border-width: 3px;">
                     <div class="card-body text-center py-5" style="background: linear-gradient(135deg, #e7f3ff 0%, #cfe9ff 100%);">
                         <h2 class="mb-3">
-                            <i class="fas fa-clock text-primary"></i> 今日のチェックを始めましょう！
+                            <i class="fas fa-camera text-primary"></i> 今日の1枚を撮影
                         </h2>
                         <p class="lead mb-3">
                             {% if current_user.gender == 'female' %}
