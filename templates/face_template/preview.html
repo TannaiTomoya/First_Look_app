@@ -345,55 +345,18 @@ canvas.concealer-off {
                 </div>
             </div>
             
-            <!-- Future Face パネル -->
+            <!-- 今日の記録として保存 -->
             <div class="card mt-3">
-                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-header bg-success text-white">
                     <h4 class="mb-0">
-                        <i class="fas fa-magic"></i> Future Face
-                        <span class="badge bg-light text-dark ms-2">Beta</span>
+                        <i class="fas fa-save"></i> 記録を保存
                     </h4>
                 </div>
                 <div class="card-body">
-                    <!-- ON/OFF トグル -->
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" id="future-face-toggle">
-                        <label class="form-check-label" for="future-face-toggle">
-                            <strong>Future Face を有効化</strong>
-                        </label>
-                    </div>
-                    
-                    <!-- プリセット選択 -->
-                    <div class="mb-3">
-                        <label class="form-label small mb-1"><strong>効果:</strong></label>
-                        <select class="form-select form-select-sm" id="future-face-preset">
-                            <option value="all">すべて（輪郭+肌+若返り）</option>
-                            <option value="slim">輪郭のみ（小顔効果）</option>
-                            <option value="skin">肌のみ（明るく滑らかに）</option>
-                            <option value="young">若返りのみ（ほうれい線軽減）</option>
-                        </select>
-                    </div>
-                    
-                    <!-- 強度スライダー -->
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <label class="small mb-0">強度</label>
-                            <span class="badge bg-secondary" id="future-face-strength-display">40</span>
-                        </div>
-                        <input type="range" class="form-range" id="future-face-strength" 
-                               min="0" max="100" value="40" step="5">
-                        <small class="text-muted">
-                            <i class="fas fa-info-circle"></i> 0: 効果なし / 40-60: 自然 / 80-100: 強め
-                        </small>
-                    </div>
-                    
-                    <!-- ヒント -->
-                    <div class="alert alert-info mb-3 py-2 px-3" role="alert">
-                        <small>
-                            <i class="fas fa-lightbulb"></i> 
-                            <strong>ヒント:</strong> 顔が正面を向いているときに最も効果的です。
-                            強度は40-60が自然です。
-                        </small>
-                    </div>
+                    <p class="text-muted mb-3">
+                        <i class="fas fa-info-circle"></i> 
+                        今日の顔を記録として保存します。Day0からの変化を追跡できます。
+                    </p>
                     
                     <!-- 保存ボタン（メインCTA） -->
                     <div class="d-grid gap-2">
@@ -411,6 +374,17 @@ canvas.concealer-off {
                         </button>
                         <a href="{{ url_for('client.look_records') }}" class="btn btn-outline-primary btn-sm">
                             <i class="fas fa-history"></i> 記録一覧を見る
+                        </a>
+                    </div>
+                    
+                    <!-- Future Faceシミュレーターへのリンク -->
+                    <div class="mt-3 text-center">
+                        <hr>
+                        <p class="small text-muted mb-2">
+                            <i class="fas fa-magic"></i> 理想の顔をシミュレーションしたい方は
+                        </p>
+                        <a href="{{ url_for('client.future_face_simulator') }}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-wand-magic-sparkles"></i> Future Faceシミュレーター
                         </a>
                     </div>
                 </div>
@@ -1844,15 +1818,10 @@ function bindSaveLookRecordButton() {
             // PNG取得
             const imageDataURL = canvas.toDataURL('image/png');
             
-            // 現在のFuture Face設定を取得（オプション - 無効でもOK）
-            const toggle = document.getElementById('future-face-toggle');
-            const preset = (toggle && toggle.checked) ? document.getElementById('future-face-preset')?.value : null;
-            const strength = (toggle && toggle.checked) ? parseInt(document.getElementById('future-face-strength')?.value || 0) : 0;
-            
             // CSRFトークン取得
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
             
-            // サーバーに送信
+            // サーバーに送信（Future Face設定なし）
             const response = await fetch('/client/api/look-records/save', {
                 method: 'POST',
                 headers: {
@@ -1860,9 +1829,7 @@ function bindSaveLookRecordButton() {
                     'X-CSRFToken': csrfToken
                 },
                 body: JSON.stringify({
-                    image_base64: imageDataURL,
-                    preset: preset,
-                    strength: strength
+                    image_base64: imageDataURL
                 })
             });
             
@@ -1954,20 +1921,6 @@ function bindSaveLookRecordButton() {
             saveBtn.innerHTML = initialBtnHtml;
         }
     });
-    
-    // Future Face設定が変更されたら、ボタンを元に戻す
-    const resetButtonIfSaved = () => {
-        if (savedToday) {
-            savedToday = false;
-            saveBtn.innerHTML = initialBtnHtml;
-            saveBtn.classList.remove('btn-outline-success');
-            saveBtn.classList.add('btn-success');
-        }
-    };
-    
-    document.getElementById('future-face-toggle')?.addEventListener('change', resetButtonIfSaved);
-    document.getElementById('future-face-preset')?.addEventListener('change', resetButtonIfSaved);
-    document.getElementById('future-face-strength')?.addEventListener('change', resetButtonIfSaved);
     
     console.log('✓ Look Record保存ボタンをバインドしました');
 }

@@ -412,6 +412,32 @@ def ai_skin_analysis():
         return jsonify({"error": True, "message": f"診断中にエラーが発生しました: {str(e)}"}), 500
 
 
+@client.route("/future-face/simulator")
+@client_required
+def future_face_simulator():
+    """Future Face シミュレーター（理想の顔をイメージ）"""
+    # Day0画像を取得
+    day0_record = (
+        LookRecord.select()
+        .where((LookRecord.user == current_user) & (LookRecord.is_day0 == True))
+        .first()
+    )
+    
+    # 最新の記録を取得
+    latest_record = (
+        LookRecord.select()
+        .where(LookRecord.user == current_user)
+        .order_by(LookRecord.date.desc())
+        .first()
+    )
+    
+    return render_template(
+        "client/future_face_simulator.html",
+        day0_record=day0_record,
+        latest_record=latest_record,
+    )
+
+
 # ========================================
 # Step4-A: Export最小実装（JSON保存のみ）
 # ========================================
