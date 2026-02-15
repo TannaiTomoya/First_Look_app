@@ -15,3 +15,6 @@ rembg==2.0.50
 google-generativeai==0.8.3
 python-dotenv==1.0.1
 gunicorn==21.2.0
+mediapipe>=0.10.0
+opencv-python-headless>=4.8.0
+numpy>=1.24.0

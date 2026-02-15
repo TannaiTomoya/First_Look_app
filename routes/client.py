@@ -438,6 +438,65 @@ def future_face_simulator():
     )
 
 
+@client.route("/api/future-face/apply", methods=["POST"])
+@client_required
+def apply_future_face_api():
+    """Future Face効果をサーバーサイドで適用"""
+    try:
+        from utils.future_face_processor import get_processor
+        
+        # リクエストデータを取得
+        data = request.get_json()
+        
+        if not data or "image_base64" not in data:
+            return jsonify({
+                "ok": False,
+                "error": "画像データが必要です"
+            }), 400
+        
+        image_base64 = data.get("image_base64")
+        preset = data.get("preset", "all")  # all, slim, skin, young
+        strength = data.get("strength", 40)  # 0-100
+        
+        # バリデーション
+        if preset not in ["all", "slim", "skin", "young"]:
+            return jsonify({
+                "ok": False,
+                "error": "無効なプリセットです"
+            }), 400
+        
+        if not isinstance(strength, (int, float)) or strength < 0 or strength > 100:
+            return jsonify({
+                "ok": False,
+                "error": "強度は0-100の範囲で指定してください"
+            }), 400
+        
+        # プロセッサを取得して処理実行
+        processor = get_processor()
+        result = processor.apply_future_face(
+            base64_image=image_base64,
+            preset=preset,
+            strength=int(strength)
+        )
+        
+        # 結果を返す
+        if result["ok"]:
+            print(f"[Future Face] 処理成功: {result['processing_time_ms']}ms, preset={preset}, strength={strength}")
+            return jsonify(result), 200
+        else:
+            print(f"[Future Face] 処理失敗: {result.get('error')}")
+            return jsonify(result), 400
+    
+    except Exception as e:
+        print(f"[Future Face] 予期しないエラー: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "ok": False,
+            "error": f"サーバーエラー: {str(e)}"
+        }), 500
+
+
 # ========================================
 # Step4-A: Export最小実装（JSON保存のみ）
 # ========================================

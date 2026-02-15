@@ -106,7 +106,7 @@
                                 <div class="spinner-border text-primary" role="status">
                                     <span class="visually-hidden">処理中...</span>
                                 </div>
-                                <p class="text-muted small mt-2 mb-0">顔認識処理中（10〜30秒かかる場合があります）</p>
+                                <p class="text-muted small mt-2 mb-0">サーバーで処理中（数秒お待ちください）</p>
                             </div>
                         </div>
                     {% endif %}
@@ -139,7 +139,7 @@
                             <ul class="small">
                                 <li>あくまで「イメージ」です</li>
                                 <li>実際の変化とは異なります</li>
-                                <li>スマホでは処理に時間がかかります</li>
+                                <li>サーバーで処理するため高速です</li>
                             </ul>
                         </div>
                         <div class="col-md-4 mb-3">
@@ -166,9 +166,6 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/future_face.js') }}"></script>
-<script src="{{ url_for('static', filename='js/facemesh_preview.js') }}"></script>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     {% if not latest_record %}
@@ -184,8 +181,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const strengthSlider = document.getElementById('ff-strength');
     const strengthDisplay = document.getElementById('ff-strength-display');
     
-    let anchors = null;
-    
     // 強度表示を更新
     strengthSlider.addEventListener('input', function() {
         strengthDisplay.textContent = this.value;
@@ -197,9 +192,6 @@ document.addEventListener('DOMContentLoaded', function() {
         resultCanvas.height = sourceImage.naturalHeight;
         const ctx = resultCanvas.getContext('2d');
         ctx.drawImage(sourceImage, 0, 0);
-        
-        // MediaPipeでランドマーク検出（バックグラウンドで実行）
-        initFaceMeshForSimulator();
     };
     
     // 画像が既に読み込まれている場合
@@ -209,69 +201,52 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Future Face適用ボタン
     applyBtn.addEventListener('click', async function() {
-        if (!anchors) {
-            alert('顔認識がまだ完了していません。\n少しお待ちください。\n（スマホの場合、10〜30秒かかります）');
-            return;
-        }
-        
         statusDiv.style.display = 'block';
         applyBtn.disabled = true;
         
         try {
-            // キャンバスをリセット
-            const ctx = resultCanvas.getContext('2d');
-            ctx.drawImage(sourceImage, 0, 0, resultCanvas.width, resultCanvas.height);
+            // キャンバスから画像を取得
+            const imageDataURL = resultCanvas.toDataURL('image/png');
             
-            // Future Face適用
+            // サーバーにPOST
             const preset = presetSelect.value;
             const strength = parseInt(strengthSlider.value);
             
-            const imageData = ctx.getImageData(0, 0, resultCanvas.width, resultCanvas.height);
-            let processedData = imageData;
+            const response = await fetch('/client/api/future-face/apply', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                },
+                body: JSON.stringify({
+                    image_base64: imageDataURL,
+                    preset: preset,
+                    strength: strength
+                })
+            });
             
-            if (preset === 'all' || preset === 'slim') {
-                processedData = applySlim(processedData, resultCanvas, anchors, strength / 100);
+            const result = await response.json();
+            
+            if (result.ok) {
+                // 結果画像をキャンバスに描画
+                const img = new Image();
+                img.onload = function() {
+                    const ctx = resultCanvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, resultCanvas.width, resultCanvas.height);
+                    showToast(`シミュレーション完了！（処理時間: ${result.processing_time_ms}ms）`, 'success');
+                };
+                img.src = result.result_image;
+            } else {
+                showToast(result.error || 'エラーが発生しました', 'danger');
             }
-            
-            if (preset === 'all' || preset === 'skin') {
-                processedData = skinEnhance(processedData, resultCanvas, anchors, strength / 100);
-            }
-            
-            if (preset === 'all' || preset === 'young') {
-                processedData = applyYoung(processedData, resultCanvas, anchors, strength / 100);
-            }
-            
-            // 結果を描画
-            ctx.putImageData(processedData, 0, 0);
-            
-            showToast('シミュレーション完了！', 'success');
         } catch (error) {
             console.error('[FF Simulator] エラー:', error);
-            showToast('処理中にエラーが発生しました', 'danger');
+            showToast('通信エラーが発生しました', 'danger');
         } finally {
             statusDiv.style.display = 'none';
             applyBtn.disabled = false;
         }
     });
-    
-    // MediaPipe初期化
-    async function initFaceMeshForSimulator() {
-        try {
-            // facemesh_preview.jsの関数を利用
-            const landmarks = await detectFaceLandmarks(sourceImage);
-            if (landmarks && landmarks.length > 0) {
-                anchors = landmarks[0];
-                console.log('[FF Simulator] 顔認識完了');
-                showToast('顔認識完了！シミュレーション可能です', 'success');
-            } else {
-                console.warn('[FF Simulator] 顔が検出できませんでした');
-                showToast('顔が検出できませんでした', 'warning');
-            }
-        } catch (error) {
-            console.error('[FF Simulator] MediaPipeエラー:', error);
-            showToast('顔認識に失敗しました', 'danger');
-        }
-    }
     
     // トースト表示（簡易版）
     function showToast(message, type) {
