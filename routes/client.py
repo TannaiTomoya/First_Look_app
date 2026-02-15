@@ -419,14 +419,14 @@ def future_face_simulator():
     # Day0画像を取得
     day0_record = (
         LookRecord.select()
-        .where((LookRecord.user == current_user) & (LookRecord.is_day0 == True))
+        .where((LookRecord.user_id == current_user.id) & (LookRecord.is_day0 == True))
         .first()
     )
     
     # 最新の記録を取得
     latest_record = (
         LookRecord.select()
-        .where(LookRecord.user == current_user)
+        .where(LookRecord.user_id == current_user.id)
         .order_by(LookRecord.date.desc())
         .first()
     )
