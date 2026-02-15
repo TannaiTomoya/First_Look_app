@@ -52,7 +52,7 @@
                     
                     <!-- カメラプレビュー -->
                     <div class="text-center mb-3" style="position: relative; display: inline-block;">
-                        <video id="video" width="100%" style="max-width: 500px; border-radius: 8px; display: none;" autoplay></video>
+                        <video id="video" width="100%" style="max-width: 500px; border-radius: 8px; display: none; transform: scaleX(-1);" autoplay></video>
                         
                         <!-- 顔ガイドSVG -->
                         <svg id="faceGuide" class="face-guide-animated" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none;">
@@ -94,7 +94,7 @@
                             </text>
                         </svg>
                         
-                        <canvas id="canvas" width="500" height="500" style="max-width: 100%; border-radius: 8px; display: none;"></canvas>
+                        <canvas id="canvas" width="500" height="500" style="max-width: 100%; border-radius: 8px; display: none; transform: scaleX(-1);"></canvas>
                     </div>
                     
                     <!-- 操作ボタン -->
@@ -213,9 +213,11 @@ captureBtn.addEventListener('click', () => {
     // ガイドを非表示
     document.getElementById('faceGuide').style.display = 'none';
     
-    // Canvasに描画
+    // Canvasに描画（ミラー表示のまま）
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
+    
+    // ミラー表示のまま描画（ユーザーが見ている向きと同じ）
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     
     // 表示切り替え
@@ -260,7 +262,7 @@ retakeBtn.addEventListener('click', async () => {
     // 4. 状態フラグをリセット
     isBeautyProcessing = false;
     
-    // 5. UI要素を非表示
+    // 5. UI要素を非表示（transformは維持）
     canvas.style.display = 'none';
     retakeBtn.style.display = 'none';
     saveImageBtn.style.display = 'none';
@@ -288,8 +290,24 @@ saveImageBtn.addEventListener('click', async () => {
     loadingMessage.style.display = 'block';
     saveImageBtn.disabled = true;
     
-    // CanvasをBlobに変換
-    canvas.toBlob(async (blob) => {
+    // 一時的にミラー反転を解除して正しい向きで保存
+    canvas.style.transform = 'scaleX(1)';
+    
+    // 新しいcanvasを作成して、正しい向きで描画
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    // ミラー反転を解除して描画
+    tempCtx.scale(-1, 1);
+    tempCtx.drawImage(canvas, -tempCanvas.width, 0);
+    
+    // 元のcanvasの表示を戻す
+    canvas.style.transform = 'scaleX(-1)';
+    
+    // tempCanvasをBlobに変換
+    tempCanvas.toBlob(async (blob) => {
         const formData = new FormData();
         formData.append('image', blob, 'face.png');
         
