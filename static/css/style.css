@@ -302,11 +302,38 @@ footer p {
 .btn-primary {
     background-color: #667eea;
     border-color: #667eea;
+    color: #ffffff !important;  /* テキスト色を明示 */
+    font-weight: 600;  /* 太字で視認性向上 */
 }
 
 .btn-primary:hover {
     background-color: #5568d3;
     border-color: #5568d3;
+    color: #ffffff !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:focus, .btn-primary:active {
+    background-color: #5568d3;
+    border-color: #5568d3;
+    color: #ffffff !important;
+    box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.5);
+}
+
+/* 大きなボタン（btn-lg）の追加強化 */
+.btn-primary.btn-lg {
+    font-size: 1.125rem;
+    padding: 0.875rem 1.5rem;
+    font-weight: 700;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.25);
+    transition: all 0.3s ease;
+}
+
+.btn-primary.btn-lg:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
 /* タブナビゲーション */

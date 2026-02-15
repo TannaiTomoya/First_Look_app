@@ -317,7 +317,8 @@
                                 <p><small>口</small></p>
                             </div>
                         </div>
-                        <a href="{{ url_for('client.daily_check') }}" class="btn btn-primary btn-lg px-5 py-3 mb-2" style="font-size: 1.25rem;">
+                        <a href="{{ url_for('client.daily_check') }}" class="btn btn-primary btn-lg px-5 py-3 mb-2" 
+                           style="font-size: 1.25rem; font-weight: 700; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
                             <i class="fas fa-play-circle"></i> チェックを始める
                         </a>
                         <p class="text-muted small mb-0">
@@ -333,7 +334,8 @@
     <!-- なりたい顔のイメージ作成ボタン -->
     <div class="row mb-4">
         <div class="col-12 text-center">
-            <a href="{{ url_for('face_template.capture') }}" class="btn btn-primary btn-lg">
+            <a href="{{ url_for('face_template.capture') }}" class="btn btn-primary btn-lg" 
+               style="font-weight: 700; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
                 <i class="fas fa-magic"></i> なりたい顔のイメージを作成する
             </a>
             <p class="text-muted mt-2 small">
@@ -347,7 +349,8 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-center gap-2 flex-wrap">
-                <a href="{{ url_for('client.daily_action') }}" class="btn btn-primary btn-lg">
+                <a href="{{ url_for('client.daily_action') }}" class="btn btn-primary btn-lg" 
+                   style="font-weight: 700; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
                     <i class="fas fa-shoe-prints"></i> 今日の一歩
                 </a>
                 <a href="{{ url_for('client.progress') }}" class="btn btn-outline-success btn-lg">
