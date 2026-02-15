@@ -416,10 +416,11 @@ def ai_skin_analysis():
 @client_required
 def future_face_simulator():
     """Future Face シミュレーター（理想の顔をイメージ）"""
-    # Day0画像を取得
+    # Day0画像を取得（ユーザーの最初の記録）
     day0_record = (
         LookRecord.select()
-        .where((LookRecord.user_id == current_user.id) & (LookRecord.is_day0 == True))
+        .where(LookRecord.user_id == current_user.id)
+        .order_by(LookRecord.date.asc())  # 昇順で最初の記録
         .first()
     )
     
