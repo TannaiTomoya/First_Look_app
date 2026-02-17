@@ -68,6 +68,32 @@ canvas.concealer-off {
     font-size: 0.75rem;
 }
 
+/* コンシーラーツールエリアのスクロールバー */
+.concealer-tools::-webkit-scrollbar {
+    width: 8px;
+}
+
+.concealer-tools::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.concealer-tools::-webkit-scrollbar-thumb {
+    background: #17a2b8;
+    border-radius: 4px;
+}
+
+.concealer-tools::-webkit-scrollbar-thumb:hover {
+    background: #138496;
+}
+
+/* 位置調整ボタン - ダブルタップズーム防止 */
+.btn-group .btn, .form-range {
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
 /* モバイル対応 */
 @media (max-width: 768px) {
     .color-btn {
@@ -504,92 +530,107 @@ canvas.concealer-off {
                         <small class="ms-2 opacity-75">(気になる部分を修正)</small>
                     </h4>
                 </div>
-                <div class="card-body">
-                    <!-- ツール切り替え -->
-                    <div class="mb-3">
-                        <div class="btn-group w-100" role="group">
-                            <button type="button" class="btn btn-outline-secondary" id="drawMode">
-                                <i class="fas fa-paintbrush"></i> 描画
+                <div class="card-body" style="padding: 0;">
+                    <!-- 画像プレビューエリア（固定表示） -->
+                    <div style="position: sticky; top: 60px; z-index: 10; background: white; 
+                                border-bottom: 3px solid #17a2b8; padding: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <p class="text-muted small mb-2 text-center">
+                            <i class="fas fa-info-circle"></i> 画像は常に表示されます。下のツールをスクロールして調整できます。
+                        </p>
+                        <div class="text-center">
+                            <canvas id="previewCanvas" class="img-fluid" style="max-width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- スクロール可能なツールエリア -->
+                    <div class="concealer-tools" style="max-height: 60vh; overflow-y: auto; padding: 1rem; background: #f8f9fa;">
+                        <!-- ツール切り替え -->
+                        <div class="mb-3">
+                            <div class="btn-group w-100" role="group">
+                                <button type="button" class="btn btn-outline-secondary" id="drawMode">
+                                    <i class="fas fa-paintbrush"></i> 描画
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" id="eraseMode">
+                                    <i class="fas fa-eraser"></i> 消しゴム
+                                </button>
+                                <button type="button" class="btn btn-primary active" id="concealerOffMode">
+                                    <i class="fas fa-ban"></i> オフ
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- コンパクトなスライダー -->
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="small mb-0">ブラシサイズ</label>
+                                <span class="badge bg-secondary" id="brushSizeValue">10</span>
+                            </div>
+                            <input type="range" class="form-range form-range-sm" id="brushSize" 
+                                   min="5" max="50" value="10" step="1">
+                        </div>
+                        
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="small mb-0">透明度</label>
+                                <span class="badge bg-secondary" id="opacityValue">80</span>
+                            </div>
+                            <input type="range" class="form-range form-range-sm" id="opacity" 
+                                   min="10" max="100" value="80" step="5">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="small mb-0">ぼかし</label>
+                                <span class="badge bg-secondary" id="blurValue">3</span>
+                            </div>
+                            <input type="range" class="form-range form-range-sm" id="blur" 
+                                   min="0" max="10" value="3" step="1">
+                        </div>
+                        
+                        <!-- 肌色パレット -->
+                        <div class="mb-3">
+                            <label class="small d-block mb-2">肌色を選択:</label>
+                            <div class="d-flex justify-content-between">
+                                <button class="color-btn active" data-color="#f4c8b0" 
+                                        style="background: #f4c8b0;" title="明るい肌"></button>
+                                <button class="color-btn" data-color="#e8b89a" 
+                                        style="background: #e8b89a;" title="標準肌"></button>
+                                <button class="color-btn" data-color="#d9a684" 
+                                        style="background: #d9a684;" title="小麦肌"></button>
+                                <button class="color-btn" data-color="#c89670" 
+                                        style="background: #c89670;" title="健康的な肌"></button>
+                                <button class="color-btn" data-color="#b8865c" 
+                                        style="background: #b8865c;" title="濃い肌"></button>
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                <i class="fas fa-info-circle"></i> Alt+クリックで画像から色を取得
+                            </small>
+                        </div>
+                        
+                        <!-- アクションボタン -->
+                        <div class="d-flex gap-2 justify-content-between mb-3">
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-sm btn-outline-secondary" id="undoBtn" title="元に戻す" disabled>
+                                    <i class="fas fa-undo"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" id="redoBtn" title="やり直す" disabled>
+                                    <i class="fas fa-redo"></i>
+                                </button>
+                            </div>
+                            <button class="btn btn-sm btn-warning" id="resetConcealerBtn">
+                                <i class="fas fa-sync"></i> リセット
                             </button>
-                            <button type="button" class="btn btn-outline-secondary" id="eraseMode">
-                                <i class="fas fa-eraser"></i> 消しゴム
-                            </button>
-                            <button type="button" class="btn btn-primary active" id="concealerOffMode">
-                                <i class="fas fa-ban"></i> オフ
-                            </button>
                         </div>
-                    </div>
-                    
-                    <!-- コンパクトなスライダー -->
-                    <div class="mb-2">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <label class="small mb-0">ブラシサイズ</label>
-                            <span class="badge bg-secondary" id="brushSizeValue">10</span>
+                        
+                        <!-- ヒント -->
+                        <div class="alert alert-info mb-0 py-2 px-3" role="alert">
+                            <small>
+                                <strong>💡 使い方:</strong><br>
+                                ・「描画」を選択してプレビュー画像をドラッグで塗る<br>
+                                ・シミ、クマ、ニキビ跡などを自然に隠せます<br>
+                                ・画像は上部に固定表示されるので、ツールを調整しながら作業できます
+                            </small>
                         </div>
-                        <input type="range" class="form-range form-range-sm" id="brushSize" 
-                               min="5" max="50" value="10" step="1">
-                    </div>
-                    
-                    <div class="mb-2">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <label class="small mb-0">透明度</label>
-                            <span class="badge bg-secondary" id="opacityValue">80</span>
-                        </div>
-                        <input type="range" class="form-range form-range-sm" id="opacity" 
-                               min="10" max="100" value="80" step="5">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <label class="small mb-0">ぼかし</label>
-                            <span class="badge bg-secondary" id="blurValue">3</span>
-                        </div>
-                        <input type="range" class="form-range form-range-sm" id="blur" 
-                               min="0" max="10" value="3" step="1">
-                    </div>
-                    
-                    <!-- 肌色パレット -->
-                    <div class="mb-3">
-                        <label class="small d-block mb-2">肌色を選択:</label>
-                        <div class="d-flex justify-content-between">
-                            <button class="color-btn active" data-color="#f4c8b0" 
-                                    style="background: #f4c8b0;" title="明るい肌"></button>
-                            <button class="color-btn" data-color="#e8b89a" 
-                                    style="background: #e8b89a;" title="標準肌"></button>
-                            <button class="color-btn" data-color="#d9a684" 
-                                    style="background: #d9a684;" title="小麦肌"></button>
-                            <button class="color-btn" data-color="#c89670" 
-                                    style="background: #c89670;" title="健康的な肌"></button>
-                            <button class="color-btn" data-color="#b8865c" 
-                                    style="background: #b8865c;" title="濃い肌"></button>
-                        </div>
-                        <small class="text-muted d-block mt-1">
-                            <i class="fas fa-info-circle"></i> Alt+クリックで画像から色を取得
-                        </small>
-                    </div>
-                    
-                    <!-- アクションボタン -->
-                    <div class="d-flex gap-2 justify-content-between">
-                        <div class="btn-group" role="group">
-                            <button class="btn btn-sm btn-outline-secondary" id="undoBtn" title="元に戻す" disabled>
-                                <i class="fas fa-undo"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-secondary" id="redoBtn" title="やり直す" disabled>
-                                <i class="fas fa-redo"></i>
-                            </button>
-                        </div>
-                        <button class="btn btn-sm btn-warning" id="resetConcealerBtn">
-                            <i class="fas fa-sync"></i> リセット
-                        </button>
-                    </div>
-                    
-                    <!-- ヒント -->
-                    <div class="alert alert-info mt-3 mb-0 py-2 px-3" role="alert">
-                        <small>
-                            <strong>💡 使い方:</strong><br>
-                            ・「描画」を選択してプレビュー画像をドラッグで塗る<br>
-                            ・シミ、クマ、ニキビ跡などを自然に隠せます
-                        </small>
                     </div>
                 </div>
             </div>
@@ -700,8 +741,11 @@ baseImage.onerror = (error) => {
 };
 
 baseImage.crossOrigin = 'anonymous';
-baseImage.src = baseImagePath;
-console.log('[DEBUG] ベース画像のロード開始:', baseImagePath);
+// キャッシュバスターを追加（URLパラメータ 't' がある場合）
+const urlParams = new URLSearchParams(window.location.search);
+const cacheBuster = urlParams.get('t') || Date.now();
+baseImage.src = baseImagePath + '?t=' + cacheBuster;
+console.log('[DEBUG] ベース画像のロード開始（キャッシュ回避）:', baseImagePath);
 
 // ========================================
 // 描画関数（FaceMesh版とフォールバック版）

@@ -312,6 +312,10 @@ saveImageBtn.addEventListener('click', async () => {
         const formData = new FormData();
         formData.append('image', blob, 'face.png');
         
+        // キャッシュバスター用のタイムスタンプを追加
+        const timestamp = Date.now();
+        formData.append('timestamp', timestamp);
+        
         // CSRFトークンをFormDataに追加
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         formData.append('csrf_token', csrfToken);
@@ -333,7 +337,9 @@ saveImageBtn.addEventListener('click', async () => {
             const data = await response.json();
             
             if (data.success) {
-                window.location.href = data.redirect_url;
+                // キャッシュバスターを追加してプレビューに遷移
+                const redirectUrl = data.redirect_url + (data.redirect_url.includes('?') ? '&' : '?') + 't=' + timestamp;
+                window.location.href = redirectUrl;
             } else {
                 alert('保存に失敗しました: ' + (data.error || '不明なエラー'));
                 loadingMessage.style.display = 'none';

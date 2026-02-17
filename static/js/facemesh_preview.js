@@ -638,7 +638,25 @@ class FaceMeshPreview {
         // 回転
         this.ctx.translate(finalCx, finalCy);
         this.ctx.rotate(finalRotate * Math.PI / 180);
+        
+        // パーツを自然に馴染ませる処理
+        this.ctx.save();
+        
+        // 影を追加（肌に馴染む効果）
+        this.ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+        this.ctx.shadowBlur = 2;
+        this.ctx.shadowOffsetY = 1;
+        
+        // 透明度を調整（85%で自然な合成）
+        this.ctx.globalAlpha = 0.85;
+        
+        // 合成モードを変更（より自然な合成）
+        // 通常は 'source-over' だが、'multiply' で肌色と調和
+        // this.ctx.globalCompositeOperation = 'multiply'; // オプション: より強い調和
+        
         this.ctx.drawImage(img, -w / 2, -h / 2, w, h);
+        
+        this.ctx.restore();
         
         this.ctx.restore();
         
