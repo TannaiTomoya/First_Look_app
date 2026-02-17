@@ -23,7 +23,7 @@ def capture():
 @face_template.route('/save-base-image', methods=['POST'])
 @login_required
 def save_base_image():
-    """ベース画像を保存"""
+    """ベース画像を保存（撮り直し時は既存テンプレートを更新）"""
     try:
         if 'image' not in request.files:
             return jsonify({'error': 'No image provided'}), 400
@@ -41,13 +41,43 @@ def save_base_image():
         except InvalidImageDataError as e:
             return jsonify({'error': f'画像データエラー: {str(e)}'}), 400
         
-        # データベースに保存
-        # impression は現時点では null（後から紐付け機能を追加可能）
-        template = FaceTemplate.create(
-            user=current_user,
-            impression=None,
-            base_image_path=image_path
+        # 今日の既存テンプレートを確認（撮り直し対策）
+        today = datetime.now().date()
+        existing_template = (
+            FaceTemplate.select()
+            .where(
+                (FaceTemplate.user == current_user) &
+                (FaceTemplate.created_at >= datetime.combine(today, datetime.min.time()))
+            )
+            .order_by(FaceTemplate.created_at.desc())
+            .first()
         )
+        
+        if existing_template:
+            # 既存テンプレートを更新（撮り直し）
+            old_image_path = existing_template.base_image_path
+            existing_template.base_image_path = image_path
+            existing_template.updated_at = datetime.now()
+            existing_template.save()
+            
+            # 古い画像ファイルを削除（ストレージ節約）
+            if old_image_path and os.path.exists(old_image_path):
+                try:
+                    os.remove(old_image_path)
+                    print(f"✓ 古い画像を削除: {old_image_path}")
+                except Exception as e:
+                    print(f"⚠ 古い画像削除失敗: {str(e)}")
+            
+            template = existing_template
+            print(f"✓ 既存テンプレートを更新: ID={template.id}")
+        else:
+            # 新規テンプレート作成
+            template = FaceTemplate.create(
+                user=current_user,
+                impression=None,
+                base_image_path=image_path
+            )
+            print(f"✓ 新規テンプレート作成: ID={template.id}")
         
         # onboardingクエリを引き継ぐ
         onboarding_param = request.args.get('onboarding')
