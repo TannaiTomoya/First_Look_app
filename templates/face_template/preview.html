@@ -531,14 +531,15 @@ canvas.concealer-off {
                     </h4>
                 </div>
                 <div class="card-body" style="padding: 0;">
-                    <!-- 画像プレビューエリア（固定表示） -->
+                    <!-- 画像プレビューエリア（固定表示） - メインキャンバスを参照 -->
                     <div style="position: sticky; top: 60px; z-index: 10; background: white; 
                                 border-bottom: 3px solid #17a2b8; padding: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                         <p class="text-muted small mb-2 text-center">
                             <i class="fas fa-info-circle"></i> 画像は常に表示されます。下のツールをスクロールして調整できます。
                         </p>
                         <div class="text-center">
-                            <canvas id="previewCanvas" class="img-fluid" style="max-width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);"></canvas>
+                            <!-- メインキャンバスのクローン表示用（読み取り専用） -->
+                            <canvas id="concealerPreviewCanvas" class="img-fluid" style="max-width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);"></canvas>
                         </div>
                     </div>
                     
@@ -1433,6 +1434,42 @@ canvas.addEventListener('mousedown', startConcealer);
 canvas.addEventListener('mousemove', drawConcealer);
 canvas.addEventListener('mouseup', stopConcealer);
 canvas.addEventListener('mouseleave', stopConcealer);
+
+// コンシーラープレビューキャンバスの初期化と同期
+function initConcealerPreviewCanvas() {
+    const mainCanvas = document.getElementById('previewCanvas');
+    const concealerCanvas = document.getElementById('concealerPreviewCanvas');
+    
+    if (!mainCanvas || !concealerCanvas) return;
+    
+    // サイズを同期
+    concealerCanvas.width = mainCanvas.width;
+    concealerCanvas.height = mainCanvas.height;
+    
+    // 画像を同期
+    function syncCanvases() {
+        const concealerCtx = concealerCanvas.getContext('2d');
+        concealerCtx.clearRect(0, 0, concealerCanvas.width, concealerCanvas.height);
+        concealerCtx.drawImage(mainCanvas, 0, 0);
+    }
+    
+    // 初回同期
+    syncCanvases();
+    
+    // メインキャンバスが更新されたら同期（MutationObserverで監視）
+    const observer = new MutationObserver(syncCanvases);
+    observer.observe(mainCanvas, { attributes: true, childList: false, subtree: false });
+    
+    // 定期的に同期（念のため）
+    setInterval(syncCanvases, 500);
+    
+    console.log('✓ コンシーラープレビューキャンバスを初期化しました');
+}
+
+// ページロード時に初期化
+window.addEventListener('load', () => {
+    setTimeout(initConcealerPreviewCanvas, 1000);
+});
 
 // タッチデバイス対応
 canvas.addEventListener('touchstart', (e) => {
