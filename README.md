@@ -73,16 +73,26 @@ stripe listen --forward-to localhost:3000/api/stripe/webhook
 
 ## デプロイ（Cloudflare）
 
+本番（現在）: `https://firstlook.<account>.workers.dev`  
+※ `*.workers.dev` はアカウント名サブドメインが必須。`.tomobou5912` を消すには **独自ドメイン** を Worker に紐づける。
+
 ```bash
 cd web
-npx wrangler login
+cp env.local.example .env.local   # 実キーを記入（チャットに貼らない）
+./scripts/sync-secrets.sh         # Cloudflare secrets へ投入
 npm run deploy
 ```
 
-Cloudflare Dashboard で同じ環境変数を Worker に設定する。
-Webhook の本番URLは `https://<your-worker>.workers.dev/api/stripe/webhook`。
+Webhook: `https://<本番ドメイン>/api/stripe/webhook`
 
-Search Console と Cloudflare Web Analytics は公開後に登録。
+### 初回セットアップ手順
+
+1. Supabase SQL Editor で `supabase/migrations/0001_init.sql` を実行  
+   （または `DATABASE_URL=... ./web/scripts/apply-supabase-sql.sh`）
+2. `web/.env.local` に URL / anon / service_role / Stripe キーを記入  
+   ※ anon は `eyJ...` 形式。プロジェクトIDやリージョン名ではない
+3. `./web/scripts/sync-secrets.sh` → `npm run deploy`
+4. Stripe Dashboard → Webhooks → 上記 URL を追加（イベント: `checkout.session.completed`, `customer.subscription.*`）
 
 ## ディレクトリ
 

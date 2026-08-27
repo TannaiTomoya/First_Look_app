@@ -13,5 +13,9 @@
       "binding": "WORKER_SELF_REFERENCE",
       "service": "firstlook"
     }
-  ]
+  ],
+  // カスタムドメイン例（Cloudflare にゾーンがある場合）:
+  // "routes": [{ "pattern": "firstlook.example.com/*", "zone_name": "example.com" }],
+  // "workers_dev": false
+  "workers_dev": true
 }
