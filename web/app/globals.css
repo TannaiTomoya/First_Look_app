@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f6f3ef;
+  --fg: #17141f;
+  --muted: #6b6574;
+  --card: #fffcf9;
+  --line: #e7e1d8;
+  --brand: #4f46e5;
+  --brand-2: #7c3aed;
+  --accent: #e11d48;
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --color-muted: var(--muted);
+  --color-card: var(--card);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-noto), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-inter), var(--font-noto), sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+.hero-grid {
+  background-image:
+    radial-gradient(circle at 18% 20%, rgba(124, 58, 237, 0.35), transparent 36%),
+    radial-gradient(circle at 82% 10%, rgba(79, 70, 229, 0.28), transparent 32%),
+    linear-gradient(165deg, #120d1c 0%, #1d1630 48%, #2a1848 100%);
+}
+
+.glass {
+  background: rgba(255, 252, 249, 0.78);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(231, 225, 216, 0.9);
+}
+
+.stat-num {
+  font-family: var(--font-display);
+  letter-spacing: -0.06em;
+}

@@ -32,6 +32,14 @@ Thumbs.db
 .env
 .env.local
 
+# Node / Next.js
+node_modules/
+web/node_modules/
+web/.next/
+web/.open-next/
+web/.wrangler/
+
+
 # Task completion files (may contain sensitive info)
 TASK_*.md
 *_COMPLETE.md
