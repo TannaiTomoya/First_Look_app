@@ -27,6 +27,7 @@ import {
 } from "@/lib/face-mesh/geometry";
 import { detectFace, loadFaceLandmarker, type Detection } from "@/lib/face-mesh/landmarker";
 import { StructureTrend } from "@/components/structure-trend";
+import { MeasurementNotice } from "@/components/measurement-notice";
 import { toDaySeries, type SnapshotPoint } from "@/lib/face-mesh/trend";
 import {
   REGISTRATION_TOLERANCE_PCT,
@@ -129,6 +130,7 @@ export default function FaceMeshLab() {
       <p className="mt-2 max-w-3xl text-sm text-muted">
         顔を画像ではなく 478 点の3D点群として扱い、顎の頂点だけを顔の座標系で動かします。画像と点群は端末内で処理し、サーバーへ送信しません（認識モデルのみ CDN から取得）。
       </p>
+      <MeasurementNotice className="mt-2 max-w-3xl" />
 
       <Card className="mt-6">
         <div className="flex flex-wrap items-center gap-2">

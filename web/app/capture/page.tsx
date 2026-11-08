@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button, Card } from "@/components/ui";
 import { CheckoutButton } from "@/components/checkout-button";
+import { MeasurementNotice } from "@/components/measurement-notice";
 import { isSupabaseConfigured } from "@/lib/config";
 import { createClient } from "@/lib/supabase/client";
 import { getConsent, measureFile, saveSnapshot, setConsent } from "@/lib/face-mesh/snapshots";
@@ -207,6 +208,7 @@ export default function CapturePage() {
             <p className="mt-1 text-xs text-muted">
               写真から顎幅・頬幅・顔の縦横比・顔の向きを数値にして保存し、変化グラフに使います。顔の検出は端末内で行い、保存するのは数値だけです（点の座標は保存しません）。本人以外は閲覧できず、設定からいつでも取り消せます。取り消すと保存済みの数値はすべて削除されます。
             </p>
+            <MeasurementNotice className="mt-2" />
             <Button type="button" variant="outline" className="mt-3" onClick={agree}>
               同意して記録する
             </Button>

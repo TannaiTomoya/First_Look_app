@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui";
+import { MeasurementNotice } from "@/components/measurement-notice";
 import { METRICS, milestoneValues, type DayPoint, type MetricKey } from "@/lib/face-mesh/trend";
 
 const W = 320;
@@ -60,7 +61,7 @@ export function StructureTrend({ series, total }: { series: DayPoint[]; total: n
     <Card className="mt-6">
       <h2 className="font-semibold">構造指標の推移</h2>
       <p className="mt-1 text-xs text-muted">
-        顔の向きを補正した数値です。正面・口を閉じた写真のみ集計（{series.length} 日分 / 全 {total} 件）。1回ごとの誤差が ±2〜3% 程度あるため、点ではなく線（直近{TREND_WINDOW}回の平均）で傾向を見てください。
+        顔の向きを補正した数値です。正面・口を閉じた写真のみ集計（{series.length} 日分 / 全 {total} 件）。点は1回ごとの値、線は直近{TREND_WINDOW}回の平均です。
       </p>
 
       <div className="mt-4 overflow-x-auto">
@@ -103,6 +104,8 @@ export function StructureTrend({ series, total }: { series: DayPoint[]; total: n
           </tbody>
         </table>
       </div>
+
+      <MeasurementNotice className="mt-4" />
 
       {series.length >= 2 && (
         <div className="mt-4 grid gap-4 md:grid-cols-3">
