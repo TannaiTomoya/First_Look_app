@@ -14,11 +14,12 @@ sleep 1
 psql_in() { docker exec -i -e PGOPTIONS="${PGOPTIONS:-}" "$NAME" psql -U postgres -X -q "$@"; }
 
 for f in "$DIR/stub_supabase.sql" "$MIG/0001_init.sql" \
-  "${MIGRATION_0009:-$MIG/0009_face_landmark_snapshots.sql}"; do
+  "${MIGRATION_0009:-$MIG/0009_face_landmark_snapshots.sql}" "${MIGRATION_0010:-$MIG/0010_profiles_protect_columns.sql}"; do
   PGOPTIONS="-c client_min_messages=warning" psql_in -v ON_ERROR_STOP=1 < "$f" >/dev/null
 done
 
 out="$(psql_in < "$DIR/face_landmark_snapshots.test.sql" 2>&1 || true)"
+out+=$'\n'"$(psql_in < "$DIR/profiles.test.sql" 2>&1 || true)"
 
 # 並行実行：取り消しと登録が同時に走っても snapshot が残らない（上のテストの続きの状態を使う）
 as_user() { printf "select set_config('request.jwt.claim.sub', '%s', false); set role authenticated;\n" "$1"; }

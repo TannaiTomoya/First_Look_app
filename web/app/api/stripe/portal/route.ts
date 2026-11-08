@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe";
 import { isStripeConfigured } from "@/lib/config";
 
@@ -29,7 +29,9 @@ export async function POST() {
         metadata: { userId: user.id },
       });
       customerId = customer.id;
-      await supabase.from("profiles").update({ stripe_customer_id: customerId }).eq("id", user.id);
+      // stripe_customer_id は本人のクライアントからは変更できない（0010）
+      const admin = await createServiceClient();
+      await admin.from("profiles").update({ stripe_customer_id: customerId }).eq("id", user.id);
     }
 
     const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
