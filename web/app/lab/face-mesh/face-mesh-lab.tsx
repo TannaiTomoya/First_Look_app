@@ -26,6 +26,8 @@ import {
   type PoseStability,
 } from "@/lib/face-mesh/geometry";
 import { detectFace, loadFaceLandmarker, type Detection } from "@/lib/face-mesh/landmarker";
+import { StructureTrend } from "@/components/structure-trend";
+import { toDaySeries, type SnapshotPoint } from "@/lib/face-mesh/trend";
 import {
   REGISTRATION_TOLERANCE_PCT,
   maxRelativeDiffPct,
@@ -288,6 +290,7 @@ export default function FaceMeshLab() {
           </section>
 
           <RegistrationSection det={det} frame={frame} />
+          <TrendPreview det={det} />
         </>
       )}
     </div>
@@ -582,6 +585,31 @@ function MetricsTable({
         姿勢の行は、検出した3D点群を顔の縦軸まわりに ±15° 回転させた擬似入力で計算しています（画像は回転させていません）。数値は判断材料で、Go/No-Go は見た目の比較と合わせて人が判断します。
       </p>
     </div>
+  );
+}
+
+/** /progress の表示確認用。今の写真の指標を起点に、顎幅 -3%/90日 の傾向とノイズを加えたダミー */
+function TrendPreview({ det }: { det: Detection }) {
+  const { series, total } = useMemo(() => {
+    const m = register(det.face, det.matrix).metrics;
+    let seed = 7;
+    const noise = () => ((seed = (seed * 16807) % 2147483647) / 2147483647 - 0.5) * 0.03;
+    const t0 = Date.UTC(2026, 7, 1);
+    const rows: SnapshotPoint[] = [0, 2, 5, 7, 12, 18, 25, 31, 40, 52, 63, 75, 88, 91].map((d) => ({
+      captured_at: new Date(t0 + d * 86400000).toISOString(),
+      jaw_ratio: m.jawRatio * (1 - 0.03 * (d / 90)) * (1 + noise()),
+      cheek_width: m.cheekWidth * (1 - 0.02 * (d / 90)) * (1 + noise()),
+      face_aspect: m.faceAspect * (1 + noise()),
+      quality_ok: d !== 40,
+      model_version: "preview",
+    }));
+    return { series: toDaySeries(rows), total: rows.length };
+  }, [det]);
+  return (
+    <section className="mt-6">
+      <p className="text-xs font-semibold text-brand">⑤ /progress の表示プレビュー（#7・ダミーデータ）</p>
+      <StructureTrend series={series} total={total} />
+    </section>
   );
 }
 

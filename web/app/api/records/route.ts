@@ -79,15 +79,19 @@ export async function POST(request: Request) {
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id);
 
-  const { error: insErr } = await admin.from("look_records").insert({
-    user_id: user.id,
-    photo_path: path,
-    note,
-    is_day0: (count ?? 0) === 0,
-  });
+  const { data: inserted, error: insErr } = await admin
+    .from("look_records")
+    .insert({
+      user_id: user.id,
+      photo_path: path,
+      note,
+      is_day0: (count ?? 0) === 0,
+    })
+    .select("id")
+    .single();
   if (insErr) {
     return NextResponse.json({ error: `記録の保存に失敗: ${insErr.message}` }, { status: 400 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, id: inserted.id });
 }

@@ -2,6 +2,8 @@ import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui";
 import { isSupabaseConfigured } from "@/lib/config";
 import { createClient } from "@/lib/supabase/server";
+import { StructureTrend } from "@/components/structure-trend";
+import { toDaySeries } from "@/lib/face-mesh/trend";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +26,13 @@ export default async function ProgressPage() {
     .select("photo_path, created_at, is_day0")
     .eq("user_id", user?.id ?? "")
     .order("created_at", { ascending: true });
+
+  const { data: snapshots } = await supabase
+    .from("face_landmark_snapshots")
+    .select("captured_at, jaw_ratio, cheek_width, face_aspect, quality_ok, model_version")
+    .eq("user_id", user?.id ?? "")
+    .order("captured_at", { ascending: true });
+  const series = toDaySeries(snapshots ?? []);
 
   const day0 = records?.find((r) => r.is_day0) ?? records?.[0];
   const today = records?.[records.length - 1];
@@ -64,6 +73,7 @@ export default async function ProgressPage() {
           </div>
         </Card>
       </div>
+      <StructureTrend series={series} total={snapshots?.length ?? 0} />
     </AppShell>
   );
 }
