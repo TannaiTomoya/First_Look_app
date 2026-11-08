@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { SiteFooter, SiteHeader } from "@/components/site-header";
 import { Button, Card } from "@/components/ui";
-import { CheckoutButton } from "@/components/checkout-button";
+import { PricingCards, PricingFootnote, PricingPhilosophy } from "@/components/pricing-section";
 import { siteConfig } from "@/lib/config";
 
 const evidence = [
@@ -11,10 +10,14 @@ const evidence = [
 ];
 
 const features = [
-  { t: "撮影する", d: "顔写真を1枚残す。1日1分で完了。" },
-  { t: "Future Face", d: "変化の方向をシミュレーション。" },
-  { t: "Daily Loop", d: "今日やることを1つだけ提示。" },
-  { t: "Timeline", d: "Day0とTodayを自動比較。" },
+  { t: "成長スタジオ", d: "投稿数値を記録し、AIと音声でSNS作戦会議。切り抜きはショート連携。" },
+  { t: "撮影する", d: "顔写真を1枚残す。1日1分で完了。商談・面接・婚活用の撮影ガイド付き。" },
+  { t: "美肌診断", d: "顔写真を撮ってAIが肌状態を診断。結果を記録に残せる。" },
+  { t: "5分肌チェック + AI", d: "テカリ・赤み・乾燥を画像解析。AIが今日やる1つを指示。" },
+  { t: "人相リーディングAI", d: "観相学と第一印象研究に基づき「どう見られやすいか」を読む。出典明記。" },
+  { t: "自己紹介自動作成", d: "婚活・面接・商談用の文章を生成して保存。" },
+  { t: "婚活チャレンジ（岩手）", d: "県内のパーティー・街コン・公的支援をタイムラインで。" },
+  { t: "ショート投稿", d: "mov/mp4からAI自動編集した縦型ショートを生成・投稿。" },
 ];
 
 export default function HomePage() {
@@ -23,36 +26,56 @@ export default function HomePage() {
       <div className="hero-grid text-white">
         <SiteHeader />
         <section className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 md:grid-cols-2 md:py-24">
-          <div>
-            <p className="mb-4 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs tracking-wide">
-              AI LOOK TRACKER
+          <div className="lp-fade-up">
+            <p className="mb-4 inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs tracking-wide text-white/90">
+              MEN&apos;S BEAUTY OS — AI LOOK TRACKER
             </p>
             <h1 className="font-display text-4xl font-semibold leading-tight tracking-tight md:text-6xl">
-              {siteConfig.tagline}
+              アプリ1つで
+              <br />
+              ブス撲滅。
             </h1>
-            <p className="mt-5 max-w-xl text-base text-white/75 md:text-lg">
-              商談・面接・婚活の前に。写真を撮るだけで変化を記録し、最低限の清潔感を安定させる。
+            <p className="mt-5 max-w-xl text-base text-white/80 md:text-lg">
+              {siteConfig.tagline}。撮影・美肌診断・人相リーディング・婚活サポート・AIショート編集まで、商談・面接・婚活に効く全部をこの1本で。
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Button href="/register" className="bg-white text-brand hover:bg-zinc-100">
+              <Button href="/register" variant="light">
                 無料で体験する
               </Button>
-              <Button href="/pricing" variant="ghost" className="border border-white/20 text-white hover:bg-white/10">
+              <Button href="/pricing" variant="ghostDark">
                 料金を見る
               </Button>
             </div>
           </div>
-          <Card className="bg-white/95">
-            <p className="text-sm font-medium text-brand">BEFORE / AFTER</p>
+
+          <Card className="lp-fade-up lp-delay-1 border-white/40 bg-white p-5 text-foreground md:p-6">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold tracking-wide text-brand">BEFORE / AFTER</p>
+              <p className="text-xs text-muted">記録ベース</p>
+            </div>
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="aspect-[3/4] rounded-2xl bg-gradient-to-b from-zinc-200 to-zinc-400 p-3 text-xs text-zinc-700">
-                Day 0
+              <div className="relative overflow-hidden rounded-2xl bg-zinc-100 ring-1 ring-line">
+                <div className="aspect-[3/4] bg-[linear-gradient(160deg,#d4d4d8_0%,#a1a1aa_55%,#71717a_100%)]" />
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent p-3">
+                  <p className="text-xs font-semibold text-white">Day 0</p>
+                  <p className="text-[11px] text-white/80">感覚だけの自己評価</p>
+                </div>
               </div>
-              <div className="aspect-[3/4] rounded-2xl bg-gradient-to-b from-indigo-200 to-violet-400 p-3 text-xs text-indigo-950">
-                Today
+              <div className="relative overflow-hidden rounded-2xl bg-indigo-50 ring-1 ring-indigo-200">
+                <div className="aspect-[3/4] bg-[linear-gradient(160deg,#c7d2fe_0%,#818cf8_45%,#4f46e5_100%)]" />
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#1e1b4b]/70 to-transparent p-3">
+                  <p className="text-xs font-semibold text-white">Today</p>
+                  <p className="text-[11px] text-white/85">肌・印象・発信を数値化</p>
+                </div>
+                <span className="absolute right-2 top-2 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-semibold text-brand">
+                  +記録
+                </span>
               </div>
             </div>
-            <p className="mt-4 text-sm text-muted">変化は感覚ではなく、記録で確認する。</p>
+            <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-zinc-50 px-3 py-2.5 text-sm">
+              <p className="text-muted">変化は感覚ではなく、記録で確認する。</p>
+              <span className="shrink-0 font-semibold text-brand">Track → Act</span>
+            </div>
           </Card>
         </section>
       </div>
@@ -72,11 +95,12 @@ export default function HomePage() {
       </section>
 
       <section id="features" className="mx-auto max-w-6xl px-4 py-8">
-        <h2 className="font-display text-3xl font-semibold">使い方は4ステップ</h2>
+        <h2 className="font-display text-3xl font-semibold">搭載機能</h2>
+        <p className="mt-2 text-muted">メンズ美容に必要なものを全部入れた。迷ったら上から順に。</p>
         <div className="mt-8 grid gap-4 md:grid-cols-4">
           {features.map((f, i) => (
             <Card key={f.t}>
-              <p className="text-xs font-semibold text-brand">0{i + 1}</p>
+              <p className="text-xs font-semibold text-brand">{String(i + 1).padStart(2, "0")}</p>
               <h3 className="mt-2 font-semibold">{f.t}</h3>
               <p className="mt-2 text-sm text-muted">{f.d}</p>
             </Card>
@@ -85,58 +109,20 @@ export default function HomePage() {
       </section>
 
       <section id="pricing" className="mx-auto max-w-6xl px-4 py-16">
-        <h2 className="font-display text-3xl font-semibold">価値を体験した瞬間に、課金。</h2>
-        <p className="mt-2 text-muted">基本は無料。追加シミュレーションと継続サポートだけ有料。</p>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          <Card>
-            <p className="text-sm text-brand">無料</p>
-            <p className="stat-num mt-1 text-4xl font-semibold">¥0</p>
-            <ul className="mt-4 space-y-2 text-sm text-muted">
-              <li>撮影・記録</li>
-              <li>Daily Loop</li>
-              <li>基本Timeline</li>
-            </ul>
-            <Button href="/register" variant="outline" className="mt-6 w-full">
-              はじめる
-            </Button>
-          </Card>
-          <Card className="ring-2 ring-brand">
-            <p className="text-sm text-brand">都度課金</p>
-            <p className="stat-num mt-1 text-4xl font-semibold">¥{siteConfig.prices.extraSimJpy}</p>
-            <ul className="mt-4 space-y-2 text-sm text-muted">
-              <li>Future Face 追加パターン</li>
-              <li>比較表示・履歴保存</li>
-            </ul>
-            <div className="mt-6">
-              <CheckoutButton kind="future_face" label="追加パターンを買う" />
-            </div>
-          </Card>
-          <Card>
-            <p className="text-sm text-brand">Premium</p>
-            <p className="stat-num mt-1 text-4xl font-semibold">¥{siteConfig.prices.premiumMonthlyJpy}<span className="text-base font-medium text-muted">/月</span></p>
-            <ul className="mt-4 space-y-2 text-sm text-muted">
-              <li>AI肌診断 無制限</li>
-              <li>Evolution Card</li>
-              <li>週次レポート</li>
-            </ul>
-            <div className="mt-6">
-              <CheckoutButton kind="premium" label="プレミアムにする" variant="accent" />
-            </div>
-          </Card>
-        </div>
-        <p className="mt-6 text-sm text-muted">
-          個別相談は Calendly 予約（¥{siteConfig.prices.consultJpy.toLocaleString()}）。コーチセッションは成立時にプラットフォーム手数料 {siteConfig.prices.platformFeePercent}% 。
-          <Link href="/pricing" className="ml-1 text-brand">詳細</Link>
-        </p>
+        <PricingPhilosophy />
+        <PricingCards />
+        <PricingFootnote />
       </section>
 
       <section className="mx-auto max-w-6xl px-4 pb-20">
-        <Card className="flex flex-col items-start justify-between gap-6 bg-[#120d1c] text-white md:flex-row md:items-center">
+        <Card tone="dark" className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
           <div>
-            <h2 className="font-display text-3xl font-semibold">変化を記録しない人は、変化しない。</h2>
+            <h2 className="font-display text-3xl font-semibold text-white">
+              変化を記録しない人は、変化しない。
+            </h2>
             <p className="mt-2 text-white/70">今日の1枚から始めましょう。</p>
           </div>
-          <Button href="/register" className="bg-white text-brand hover:bg-zinc-100">
+          <Button href="/register" variant="light" className="shrink-0">
             無料で始める
           </Button>
         </Card>

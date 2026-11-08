@@ -192,8 +192,5 @@ create policy "avatars_public_read" on storage.objects for select
 create policy "avatars_owner_write" on storage.objects for insert
   with check (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
 
-insert into public.coaches (name, bio, specialty, price_jpy, verified)
-values
-  ('高橋 健', '商談前の清潔感を最短で整えます。眉と髪型の再現性を重視。', '商談・面接', 8000, true),
-  ('佐藤 みお', '婚活・日常の第一印象。やりすぎないメンズケアが専門。', '婚活・日常', 6000, true)
-on conflict do nothing;
+-- Demo coaches removed; 丹内 智弥 is seeded in 0003_features.sql
+

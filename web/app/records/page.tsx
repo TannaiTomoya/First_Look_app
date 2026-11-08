@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui";
 import { isSupabaseConfigured } from "@/lib/config";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -19,15 +19,24 @@ export default async function RecordsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: records } = await supabase
+  if (!user) {
+    return (
+      <AppShell>
+        <Card>ログインが必要です。</Card>
+      </AppShell>
+    );
+  }
+
+  const admin = await createServiceClient();
+  const { data: records } = await admin
     .from("look_records")
     .select("id, created_at, note, photo_path, is_day0")
-    .eq("user_id", user?.id ?? "")
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
   const withUrls = await Promise.all(
     (records ?? []).map(async (r) => {
-      const { data } = await supabase.storage.from("looks").createSignedUrl(r.photo_path, 3600);
+      const { data } = await admin.storage.from("looks").createSignedUrl(r.photo_path, 3600);
       return { ...r, url: data?.signedUrl ?? null };
     }),
   );

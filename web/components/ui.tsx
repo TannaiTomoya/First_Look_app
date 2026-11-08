@@ -13,7 +13,7 @@ export function Button({
   ...props
 }: {
   href?: string;
-  variant?: "primary" | "ghost" | "outline" | "accent";
+  variant?: "primary" | "ghost" | "outline" | "accent" | "light" | "ghostDark";
   className?: string;
   children: ReactNode;
 } & ButtonHTMLAttributes<HTMLButtonElement>) {
@@ -23,6 +23,9 @@ export function Button({
     accent: "bg-accent text-white shadow-lg shadow-rose-400/20 hover:brightness-110",
     outline: "border border-line bg-card text-foreground hover:bg-white",
     ghost: "text-foreground hover:bg-white/60",
+    // dark 背景上（className で text-* / bg-* を上書きしない）
+    ghostDark: "border border-white/25 bg-transparent text-white hover:bg-white/10",
+    light: "bg-white text-[#4f46e5] shadow-lg shadow-black/25 hover:bg-zinc-100",
   }[variant];
 
   const cls = cn(
@@ -49,14 +52,19 @@ export function Button({
 export function Card({
   children,
   className,
+  tone = "light",
 }: {
   children: ReactNode;
   className?: string;
+  tone?: "light" | "dark";
 }) {
   return (
     <div
       className={cn(
-        "rounded-3xl border border-line bg-card p-6 shadow-[0_12px_40px_rgba(23,20,31,0.06)]",
+        "rounded-3xl p-6",
+        tone === "dark"
+          ? "border border-white/10 bg-[#120d1c] text-white shadow-[0_20px_50px_rgba(0,0,0,0.35)]"
+          : "border border-line bg-card text-foreground shadow-[0_12px_40px_rgba(23,20,31,0.06)]",
         className,
       )}
     >

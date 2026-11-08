@@ -3,7 +3,7 @@ import { Button, Card } from "@/components/ui";
 import { CheckoutButton } from "@/components/checkout-button";
 import { isSupabaseConfigured } from "@/lib/config";
 import { getEntitlements } from "@/lib/entitlements";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -30,17 +30,22 @@ export default async function DashboardPage() {
     .eq("id", user?.id ?? "")
     .maybeSingle();
 
+  const admin = user ? await createServiceClient() : null;
   const entitlements = user
-    ? await getEntitlements(supabase, user.id)
-    : { extraSimulations: 0, isPremium: false };
+    ? await getEntitlements(admin ?? supabase, user.id)
+    : { extraSimulations: 0, isPremium: false, planInterval: "none" as const, planRenewals: 0, isAnnual: false };
 
-  const { data: latest } = await supabase
-    .from("look_records")
-    .select("id, created_at, photo_path")
-    .eq("user_id", user?.id ?? "")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const latest = user && admin
+    ? (
+        await admin
+          .from("look_records")
+          .select("id, created_at, photo_path")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      ).data
+    : null;
 
   const today = new Date().toISOString().slice(0, 10);
   const { data: action } = await supabase
@@ -83,23 +88,57 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <Card className="mt-4">
+      <div className="mt-6">
+        <h2 className="font-display text-xl font-semibold">ツール</h2>
+        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+          {[
+            { href: "/growth", t: "成長スタジオ", d: "数値分析×音声壁打ち" },
+            { href: "/skin", t: "美肌診断", d: "顔写真をAI診断→記録" },
+            { href: "/skin-check", t: "5分肌チェック", d: "ステップ式フィードバック" },
+            { href: "/physiognomy", t: "人相AI", d: "第一印象リーディング" },
+            { href: "/beauty-info", t: "美容情報", d: "メンズ習慣タイムライン" },
+            { href: "/konkatsu", t: "婚活チャレンジ", d: "岩手のイベント情報" },
+            { href: "/shorts", t: "ショート", d: "AI自動編集・投稿" },
+            { href: "/intro", t: "自己紹介作成", d: "生成して保存" },
+            { href: "/consult", t: "個別相談", d: "丹内 智弥に相談" },
+          ].map((x) => (
+            <a
+              key={x.href}
+              href={x.href}
+              className="rounded-2xl border border-line bg-card p-4 transition hover:border-brand hover:shadow-md"
+            >
+              <p className="font-semibold">{x.t}</p>
+              <p className="mt-1 text-xs text-muted">{x.d}</p>
+            </a>
+          ))}
+        </div>
+      </div>
+
+      <Card className="mt-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm text-brand">プレミアム</p>
+            <p className="text-sm text-brand">プラン</p>
             <p className="mt-1 font-semibold">
-              {entitlements.isPremium
-                ? "Premium 有効"
-                : `追加パターン残 ${entitlements.extraSimulations} 回`}
+              {entitlements.isAnnual
+                ? "Premium 年額（高度機能開放）"
+                : entitlements.isPremium
+                  ? "Premium 月額"
+                  : "無料 / 成長の入口"}
             </p>
             <p className="mt-1 text-sm text-muted">
-              シミュレーション結果の直後に、比較したいときだけ課金。
+              {entitlements.isAnnual
+                ? "YouTube取込・全テンプレ・発信プラン無制限が有効です。"
+                : entitlements.isPremium
+                  ? "年額にすると高度AI拡張が開放されます。安さより回収速度で。"
+                  : "継続が成果を生む。定価は維持し、年額で自己投資する。"}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <CheckoutButton kind="future_face" label="¥500 追加" variant="outline" />
+          <div className="flex w-full flex-col gap-2 sm:w-56">
             {!entitlements.isPremium && (
-              <CheckoutButton kind="premium" label="月額¥980" variant="accent" />
+              <CheckoutButton kind="premium" label="月額ではじめる" variant="outline" />
+            )}
+            {!entitlements.isAnnual && (
+              <CheckoutButton kind="premium_annual" label="年額で投資する" />
             )}
           </div>
         </div>

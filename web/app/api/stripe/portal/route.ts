@@ -22,20 +22,26 @@ export async function POST() {
 
   const stripe = getStripe();
   let customerId = profile?.stripe_customer_id as string | undefined;
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: user.email,
-      metadata: { userId: user.id },
+  try {
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: { userId: user.id },
+      });
+      customerId = customer.id;
+      await supabase.from("profiles").update({ stripe_customer_id: customerId }).eq("id", user.id);
+    }
+
+    const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+    const portal = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${origin}/settings`,
     });
-    customerId = customer.id;
-    await supabase.from("profiles").update({ stripe_customer_id: customerId }).eq("id", user.id);
+    return NextResponse.json({ url: portal.url });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "ポータルを開けませんでした" },
+      { status: 400 },
+    );
   }
-
-  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const portal = await stripe.billingPortal.sessions.create({
-    customer: customerId,
-    return_url: `${origin}/settings`,
-  });
-
-  return NextResponse.json({ url: portal.url });
 }

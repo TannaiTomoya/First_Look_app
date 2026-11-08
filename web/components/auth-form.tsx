@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { isSupabaseConfigured } from "@/lib/config";
+import { isSupabaseConfigured, siteConfig } from "@/lib/config";
 import { Button, Card } from "@/components/ui";
 import { Logo } from "@/components/site-header";
 
@@ -27,6 +27,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   }
 
   const supabase = createClient();
+  const redirectTo = `${siteConfig.url.replace(/\/$/, "")}/auth/callback?next=${next}`;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,10 +38,10 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${location.origin}/auth/callback?next=${next}` },
+          options: { emailRedirectTo: redirectTo },
         });
         if (error) throw error;
-        setMessage("確認メールを送信しました。メール内のリンクを開いてください。");
+        setMessage(`確認メールを送信しました。リンク先は ${new URL(redirectTo).origin} です。`);
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -57,7 +58,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     setLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: provider as "google",
-      options: { redirectTo: `${location.origin}/auth/callback?next=${next}` },
+      options: { redirectTo },
     });
     if (error) {
       setMessage(
@@ -105,8 +106,14 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           <Button type="button" variant="outline" className="w-full" onClick={() => oauth("google")}>
             Googleで続ける
           </Button>
-          <Button type="button" variant="outline" className="w-full" onClick={() => oauth("line")}>
-            LINEで続ける
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full opacity-60"
+            disabled
+            title="Supabase の LINE OIDC 設定後に有効になります"
+          >
+            LINEで続ける（準備中）
           </Button>
         </div>
         {message && <p className="mt-4 text-sm text-accent">{message}</p>}

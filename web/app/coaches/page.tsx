@@ -21,6 +21,7 @@ export default async function CoachesPage() {
     const { data } = await supabase
       .from("coaches")
       .select("id, name, bio, specialty, price_jpy, verified")
+      .not("name", "in", "(高橋 健,佐藤 みお)")
       .order("created_at", { ascending: true });
     coaches = data ?? [];
   }

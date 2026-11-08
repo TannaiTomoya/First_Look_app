@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 import {
   CalendarDays,
   Camera,
+  Heart,
   Home,
   Images,
   Settings,
-  Sparkles,
 } from "lucide-react";
 import { Logo } from "@/components/site-header";
 import { cn } from "@/components/ui";
@@ -17,8 +17,15 @@ const items = [
   { href: "/dashboard", label: "ホーム", icon: Home },
   { href: "/capture", label: "撮影", icon: Camera },
   { href: "/records", label: "記録", icon: Images },
-  { href: "/progress", label: "変化", icon: Sparkles },
+  { href: "/konkatsu", label: "婚活", icon: Heart },
   { href: "/consult", label: "相談", icon: CalendarDays },
+];
+
+const desktopExtra = [
+  { href: "/growth", label: "成長" },
+  { href: "/skin", label: "美肌診断" },
+  { href: "/shorts", label: "ショート" },
+  { href: "/intro", label: "自己紹介" },
 ];
 
 export function AppShell({
@@ -41,6 +48,11 @@ export function AppShell({
                 管理
               </Link>
             )}
+            {desktopExtra.map((x) => (
+              <Link key={x.href} href={x.href} className="hidden text-muted md:inline">
+                {x.label}
+              </Link>
+            ))}
             <Link href="/pricing" className="hidden text-muted sm:inline">
               料金
             </Link>

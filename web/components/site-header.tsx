@@ -23,15 +23,15 @@ export function SiteHeader({ loggedIn }: { loggedIn?: boolean }) {
         </nav>
         <div className="flex items-center gap-2">
           {loggedIn ? (
-            <Button href="/dashboard" className="bg-white text-brand hover:bg-zinc-100">
+            <Button href="/dashboard" variant="light">
               アプリを開く
             </Button>
           ) : (
             <>
-              <Button href="/login" variant="ghost" className="text-white hover:bg-white/10">
+              <Button href="/login" variant="ghostDark" className="border-transparent">
                 ログイン
               </Button>
-              <Button href="/register" className="bg-white text-brand hover:bg-zinc-100">
+              <Button href="/register" variant="light">
                 無料ではじめる
               </Button>
             </>

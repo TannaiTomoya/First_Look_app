@@ -14,8 +14,9 @@ if [[ ! -f "$TARGET" ]]; then
   exit 0
 fi
 
-# 必須キーがプレースホルダのままなら停止
-if grep -qE 'YOUR_PROJECT_REF|eyJ\.\.\.|pk_test_\.\.\.|sk_test_\.\.\.' "$TARGET"; then
+# 必須キーがプレースホルダのままなら停止（コメント行は無視）
+if grep -E '^(NEXT_PUBLIC_SUPABASE_URL|NEXT_PUBLIC_SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY|NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY|STRIPE_SECRET_KEY)=' "$TARGET" \
+  | grep -qE 'YOUR_PROJECT_REF|eyJ\.\.\.|pk_test_\.\.\.|sk_test_\.\.\.'; then
   echo "web/.env.local に実キーを記入してから再実行してください。"
   exit 1
 fi
@@ -28,21 +29,33 @@ set +a
 
 echo "Cloudflare Worker vars / secrets を更新中（値は表示しません）..."
 
+is_placeholder() {
+  local v="$1"
+  [[ -z "$v" ]] && return 0
+  [[ "$v" == *'...'* ]] && return 0
+  [[ "$v" == *YOUR_PROJECT_REF* ]] && return 0
+  return 1
+}
+
 # wrangler の vars は設定ファイル経由が安全。secrets は put
 for key in SUPABASE_SERVICE_ROLE_KEY STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET; do
   val="${!key:-}"
-  if [[ -n "$val" ]]; then
+  if is_placeholder "$val"; then
+    echo "  secret: $key スキップ（未設定/プレースホルダ）"
+  else
     printf '%s' "$val" | npx wrangler secret put "$key" >/dev/null
     echo "  secret: $key OK"
-  else
-    echo "  secret: $key スキップ（未設定）"
   fi
 done
 
-# NEXT_PUBLIC と SITE_URL はビルド時に埋め込まれるため .env.production / .dev.vars にも同期
+# NEXT_PUBLIC はビルド時に埋め込まれる。runtime 用に .dev.vars へ同期（プレースホルダ除外）
 {
   echo "NEXTJS_ENV=production"
-  grep -E '^(NEXT_PUBLIC_|SUPABASE_SERVICE_ROLE_KEY|STRIPE_|NEXT_PUBLIC_SITE_URL)' "$TARGET" || true
+  while IFS='=' read -r k v; do
+    [[ "$k" =~ ^(NEXT_PUBLIC_|SUPABASE_SERVICE_ROLE_KEY|STRIPE_) ]] || continue
+    is_placeholder "$v" && continue
+    printf '%s=%s\n' "$k" "$v"
+  done < "$TARGET"
 } > .dev.vars.production.tmp
 mv .dev.vars.production.tmp .dev.vars
 echo "  .dev.vars を同期しました（デプロイ時に使用）"
