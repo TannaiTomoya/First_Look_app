@@ -31,7 +31,7 @@ export default function GrowthPlansPage() {
   }
 
   useEffect(() => {
-    void load();
+    queueMicrotask(() => void load());
   }, []);
 
   async function create() {

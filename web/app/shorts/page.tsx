@@ -40,7 +40,7 @@ export default function ShortsPage() {
   }
 
   useEffect(() => {
-    void load();
+    queueMicrotask(() => void load());
   }, []);
 
   function onPick(f?: File | null) {
