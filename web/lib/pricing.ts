@@ -42,6 +42,7 @@ export const pricingCatalog = {
     interval: "year" as const,
     /** 年額限定：高度AI・拡張をここに集約 */
     exclusiveFeatures: [
+      "Future Face 全パラメータ（輪郭・頬・透明感・ほうれい線）",
       "YouTube統計インポート",
       "発信プランAI 無制限",
       "切り抜きテンプレ A/B/C 全開放",

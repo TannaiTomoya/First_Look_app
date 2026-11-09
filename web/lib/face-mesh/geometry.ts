@@ -95,11 +95,36 @@ function adjacency(n: number, edges: Array<[number, number]>) {
  * 画像上で近いだけの鼻・口には波及しない。
  */
 export function jawWeights(face: FaceData, frame: HeadFrame, hops = 5): Float32Array {
+  const yNose = toLocal(frame, face.points[NOSE_TIP])[1];
+  const yChin = toLocal(frame, face.points[CHIN])[1];
+  return regionWeights(face, frame, JAW_SEED_IDX, hops, (y) =>
+    clamp01(((yNose - y) / (yNose - yChin || 1)) * 1.6),
+  );
+}
+
+/** 頬骨まわりの外周（頬幅 234–454 を動かす） */
+const CHEEK_SEED_IDX = [234, 93, 127, 454, 323, 356];
+
+/** 頬の重み。頬幅の高さを中心に、目の高さ・口の高さに向かって減衰させる */
+export function cheekWeights(face: FaceData, frame: HeadFrame, hops = 4): Float32Array {
+  const p = face.points;
+  const yCheek = (toLocal(frame, p[234])[1] + toLocal(frame, p[454])[1]) / 2;
+  const h = Math.abs(toLocal(frame, p[NOSE_TIP])[1] - toLocal(frame, p[CHIN])[1]) || 1;
+  return regionWeights(face, frame, CHEEK_SEED_IDX, hops, (y) => clamp01(1 - Math.abs(y - yCheek) / (0.9 * h)));
+}
+
+function regionWeights(
+  face: FaceData,
+  frame: HeadFrame,
+  seedIdx: number[],
+  hops: number,
+  band: (localY: number) => number,
+): Float32Array {
   const n = face.points.length;
   const adj = adjacency(n, face.edges);
   const hop = new Int32Array(n).fill(-1);
   const queue: number[] = [];
-  for (const s of JAW_SEED_IDX) {
+  for (const s of seedIdx) {
     hop[s] = 0;
     queue.push(s);
   }
@@ -114,18 +139,14 @@ export function jawWeights(face: FaceData, frame: HeadFrame, hops = 5): Float32A
     }
   }
 
-  const yNose = toLocal(frame, face.points[NOSE_TIP])[1];
-  const yChin = toLocal(frame, face.points[CHIN])[1];
   const w = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     if (hop[i] < 0 || PROTECTED.has(i)) continue;
     const g = smooth(1 - hop[i] / (hops + 1));
-    const y = toLocal(frame, face.points[i])[1];
-    const v = clamp01(((yNose - y) / (yNose - yChin || 1)) * 1.6);
-    w[i] = g * v;
+    w[i] = g * band(toLocal(frame, face.points[i])[1]);
   }
 
-  const seeds = new Set(JAW_SEED_IDX);
+  const seeds = new Set(seedIdx);
   for (let pass = 0; pass < 3; pass++) {
     const prev = w.slice();
     for (let i = 0; i < n; i++) {
@@ -203,17 +224,22 @@ export function meshPositions(mesh: ImageMesh, deformed: Vec3[]): Float64Array {
 }
 
 export function countFlipped(mesh: ImageMesh, pos: Float64Array): number {
+  return flippedTriangles(mesh, pos).length / 3;
+}
+
+/** 反転（または潰れた）三角形の頂点インデックスを3つずつ並べて返す */
+export function flippedTriangles(mesh: ImageMesh, pos: Float64Array): number[] {
   const area = (p: Float64Array, a: number, b: number, c: number) =>
     (p[b * 2] - p[a * 2]) * (p[c * 2 + 1] - p[a * 2 + 1]) -
     (p[c * 2] - p[a * 2]) * (p[b * 2 + 1] - p[a * 2 + 1]);
-  let flipped = 0;
+  const out: number[] = [];
   const t = mesh.triangles;
   for (let i = 0; i < t.length; i += 3) {
     const before = area(mesh.base, t[i], t[i + 1], t[i + 2]);
     const after = area(pos, t[i], t[i + 1], t[i + 2]);
-    if (Math.sign(before) !== Math.sign(after) || Math.abs(after) < 1e-6) flipped++;
+    if (Math.sign(before) !== Math.sign(after) || Math.abs(after) < 1e-6) out.push(t[i], t[i + 1], t[i + 2]);
   }
-  return flipped;
+  return out;
 }
 
 /* ---------- 旧方式（static/js/future_face.js の slimJaw を移植） ---------- */
@@ -295,6 +321,24 @@ export function jawCrop(face: FaceData, pad = 0.18): Crop {
   const w = Math.min(face.width - x, w0 * (1 + 2 * pad));
   const h = Math.min(face.height - y, h0 * (1 + 2 * pad) + h0 * 0.35);
   return { x, y, w, h };
+}
+
+/** 顔の輪郭（額〜顎先）を余白付きで切り出す範囲 */
+export function faceCrop(face: FaceData, pad = 0.25): Crop {
+  const xs = FACE_OVAL_IDX.map((i) => face.points[i][0]);
+  const ys = FACE_OVAL_IDX.map((i) => face.points[i][1]);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  const w0 = Math.max(...xs) - minX;
+  const h0 = Math.max(...ys) - minY;
+  const x = Math.max(0, minX - w0 * pad);
+  const y = Math.max(0, minY - h0 * pad);
+  return {
+    x,
+    y,
+    w: Math.min(face.width - x, w0 * (1 + 2 * pad)),
+    h: Math.min(face.height - y, h0 * (1 + 2 * pad)),
+  };
 }
 
 /* ---------- 比較指標 ---------- */
