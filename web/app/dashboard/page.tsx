@@ -92,6 +92,7 @@ export default async function DashboardPage() {
         <h2 className="font-display text-xl font-semibold">ツール</h2>
         <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
+            { href: "/future-face", t: "Future Face", d: "輪郭・肌を3Dでシミュレーション" },
             { href: "/growth", t: "成長スタジオ", d: "数値分析×音声壁打ち" },
             { href: "/skin", t: "美肌診断", d: "顔写真をAI診断→記録" },
             { href: "/skin-check", t: "5分肌チェック", d: "ステップ式フィードバック" },
