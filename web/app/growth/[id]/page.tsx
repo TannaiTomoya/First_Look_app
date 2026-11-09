@@ -72,7 +72,7 @@ export default function GrowthRecordingPage() {
   }, [id]);
 
   useEffect(() => {
-    void load();
+    queueMicrotask(() => void load());
   }, [load]);
 
   async function toggle(h: Highlight) {

@@ -9,15 +9,13 @@ import { Button, Card } from "@/components/ui";
 function SuccessInner() {
   const params = useSearchParams();
   const sessionId = params.get("session_id");
-  const [state, setState] = useState<"loading" | "ok" | "error">("loading");
-  const [message, setMessage] = useState("決済を確認しています…");
+  const [state, setState] = useState<"loading" | "ok" | "error">(sessionId ? "loading" : "ok");
+  const [message, setMessage] = useState(
+    sessionId ? "決済を確認しています…" : "決済を受け付けました。ダッシュボードで確認してください。",
+  );
 
   useEffect(() => {
-    if (!sessionId) {
-      setState("ok");
-      setMessage("決済を受け付けました。ダッシュボードで確認してください。");
-      return;
-    }
+    if (!sessionId) return;
     fetch("/api/stripe/confirm", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

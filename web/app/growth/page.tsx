@@ -129,7 +129,7 @@ export default function GrowthPage() {
   }, []);
 
   useEffect(() => {
-    void load();
+    queueMicrotask(() => void load());
   }, [load]);
 
   async function uploadRecording(file: File) {
