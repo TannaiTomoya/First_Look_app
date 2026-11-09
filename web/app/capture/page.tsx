@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button, Card } from "@/components/ui";
 import { CheckoutButton } from "@/components/checkout-button";
+import { isSupabaseConfigured } from "@/lib/config";
+import { createClient } from "@/lib/supabase/client";
+import { getConsent, measureFile, saveSnapshot, setConsent } from "@/lib/face-mesh/snapshots";
 
 export default function CapturePage() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -16,10 +19,39 @@ export default function CapturePage() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [consent, setConsentState] = useState<boolean | null>(null);
 
   useEffect(() => {
     return () => stopCamera();
   }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    getConsent(createClient())
+      .then(setConsentState)
+      .catch(() => setConsentState(false));
+  }, []);
+
+  async function agree() {
+    try {
+      await setConsent(createClient(), true);
+      setConsentState(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "同意の保存に失敗しました");
+    }
+  }
+
+  async function saveStructure(recordId: string | null): Promise<string> {
+    if (!consent || !file) return "";
+    try {
+      const m = await measureFile(file);
+      if (!m) return "（顔を検出できず、構造指標は保存していません）";
+      await saveSnapshot(createClient(), m.row, recordId);
+      return m.issues.length ? `構造指標は参考値として保存（${m.issues.join("・")}）` : "構造指標も保存しました";
+    } catch {
+      return "（構造指標の保存に失敗しました）";
+    }
+  }
 
   function stopCamera() {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -91,7 +123,7 @@ export default function CapturePage() {
       body.append("file", file);
       body.append("note", note);
       const res = await fetch("/api/records", { method: "POST", body });
-      const data = (await res.json()) as { ok?: boolean; error?: string };
+      const data = (await res.json()) as { ok?: boolean; id?: string; error?: string };
       if (!res.ok) {
         if (res.status === 401) {
           location.href = "/login?next=/capture";
@@ -99,7 +131,8 @@ export default function CapturePage() {
         }
         throw new Error(data.error ?? "保存に失敗しました");
       }
-      setStatus("保存しました。記録タブで確認できます。");
+      const structure = await saveStructure(data.id ?? null);
+      setStatus(`保存しました。記録タブで確認できます。${structure}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "保存に失敗しました");
     } finally {
@@ -163,6 +196,22 @@ export default function CapturePage() {
           placeholder="メモ（任意）"
           className="mt-4 w-full rounded-2xl border border-line px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand"
         />
+        {consent === true && (
+          <p className="mt-3 text-xs text-muted">
+            顔の構造指標（顎幅・頬幅など）も記録します。停止・削除は設定から。
+          </p>
+        )}
+        {consent === false && (
+          <div className="mt-4 rounded-2xl border border-line bg-white p-4 text-sm">
+            <p className="font-medium">顔の構造指標も記録しますか？（任意）</p>
+            <p className="mt-1 text-xs text-muted">
+              写真から顎幅・頬幅・顔の縦横比・顔の向きを数値にして保存し、変化グラフに使います。顔の検出は端末内で行い、保存するのは数値だけです（点の座標は保存しません）。本人以外は閲覧できず、設定からいつでも取り消せます。取り消すと保存済みの数値はすべて削除されます。
+            </p>
+            <Button type="button" variant="outline" className="mt-3" onClick={agree}>
+              同意して記録する
+            </Button>
+          </div>
+        )}
         <div className="mt-4 flex flex-wrap gap-2">
           <Button type="button" onClick={save} disabled={!file || saving}>
             {saving ? "保存中..." : "記録する"}
