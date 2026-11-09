@@ -1,0 +1,74 @@
+import Link from "next/link";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
+
+export function cn(...parts: Array<string | false | null | undefined>) {
+  return parts.filter(Boolean).join(" ");
+}
+
+export function Button({
+  href,
+  variant = "primary",
+  className,
+  children,
+  ...props
+}: {
+  href?: string;
+  variant?: "primary" | "ghost" | "outline" | "accent" | "light" | "ghostDark";
+  className?: string;
+  children: ReactNode;
+} & ButtonHTMLAttributes<HTMLButtonElement>) {
+  const styles = {
+    primary:
+      "bg-brand text-white shadow-lg shadow-indigo-500/20 hover:brightness-110",
+    accent: "bg-accent text-white shadow-lg shadow-rose-400/20 hover:brightness-110",
+    outline: "border border-line bg-card text-foreground hover:bg-white",
+    ghost: "text-foreground hover:bg-white/60",
+    // dark 背景上（className で text-* / bg-* を上書きしない）
+    ghostDark: "border border-white/25 bg-transparent text-white hover:bg-white/10",
+    light: "bg-white text-[#4f46e5] shadow-lg shadow-black/25 hover:bg-zinc-100",
+  }[variant];
+
+  const cls = cn(
+    "inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition",
+    styles,
+    className,
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className={cls}>
+        {children}
+      </Link>
+    );
+  }
+
+  return (
+    <button className={cls} {...props}>
+      {children}
+    </button>
+  );
+}
+
+export function Card({
+  children,
+  className,
+  tone = "light",
+}: {
+  children: ReactNode;
+  className?: string;
+  tone?: "light" | "dark";
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-3xl p-6",
+        tone === "dark"
+          ? "border border-white/10 bg-[#120d1c] text-white shadow-[0_20px_50px_rgba(0,0,0,0.35)]"
+          : "border border-line bg-card text-foreground shadow-[0_12px_40px_rgba(23,20,31,0.06)]",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
