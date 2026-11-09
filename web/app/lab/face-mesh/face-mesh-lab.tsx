@@ -22,9 +22,10 @@ import {
   type DeformMetrics,
   type FaceData,
   type HeadFrame,
-  type ImageMesh,
   type PoseStability,
 } from "@/lib/face-mesh/geometry";
+import { MorphCanvas } from "@/components/future-face/morph-view";
+import { SHAPE_TOLERANCE_PT, measureShapeImage, shapeModel, solveShape } from "@/lib/face-mesh/future-face";
 import { detectFace, loadFaceLandmarker, type Detection } from "@/lib/face-mesh/landmarker";
 import { StructureTrend } from "@/components/structure-trend";
 import { MeasurementNotice } from "@/components/measurement-notice";
@@ -293,6 +294,7 @@ export default function FaceMeshLab() {
 
           <RegistrationSection det={det} frame={frame} />
           <TrendPreview det={det} />
+          <ParamAccuracySection det={det} />
         </>
       )}
     </div>
@@ -383,125 +385,6 @@ function CroppedImage({
         />
       )}
     </div>
-  );
-}
-
-function MorphCanvas({
-  crop = null,
-  ...props
-}: {
-  source: HTMLCanvasElement;
-  mesh: ImageMesh;
-  positions: Float64Array;
-  face: FaceData;
-  deformedFace: FaceData["points"];
-  showWire: boolean;
-  crop?: Crop | null;
-}) {
-  const { width: W, height: H } = props.source;
-  const c = crop ?? { x: 0, y: 0, w: W, h: H };
-  return (
-    <div className="w-full overflow-hidden rounded-2xl bg-zinc-100" style={{ aspectRatio: `${c.w} / ${c.h}` }}>
-      <Canvas orthographic camera={{ position: [0, 0, 10], near: 0.1, far: 100 }} flat>
-        <FitOrtho W={W} H={H} crop={c} />
-        <MorphMesh {...props} />
-      </Canvas>
-    </div>
-  );
-}
-
-function FitOrtho({ W, H, crop }: { W: number; H: number; crop: Crop }) {
-  useFrame(({ camera, size }) => {
-    const zoom = Math.min(size.width / crop.w, size.height / crop.h);
-    const x = crop.x + crop.w / 2 - W / 2;
-    const y = H / 2 - (crop.y + crop.h / 2);
-    if (Math.abs(camera.zoom - zoom) > 1e-4 || camera.position.x !== x || camera.position.y !== y) {
-      camera.zoom = zoom;
-      camera.position.set(x, y, 10);
-      camera.updateProjectionMatrix();
-    }
-  });
-  return null;
-}
-
-function MorphMesh({
-  source,
-  mesh,
-  positions,
-  face,
-  deformedFace,
-  showWire,
-}: {
-  source: HTMLCanvasElement;
-  mesh: ImageMesh;
-  positions: Float64Array;
-  face: FaceData;
-  deformedFace: FaceData["points"];
-  showWire: boolean;
-}) {
-  const { width: W, height: H } = source;
-
-  const texture = useMemo(() => {
-    const t = new THREE.CanvasTexture(source);
-    t.colorSpace = THREE.SRGBColorSpace;
-    t.needsUpdate = true;
-    return t;
-  }, [source]);
-
-  const geometry = useMemo(() => {
-    const g = new THREE.BufferGeometry();
-    const n = mesh.base.length / 2;
-    const uv = new Float32Array(n * 2);
-    for (let i = 0; i < n; i++) {
-      uv[i * 2] = mesh.base[i * 2] / W;
-      uv[i * 2 + 1] = 1 - mesh.base[i * 2 + 1] / H;
-    }
-    g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(n * 3), 3));
-    g.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
-    g.setIndex(new THREE.BufferAttribute(new Uint32Array(mesh.triangles), 1));
-    return g;
-  }, [mesh, W, H]);
-
-  const wire = useMemo(() => new THREE.BufferGeometry(), []);
-
-  useEffect(() => {
-    const attr = geometry.getAttribute("position") as THREE.BufferAttribute;
-    for (let i = 0; i < attr.count; i++) {
-      attr.setXYZ(i, positions[i * 2] - W / 2, H / 2 - positions[i * 2 + 1], 0);
-    }
-    attr.needsUpdate = true;
-    geometry.computeBoundingSphere();
-
-    const arr = new Float32Array(face.edges.length * 6);
-    face.edges.forEach(([a, b], i) => {
-      const pa = deformedFace[a];
-      const pb = deformedFace[b];
-      arr.set([pa[0] - W / 2, H / 2 - pa[1], 1, pb[0] - W / 2, H / 2 - pb[1], 1], i * 6);
-    });
-    wire.setAttribute("position", new THREE.BufferAttribute(arr, 3));
-    wire.computeBoundingSphere();
-  }, [geometry, wire, positions, deformedFace, face.edges, W, H]);
-
-  useEffect(
-    () => () => {
-      geometry.dispose();
-      texture.dispose();
-    },
-    [geometry, texture],
-  );
-  useEffect(() => () => wire.dispose(), [wire]);
-
-  return (
-    <>
-      <mesh geometry={geometry}>
-        <meshBasicMaterial map={texture} side={THREE.DoubleSide} toneMapped={false} />
-      </mesh>
-      {showWire && (
-        <lineSegments geometry={wire}>
-          <lineBasicMaterial color="#4f46e5" transparent opacity={0.35} />
-        </lineSegments>
-      )}
-    </>
   );
 }
 
@@ -611,6 +494,77 @@ function TrendPreview({ det }: { det: Detection }) {
     <section className="mt-6">
       <p className="text-xs font-semibold text-brand">⑤ /progress の表示プレビュー（#7・ダミーデータ）</p>
       <StructureTrend series={series} total={total} />
+    </section>
+  );
+}
+
+const ACCURACY_TARGETS: Array<[number, number]> = [
+  [-3, 0],
+  [-6, 0],
+  [-12, 0],
+  [-15, 0],
+  [0, -3],
+  [0, -6],
+  [0, -10],
+  [-5, 0],
+  [-12, -6],
+  [-15, -10],
+];
+
+/** Future Face の形状パラメータ（目標 %）と、変形後に実測した % の差（#8 の完了条件） */
+function ParamAccuracySection({ det }: { det: Detection }) {
+  const rows = useMemo(() => {
+    const model = shapeModel(det.face, det.matrix);
+    return ACCURACY_TARGETS.map(([contour, cheek]) => {
+      const r = solveShape(model, contour, cheek);
+      const image = measureShapeImage(model, r.points);
+      const diff = Math.max(Math.abs(r.measured.contourPct - contour), Math.abs(r.measured.cheekPct - cheek));
+      return { contour, cheek, r, image, diff };
+    });
+  }, [det]);
+  const fmt = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`;
+  return (
+    <section className="mt-6">
+      <Card>
+        <h2 className="font-semibold">⑥ Future Face：パラメータと実測の一致（#8）</h2>
+        <p className="mt-1 text-xs text-muted">
+          目標の変化率になるよう変形強度を自動で補正し、変形後の顔を姿勢補正した座標で測り直しています。許容 ±{SHAPE_TOLERANCE_PT}pt。「画像上」は写真の見た目での変化率（参考）。
+        </p>
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-line text-left text-xs text-muted">
+                <th className="py-2 pr-3 font-medium">目標 輪郭 / 頬</th>
+                <th className="py-2 pr-3 font-medium">実測 輪郭 / 頬</th>
+                <th className="py-2 pr-3 font-medium">画像上 輪郭 / 頬</th>
+                <th className="py-2 pr-3 font-medium">最大差</th>
+                <th className="py-2 pr-3 font-medium">反転三角形</th>
+                <th className="py-2 font-medium">判定</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(({ contour, cheek, r, image, diff }) => (
+                <tr key={`${contour}/${cheek}`} className="border-b border-line/60 font-mono">
+                  <td className="py-2 pr-3">
+                    {fmt(contour)} / {fmt(cheek)}
+                  </td>
+                  <td className="py-2 pr-3">
+                    {fmt(r.measured.contourPct)} / {fmt(r.measured.cheekPct)}
+                  </td>
+                  <td className="py-2 pr-3 text-muted">
+                    {fmt(image.contourPct)} / {fmt(image.cheekPct)}
+                  </td>
+                  <td className="py-2 pr-3">{diff.toFixed(2)}pt</td>
+                  <td className="py-2 pr-3">{r.flipped}</td>
+                  <td className="py-2 font-sans text-xs">
+                    {!r.reachable ? "範囲外" : diff <= SHAPE_TOLERANCE_PT && r.flipped === 0 ? "一致" : "要確認"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </section>
   );
 }
