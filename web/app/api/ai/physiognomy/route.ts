@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generateAiText, toLines } from "@/lib/ai";
+import {
+  PHYSIOGNOMY_BASELINE,
+  PHYSIOGNOMY_THRESHOLDS,
+  isValidRatios,
+  type FaceRatios,
+} from "@/lib/face-mesh/physiognomy";
 
 export const dynamic = "force-dynamic";
 
@@ -11,21 +17,15 @@ const SOURCES = [
   "Todorov, A. (2017) “Face Value: The Irresistible Influence of First Impressions”, Princeton University Press",
 ];
 
-type FaceRatios = {
-  faceAspect: number; // 縦/横
-  eyeGap: number; // 目間隔/顔幅
-  jawWidth: number; // 顎幅/顔幅
-  foreheadRatio: number; // 額の高さ/顔の高さ
-};
-
 function heuristicReading(r: FaceRatios) {
+  const t = PHYSIOGNOMY_THRESHOLDS;
   const notes: string[] = [];
-  if (r.faceAspect > 1.35) notes.push("面長傾向: 落ち着き・誠実さが伝わりやすい（観相学の古典的解釈）。");
+  if (r.faceAspect > t.longFace) notes.push("面長傾向: 落ち着き・誠実さが伝わりやすい（観相学の古典的解釈）。");
   else notes.push("丸顔〜標準傾向: 親しみやすさが第一印象で伝わりやすい。");
-  if (r.eyeGap > 0.46) notes.push("目の間隔が広め: おおらかな印象を与えやすい。");
-  else notes.push("目の間隔が標準〜狭め: 集中力・シャープな印象。");
-  if (r.jawWidth > 0.78) notes.push("顎がしっかり: 意志の強さ・信頼感を演出しやすい。");
-  if (r.foreheadRatio > 0.36) notes.push("額が広め: 知的な印象が出やすい。前髪で調整可能。");
+  if (r.eyeGap > t.wideEyes) notes.push("目の間隔が広め: おおらかな印象を与えやすい。");
+  else if (r.eyeGap < t.narrowEyes) notes.push("目の間隔が狭め: 集中力・シャープな印象。");
+  else notes.push("目の間隔は標準的: バランスの取れた印象。");
+  if (r.jawWidth > t.strongJaw) notes.push("顎がしっかり: 意志の強さ・信頼感を演出しやすい。");
   return notes;
 }
 
@@ -36,12 +36,18 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
 
-  const r = (await request.json()) as FaceRatios;
+  const r = (await request.json().catch(() => null)) as Partial<FaceRatios> | null;
+  if (!isValidRatios(r)) {
+    return NextResponse.json({ error: "顔の計測値が不正です。もう一度撮影してください。" }, { status: 400 });
+  }
   const base = heuristicReading(r);
+  const b = PHYSIOGNOMY_BASELINE;
 
   const ai = await generateAiText(
     `あなたは観相学（人相学）の解説者。以下の顔比率から、古典的な観相学での「印象の読み」を日本語で3行、断定を避けて解説。差別的・医学的断定は禁止。\n` +
-      `顔縦横比:${r.faceAspect.toFixed(2)} 目間隔比:${r.eyeGap.toFixed(2)} 顎幅比:${r.jawWidth.toFixed(2)} 額比:${r.foreheadRatio.toFixed(2)}`,
+      `比率は顔のランドマークから測った実測値。括弧内は標準的な顔モデルの値で、そこからの差だけを特徴として扱うこと。\n` +
+      `顔縦横比:${r.faceAspect.toFixed(3)}（${b.faceAspect}） 目間隔/頬幅:${r.eyeGap.toFixed(3)}（${b.eyeGap}） 顎幅/頬幅:${r.jawWidth.toFixed(3)}（${b.jawWidth}）\n` +
+      `額の広さは測れていないので触れないこと。`,
   );
 
   return NextResponse.json({

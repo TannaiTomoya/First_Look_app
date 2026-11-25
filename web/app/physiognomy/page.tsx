@@ -4,7 +4,10 @@ import { AiFallbackNotice } from "@/components/ai-fallback-notice";
 import { useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button, Card } from "@/components/ui";
-import { detectFace, fileToCanvas } from "@/lib/face-tools";
+import { fileToCanvas } from "@/lib/face-tools";
+import { qualityIssues, register } from "@/lib/face-mesh/canonical";
+import { detectFace } from "@/lib/face-mesh/landmarker";
+import { physiognomyRatios } from "@/lib/face-mesh/physiognomy";
 
 type Result = { reading: string[]; sources: string[]; disclaimer: string; source: string; ai?: boolean };
 
@@ -23,13 +26,18 @@ export default function PhysiognomyPage() {
     try {
       const canvas = await fileToCanvas(f);
       setPreview(canvas.toDataURL("image/jpeg", 0.85));
-      const face = await detectFace(canvas);
-      const ratios = {
-        faceAspect: face.height / face.width,
-        eyeGap: 0.42 + Math.random() * 0.08, // FaceDetector はランドマーク非対応のため推定幅
-        jawWidth: Math.min(1, face.width / (canvas.width * 0.6)),
-        foreheadRatio: 0.3 + (face.y / canvas.height) * 0.2,
-      };
+      // 478点のランドマークを検出し、顔の向きを補正した座標で比率を測る（同じ画像なら同じ値）
+      const det = await detectFace(canvas);
+      if (!det) {
+        throw new Error("顔を検出できませんでした。顔全体が写った明るい写真で、もう一度お試しください。");
+      }
+      const reg = register(det.face, det.matrix);
+      const jawOpen = det.blendshapes.find((b) => b.name === "jawOpen")?.score ?? 0;
+      const issues = qualityIssues(reg.pose, jawOpen);
+      if (issues.length > 0) {
+        throw new Error(`正しく測れない写真です（${issues.join("・")}）。正面を向き、口を閉じて撮り直してください。`);
+      }
+      const ratios = physiognomyRatios(reg.points);
       const res = await fetch("/api/ai/physiognomy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
