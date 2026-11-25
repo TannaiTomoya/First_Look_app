@@ -25,6 +25,7 @@ jobs:
       - run: npx next typegen
       - run: npx tsc --noEmit
       - run: npx eslint app lib components
+      - run: npm test
       - run: npx next build
 
   rls:

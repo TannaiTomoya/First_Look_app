@@ -1,5 +1,6 @@
 "use client";
 
+import { AiFallbackNotice } from "@/components/ai-fallback-notice";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button, Card } from "@/components/ui";
@@ -18,6 +19,7 @@ export default function IntroPage() {
     tone: "誠実" as (typeof TONES)[number],
   });
   const [text, setText] = useState<string | null>(null);
+  const [aiDown, setAiDown] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +54,7 @@ export default function IntroPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      const data = (await res.json()) as { text?: string; error?: string };
+      const data = (await res.json()) as { text?: string; error?: string; ai?: boolean };
       if (!res.ok) {
         if (res.status === 401) {
           location.href = "/login?next=/intro";
@@ -61,6 +63,7 @@ export default function IntroPage() {
         throw new Error(data.error ?? "生成に失敗しました");
       }
       setText(data.text ?? null);
+      setAiDown(data.ai === false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "生成に失敗しました");
     } finally {
@@ -131,6 +134,7 @@ export default function IntroPage() {
         {error && <p className="text-sm text-accent">{error}</p>}
       </Card>
 
+      <AiFallbackNotice show={aiDown && Boolean(text)} className="mt-4" />
       {text && (
         <Card className="mt-4">
           <textarea

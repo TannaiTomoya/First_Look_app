@@ -22,6 +22,7 @@ const protectedPrefixes = [
   "/konkatsu",
   "/studio",
   "/future-face",
+  "/reset-password",
 ];
 
 const authPages = ["/login", "/register"];

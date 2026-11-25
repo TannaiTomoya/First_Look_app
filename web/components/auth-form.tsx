@@ -1,18 +1,29 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { isSupabaseConfigured, siteConfig } from "@/lib/config";
+import { isSupabaseConfigured } from "@/lib/config";
+import { authErrorView, callbackErrorView, type AuthErrorView } from "@/lib/auth/errors";
+import { safeNext } from "@/lib/auth/safe-next";
 import { Button, Card } from "@/components/ui";
 import { Logo } from "@/components/site-header";
 
+/** 確認メール・OAuth の戻り先。ビルド時の env ではなく、今開いているサイトの origin を使う */
+export function callbackUrl(next: string) {
+  return `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+}
+
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/dashboard";
+  const next = safeNext(searchParams.get("next"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [failure, setFailure] = useState<AuthErrorView | null>(() =>
+    callbackErrorView(searchParams.get("error")),
+  );
   const [loading, setLoading] = useState(false);
 
   if (!isSupabaseConfigured()) {
@@ -27,48 +38,77 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   }
 
   const supabase = createClient();
-  const redirectTo = `${siteConfig.url.replace(/\/$/, "")}/auth/callback?next=${next}`;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setMessage(null);
+    setNotice(null);
+    setFailure(null);
     try {
       if (mode === "register") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: redirectTo },
+          options: { emailRedirectTo: callbackUrl(next) },
         });
         if (error) throw error;
-        setMessage(`確認メールを送信しました。リンク先は ${new URL(redirectTo).origin} です。`);
+        // メール確認が不要な設定ならそのままセッションが返る
+        if (data.session) {
+          location.href = next;
+          return;
+        }
+        setNotice("確認メールを送信しました。メール内のリンクを、このブラウザで開いてください。");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         location.href = next;
+        return;
       }
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "エラーが発生しました");
-    } finally {
+      setFailure(authErrorView(err));
+    }
+    setLoading(false);
+  }
+
+  async function resendConfirmation() {
+    if (!email) {
+      setFailure({ message: "メールアドレスを入力してから、もう一度押してください。" });
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: { emailRedirectTo: callbackUrl(next) },
+    });
+    setLoading(false);
+    if (error) {
+      setFailure(authErrorView(error));
+      return;
+    }
+    setFailure(null);
+    setNotice("確認メールを再送しました。メール内のリンクを、このブラウザで開いてください。");
+  }
+
+  async function signInWithGoogle() {
+    setLoading(true);
+    setNotice(null);
+    setFailure(null);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: callbackUrl(next),
+        queryParams: { prompt: "select_account" },
+      },
+    });
+    // 成功時は Google へ遷移するので、ここに来るのは失敗時のみ
+    if (error) {
+      setFailure(authErrorView(error));
       setLoading(false);
     }
   }
 
-  async function oauth(provider: "google" | "line") {
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: provider as "google",
-      options: { redirectTo },
-    });
-    if (error) {
-      setMessage(
-        provider === "line"
-          ? "LINEログインは Supabase のカスタムOIDC設定後に有効になります。"
-          : error.message,
-      );
-      setLoading(false);
-    }
-  }
+  const forgotHref = `/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ""}`;
 
   return (
     <div className="mx-auto w-full max-w-md">
@@ -84,6 +124,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           <input
             type="email"
             required
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="メールアドレス"
@@ -93,6 +134,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             type="password"
             required
             minLength={8}
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="パスワード（8文字以上）"
@@ -102,8 +144,15 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             {loading ? "処理中..." : mode === "login" ? "ログイン" : "登録する"}
           </Button>
         </form>
+        {mode === "login" && (
+          <p className="mt-3 text-right text-sm">
+            <Link href={forgotHref} className="text-brand">
+              パスワードを忘れた方
+            </Link>
+          </p>
+        )}
         <div className="mt-4 grid gap-2">
-          <Button type="button" variant="outline" className="w-full" onClick={() => oauth("google")}>
+          <Button type="button" variant="outline" className="w-full" onClick={signInWithGoogle} disabled={loading}>
             Googleで続ける
           </Button>
           <Button
@@ -116,7 +165,32 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             LINEで続ける（準備中）
           </Button>
         </div>
-        {message && <p className="mt-4 text-sm text-accent">{message}</p>}
+
+        {notice && (
+          <p role="status" className="mt-4 text-sm text-brand">
+            {notice}
+          </p>
+        )}
+        {failure && (
+          <div role="alert" className="mt-4 space-y-2 text-sm text-accent">
+            <p>{failure.message}</p>
+            {failure.action === "reset-password" && (
+              <Link href={forgotHref} className="inline-block font-semibold underline">
+                パスワードを再設定する
+              </Link>
+            )}
+            {failure.action === "resend-confirmation" && (
+              <button
+                type="button"
+                onClick={resendConfirmation}
+                disabled={loading}
+                className="font-semibold underline"
+              >
+                確認メールを再送する
+              </button>
+            )}
+          </div>
+        )}
       </Card>
     </div>
   );

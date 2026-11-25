@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { askGemini } from "@/lib/ai";
+import { generateAiText, toLines } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   const m = (await request.json()) as Metrics;
   const base = heuristicFeedback(m);
 
-  const ai = await askGemini(
+  const ai = await generateAiText(
     `あなたはメンズ美容の専門アドバイザー。以下の肌指標から、清潔感を上げる具体的な行動を3つ、日本語で簡潔に。医療診断はしない。\n` +
       `明るさ:${m.brightness}/255 コントラスト:${m.contrast} 赤み:${m.redness} テカリ率:${(m.shineRatio * 100).toFixed(1)}%\n` +
       `セルフ回答:${JSON.stringify(m.answers ?? {})}\n出力: 箇条書き3行のみ。`,
@@ -47,9 +47,11 @@ export async function POST(request: Request) {
   if (ai) {
     return NextResponse.json({
       ...base,
-      tips: ai.split("\n").map((s) => s.replace(/^[-*・]\s*/, "").trim()).filter(Boolean).slice(0, 4),
+      tips: toLines(ai.value, 4),
+      ai: true,
+      model: ai.model,
       source: "gemini",
     });
   }
-  return NextResponse.json(base);
+  return NextResponse.json({ ...base, ai: false, model: null });
 }

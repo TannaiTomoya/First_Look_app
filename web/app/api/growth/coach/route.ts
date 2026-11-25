@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { askGemini } from "@/lib/ai";
+import { generateAiText } from "@/lib/ai";
 import { summarizeMetrics, type MetricRow } from "@/lib/growth/metrics";
 import { buildCoachSystemContext, heuristicCoachReply } from "@/lib/growth/prompts";
 import { assertCoachAllowed, bumpUsage, getGrowthLimits } from "@/lib/growth/limits";
@@ -58,9 +58,9 @@ export async function POST(request: Request) {
     const endPrompt =
       `${context}\n\n【会話ログ】\n${historyText || "(なし)"}\n\n` +
       `この会話を踏まえ、「今週やる具体アクション」を日本語で3つだけ箇条書き。各行20〜40字。`;
-    const ai = await askGemini(endPrompt);
+    const ai = await generateAiText(endPrompt);
     const summaryText =
-      ai?.trim() ||
+      ai?.value ||
       [
         "・直近投稿の保存率を記録する",
         "・結論テロップ付き15秒を1本出す",
@@ -95,6 +95,8 @@ export async function POST(request: Request) {
       ended: true,
       reply: summaryText,
       sessionId: session?.id ?? null,
+      ai: Boolean(ai),
+      model: ai?.model ?? null,
       source: ai ? "gemini" : "heuristic",
     });
   }
@@ -106,10 +108,11 @@ export async function POST(request: Request) {
     `user: ${message}\nassistant:` +
     `\n（120〜220字。観察→仮説→次の実験の順。箇条書き可）`;
 
-  const ai = await askGemini(prompt);
-  const reply = ai?.trim() || heuristicCoachReply(message, summary);
+  const ai = await generateAiText(prompt);
+  const reply = ai?.value || heuristicCoachReply(message, summary);
 
-  await bumpUsage(admin, user.id, "coach_count");
+  // AI が応答しなかった場合（簡易版の定型文）は利用回数を消費しない
+  if (ai) await bumpUsage(admin, user.id, "coach_count");
   let limitsAfter = limits;
   try {
     limitsAfter = await getGrowthLimits(admin, user.id);
@@ -119,6 +122,8 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     reply,
+    ai: Boolean(ai),
+    model: ai?.model ?? null,
     source: ai ? "gemini" : "heuristic",
     summary,
     limits: limitsAfter,

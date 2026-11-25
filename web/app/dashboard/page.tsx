@@ -1,11 +1,29 @@
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Button, Card } from "@/components/ui";
 import { CheckoutButton } from "@/components/checkout-button";
 import { isSupabaseConfigured } from "@/lib/config";
-import { getEntitlements } from "@/lib/entitlements";
+import { getEntitlements, type Entitlements } from "@/lib/entitlements";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
+
+const FREE: Entitlements = {
+  extraSimulations: 0,
+  isPremium: false,
+  planInterval: "none",
+  planRenewals: 0,
+  isAnnual: false,
+};
+
+async function settle<T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    console.error(`[dashboard] ${label} failed: ${err instanceof Error ? err.message : JSON.stringify(err)}`);
+    return fallback;
+  }
+}
 
 export default async function DashboardPage() {
   if (!isSupabaseConfigured()) {
@@ -24,36 +42,53 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name, role, onboarding_completed")
-    .eq("id", user?.id ?? "")
-    .maybeSingle();
+  const userId = user?.id ?? "";
 
-  const admin = user ? await createServiceClient() : null;
-  const entitlements = user
-    ? await getEntitlements(admin ?? supabase, user.id)
-    : { extraSimulations: 0, isPremium: false, planInterval: "none" as const, planRenewals: 0, isAnnual: false };
-
-  const latest = user && admin
-    ? (
-        await admin
-          .from("look_records")
-          .select("id, created_at, photo_path")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle()
-      ).data
-    : null;
-
-  const today = new Date().toISOString().slice(0, 10);
-  const { data: action } = await supabase
-    .from("daily_actions")
-    .select("title, completed")
-    .eq("user_id", user?.id ?? "")
-    .eq("action_date", today)
-    .maybeSingle();
+  // 取得に失敗したカードだけ空にし、ホーム自体は必ず表示する
+  const [profile, entitlements, latest, action] = await Promise.all([
+    settle("profile", async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("display_name, role")
+        .eq("id", userId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    }, null),
+    settle("entitlements", async () => {
+      if (!user) return FREE;
+      let client: Awaited<ReturnType<typeof createClient>> | Awaited<ReturnType<typeof createServiceClient>> = supabase;
+      try {
+        client = await createServiceClient();
+      } catch (err) {
+        console.error(`[dashboard] service role unavailable: ${(err as Error).message}`);
+      }
+      return getEntitlements(client, user.id);
+    }, FREE),
+    settle("latest record", async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from("look_records")
+        .select("id, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    }, null),
+    settle("daily action", async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data, error } = await supabase
+        .from("daily_actions")
+        .select("title, completed")
+        .eq("user_id", userId)
+        .eq("action_date", today)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    }, null),
+  ]);
 
   return (
     <AppShell isAdmin={profile?.role === "admin"}>
@@ -103,14 +138,14 @@ export default async function DashboardPage() {
             { href: "/intro", t: "自己紹介作成", d: "生成して保存" },
             { href: "/consult", t: "個別相談", d: "丹内 智弥に相談" },
           ].map((x) => (
-            <a
+            <Link
               key={x.href}
               href={x.href}
               className="rounded-2xl border border-line bg-card p-4 transition hover:border-brand hover:shadow-md"
             >
               <p className="font-semibold">{x.t}</p>
               <p className="mt-1 text-xs text-muted">{x.d}</p>
-            </a>
+            </Link>
           ))}
         </div>
       </div>

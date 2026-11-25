@@ -1,5 +1,6 @@
 "use client";
 
+import { AiFallbackNotice } from "@/components/ai-fallback-notice";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
@@ -18,6 +19,7 @@ export default function GrowthPlansPage() {
   const [items, setItems] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiDown, setAiDown] = useState(false);
 
   async function load() {
     const res = await fetch("/api/growth/plans");
@@ -43,8 +45,9 @@ export default function GrowthPlansPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic: "第一印象・婚活の発信" }),
       });
-      const data = (await res.json()) as { error?: string };
+      const data = (await res.json()) as { error?: string; ai?: boolean };
       if (!res.ok) throw new Error(data.error ?? "生成失敗");
+      setAiDown(data.ai === false);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "生成失敗");
@@ -72,6 +75,7 @@ export default function GrowthPlansPage() {
         </Button>
       </div>
       {error && <p className="mt-3 text-sm text-accent">{error}</p>}
+      <AiFallbackNotice show={aiDown} className="mt-3" />
       <div className="mt-6 space-y-4">
         {items.map((p) => (
           <Card key={p.id}>

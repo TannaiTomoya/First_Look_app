@@ -38,7 +38,8 @@ is_placeholder() {
 }
 
 # wrangler の vars は設定ファイル経由が安全。secrets は put
-for key in SUPABASE_SERVICE_ROLE_KEY STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET; do
+# GEMINI_API_KEY / YOUTUBE_API_KEY / AI_TEXT_MODEL は任意（空ならスキップ）
+for key in SUPABASE_SERVICE_ROLE_KEY STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET GEMINI_API_KEY YOUTUBE_API_KEY AI_TEXT_MODEL; do
   val="${!key:-}"
   if is_placeholder "$val"; then
     echo "  secret: $key スキップ（未設定/プレースホルダ）"
