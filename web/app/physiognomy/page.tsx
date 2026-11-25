@@ -1,11 +1,12 @@
 "use client";
 
+import { AiFallbackNotice } from "@/components/ai-fallback-notice";
 import { useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button, Card } from "@/components/ui";
 import { detectFace, fileToCanvas } from "@/lib/face-tools";
 
-type Result = { reading: string[]; sources: string[]; disclaimer: string; source: string };
+type Result = { reading: string[]; sources: string[]; disclaimer: string; source: string; ai?: boolean };
 
 export default function PhysiognomyPage() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -78,6 +79,7 @@ export default function PhysiognomyPage() {
 
       {result && (
         <>
+          <AiFallbackNotice show={result.ai === false} className="mt-4" />
           <Card className="mt-4">
             <h2 className="font-semibold">リーディング結果</h2>
             <ul className="mt-3 space-y-2 text-sm">

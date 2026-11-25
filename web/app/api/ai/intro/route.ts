@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { askGemini } from "@/lib/ai";
+import { generateAiText } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
 
@@ -42,10 +42,15 @@ export async function POST(request: Request) {
   if (!input.name) return NextResponse.json({ error: "名前を入れてください" }, { status: 400 });
 
   const fallback = template(input);
-  const ai = await askGemini(
+  const ai = await generateAiText(
     `${input.goal}向けの自己紹介文を1つ、日本語で120〜200字。トーンは「${input.tone}」。誇張せず、具体的に。\n` +
       `名前:${input.name} 年齢:${input.age ?? "非公開"} 職業:${input.job ?? "非公開"} 趣味:${input.hobby ?? "なし"} 強み:${input.strength ?? "なし"}\n本文のみ出力。`,
   );
 
-  return NextResponse.json({ text: ai?.trim() || fallback, source: ai ? "gemini" : "template" });
+  return NextResponse.json({
+    text: ai?.value || fallback,
+    ai: Boolean(ai),
+    model: ai?.model ?? null,
+    source: ai ? "gemini" : "template",
+  });
 }

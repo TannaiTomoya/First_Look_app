@@ -1,10 +1,28 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { askGemini } from "@/lib/ai";
+import { z } from "zod";
+import { generateAiObject } from "@/lib/ai";
 import { summarizeMetrics, type MetricRow } from "@/lib/growth/metrics";
 import { assertUnlimitedPlans, getGrowthLimits } from "@/lib/growth/limits";
 
 export const dynamic = "force-dynamic";
+
+const PlanSchema = z.object({
+  title: z.string().min(1).max(60),
+  body: z.string().min(1).max(400),
+  posts: z
+    .array(
+      z.object({
+        day: z.number().int().min(1).max(14),
+        platform: z.enum(["reels", "shorts", "tiktok"]),
+        hook: z.string(),
+        caption: z.string(),
+        cta: z.string(),
+      }),
+    )
+    .min(1)
+    .max(8),
+});
 
 export async function GET() {
   const supabase = await createClient();
@@ -78,10 +96,10 @@ export async function POST(request: Request) {
     `トピック:${topic}\n自己紹介:${profile?.desired_impression ?? "未設定"}\n` +
     `KPI: 投稿${summary.count} 再生${summary.views} 保存率${(summary.saveRate * 100).toFixed(1)}%\n` +
     `直近ログ:${JSON.stringify(metrics ?? [])}\n` +
-    `出力はJSONのみ: {"title":"プラン名","body":"方針200字以内","posts":[{"day":1,"platform":"reels|shorts|tiktok","hook":"冒頭1秒","caption":"本文","cta":"行動"}]}` +
-    `\npostsはちょうど6本。医療・差別禁止。`;
+    `title はプラン名、body は方針（200字以内）、posts はちょうど6本` +
+    `（day は1〜14、hook は冒頭1秒の掴み、caption は本文、cta は視聴者に促す行動）。医療・差別禁止。`;
 
-  const ai = await askGemini(prompt);
+  const ai = await generateAiObject(PlanSchema, prompt);
   let title = `${profile?.display_name ?? "あなた"}の発信プラン`;
   let planBody =
     "清潔感のビフォー→1アクション→結果の型で、週3本の縦型を出す。数字を見て翌週の型を1つだけ変える。";
@@ -95,21 +113,9 @@ export async function POST(request: Request) {
   ];
 
   if (ai) {
-    try {
-      const m = ai.match(/\{[\s\S]*\}/);
-      if (m) {
-        const parsed = JSON.parse(m[0]) as {
-          title?: string;
-          body?: string;
-          posts?: unknown[];
-        };
-        if (parsed.title) title = parsed.title;
-        if (parsed.body) planBody = parsed.body;
-        if (parsed.posts?.length) posts = parsed.posts.slice(0, 8);
-      }
-    } catch {
-      planBody = ai.slice(0, 400);
-    }
+    title = ai.value.title;
+    planBody = ai.value.body;
+    posts = ai.value.posts;
   }
 
   const { data: plan, error } = await admin
@@ -135,5 +141,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  return NextResponse.json({ ok: true, plan, source: ai ? "gemini" : "template" });
+  return NextResponse.json({
+    ok: true,
+    plan,
+    ai: Boolean(ai),
+    model: ai?.model ?? null,
+    source: ai ? "gemini" : "template",
+  });
 }

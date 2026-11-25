@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AiFallbackNotice } from "@/components/ai-fallback-notice";
 import { AppShell } from "@/components/app-shell";
 import { Button, Card } from "@/components/ui";
 import { formatPct, type MetricsSummary } from "@/lib/growth/metrics";
@@ -36,6 +37,7 @@ export default function GrowthCoachPage() {
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<MetricsSummary | null>(null);
   const [endedSummary, setEndedSummary] = useState<string | null>(null);
+  const [aiDown, setAiDown] = useState(false);
   const recogRef = useRef<SpeechRecognitionLike | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -84,6 +86,7 @@ export default function GrowthCoachPage() {
         error?: string;
         ended?: boolean;
         summary?: MetricsSummary;
+        ai?: boolean;
       };
       if (!res.ok) {
         if (res.status === 401) {
@@ -93,6 +96,7 @@ export default function GrowthCoachPage() {
         throw new Error(data.error ?? "応答に失敗しました");
       }
       if (data.summary) setSummary(data.summary);
+      setAiDown(data.ai === false);
       const reply = data.reply ?? "";
       setHistory((h) => [...h, { role: "assistant", content: reply }]);
       speakText(reply);
@@ -156,6 +160,7 @@ export default function GrowthCoachPage() {
         </Card>
       )}
 
+      <AiFallbackNotice show={aiDown} className="mt-4" />
       <Card className="mt-4 flex max-h-[50vh] flex-col overflow-hidden !p-0">
         <div className="flex-1 space-y-3 overflow-y-auto p-4">
           {history.length === 0 && (

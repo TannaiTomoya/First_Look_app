@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { askGemini } from "@/lib/ai";
+import { z } from "zod";
+import { generateAiObject } from "@/lib/ai";
 import { assertClipAllowed, assertTemplateAllowed, bumpUsage, getGrowthLimits } from "@/lib/growth/limits";
 
 export const dynamic = "force-dynamic";
 
 const MAX_SIZE = 80 * 1024 * 1024;
+
+const CaptionSchema = z.object({
+  caption: z.string().min(1).max(200),
+  hashtags: z.array(z.string()).min(1).max(8),
+  platform_hint: z.enum(["reels", "shorts", "tiktok"]),
+});
 
 export async function GET() {
   const supabase = await createClient();
@@ -84,32 +91,20 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   const captionPrompt =
-    `メンズ美容・第一印象の縦型ショート用キャプションを日本語で。\n` +
+    `メンズ美容・第一印象の縦型ショート用キャプションを日本語で作る。\n` +
     `テロップ候補: ${title}\nハイライト理由: ${reason || "なし"}\n` +
     `自己紹介メモ: ${profile?.desired_impression ?? "なし"}\n` +
-    `出力JSONのみ: {"caption":"本文80〜120字","hashtags":["タグ1","タグ2","タグ3","タグ4","タグ5"],"platform_hint":"reels"|"shorts"|"tiktok"}`;
+    `caption は本文80〜120字。hashtags は # を付けずに5個。platform_hint は最も合う投稿先。`;
 
   let caption = title;
   let hashtags: string[] = ["FirstLook", "メンズ美容", "清潔感"];
   let platform_hint = "reels";
 
-  const ai = await askGemini(captionPrompt);
+  const ai = await generateAiObject(CaptionSchema, captionPrompt);
   if (ai) {
-    try {
-      const jsonMatch = ai.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]) as {
-          caption?: string;
-          hashtags?: string[];
-          platform_hint?: string;
-        };
-        if (parsed.caption) caption = parsed.caption;
-        if (parsed.hashtags?.length) hashtags = parsed.hashtags.slice(0, 8);
-        if (parsed.platform_hint) platform_hint = parsed.platform_hint;
-      }
-    } catch {
-      caption = ai.split("\n")[0]?.slice(0, 120) || caption;
-    }
+    caption = ai.value.caption;
+    hashtags = ai.value.hashtags.map((h) => h.replace(/^#/, "")).filter(Boolean).slice(0, 8);
+    platform_hint = ai.value.platform_hint;
   }
 
   const { data: clip, error: clipErr } = await admin
@@ -172,6 +167,8 @@ export async function POST(request: Request) {
     caption,
     hashtags,
     platform_hint,
+    ai: Boolean(ai),
+    model: ai?.model ?? null,
     limits: limitsAfter,
   });
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { askGemini } from "@/lib/ai";
+import { generateAiText, toLines } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
 
@@ -39,18 +39,18 @@ export async function POST(request: Request) {
   const r = (await request.json()) as FaceRatios;
   const base = heuristicReading(r);
 
-  const ai = await askGemini(
+  const ai = await generateAiText(
     `あなたは観相学（人相学）の解説者。以下の顔比率から、古典的な観相学での「印象の読み」を日本語で3行、断定を避けて解説。差別的・医学的断定は禁止。\n` +
       `顔縦横比:${r.faceAspect.toFixed(2)} 目間隔比:${r.eyeGap.toFixed(2)} 顎幅比:${r.jawWidth.toFixed(2)} 額比:${r.foreheadRatio.toFixed(2)}`,
   );
 
   return NextResponse.json({
-    reading: ai
-      ? ai.split("\n").map((s) => s.replace(/^[-*・]\s*/, "").trim()).filter(Boolean).slice(0, 4)
-      : base,
+    reading: ai ? toLines(ai.value, 4) : base,
     sources: SOURCES,
     disclaimer:
       "人相学（観相学）は伝統的な解釈体系であり、科学的に性格や能力を判定できるものではありません。第一印象研究（Todorov ほか）は「人がどう見られやすいか」の傾向を示すもので、本人の実際の性質を示すものではありません。エンタメ・自己演出のヒントとしてご利用ください。",
+    ai: Boolean(ai),
+    model: ai?.model ?? null,
     source: ai ? "gemini" : "heuristic",
   });
 }
